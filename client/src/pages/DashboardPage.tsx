@@ -24,11 +24,11 @@ import {
 } from "lucide-react";
 
 // ── Object detection helpers ──────────────────────────────────────────────────
-function classifyObject(id: string): "ship" | "flight" {
+function classifyObject(id: string): "asset" | "aircraft" {
   if (id.startsWith("FLIGHT-") || id.startsWith("ADS-") || id.startsWith("ICAO-")) {
-    return "flight";
+    return "aircraft";
   }
-  return "ship";
+  return "asset";
 }
 
 const STATIC_AREAS = [
@@ -85,23 +85,23 @@ function MetricCard({
 
 export default function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { vessels, anomalies, isConnected } = useWebSocket();
-  const selectedVesselId = searchParams.get("vesselId");
+  const { tracks, anomalies, isConnected } = useWebSocket();
+  const selectedTrackId = searchParams.get("trackId");
 
-  const selectedVessel = selectedVesselId ? vessels.get(selectedVesselId) : null;
-  const selectedAnomaly = selectedVessel ? anomalies.get(selectedVessel.id) : null;
+  const selectedTrack = selectedTrackId ? tracks.get(selectedTrackId) : null;
+  const selectedAnomaly = selectedTrack ? anomalies.get(selectedTrack.id) : null;
 
-  const vesselArray = Array.from(vessels.values());
-  const ships = vesselArray.filter((v) => classifyObject(v.id) === "ship");
-  const flights = vesselArray.filter((v) => classifyObject(v.id) === "flight");
+  const trackArray = Array.from(tracks.values());
+  const assets = trackArray.filter((v) => classifyObject(v.id) === "asset");
+  const aircraft = trackArray.filter((v) => classifyObject(v.id) === "aircraft");
 
-  const criticalCount = vesselArray.filter((v) => v.severity === "critical").length;
-  const avgScore = vesselArray.length > 0
-    ? Math.round(vesselArray.reduce((a, v) => a + v.anomalyScore, 0) / vesselArray.length)
+  const criticalCount = trackArray.filter((v) => v.severity === "critical").length;
+  const avgScore = trackArray.length > 0
+    ? Math.round(trackArray.reduce((a, v) => a + v.anomalyScore, 0) / trackArray.length)
     : 0;
 
   // Accordion state for nav panel
-  const [openSections, setOpenSections] = useState({ ships: true, flights: true, areas: false });
+  const [openSections, setOpenSections] = useState({ assets: true, aircraft: true, areas: false });
   const toggleSection = (key: keyof typeof openSections) =>
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -126,8 +126,8 @@ export default function DashboardPage() {
 
       {/* Metrics Row */}
       <div className="metrics-grid" style={{ marginBottom: "24px" }}>
-        <MetricCard icon={Anchor} label="Geospatial Vessels" value={ships.length} sub="Active AIS tracks" accent="indigo" />
-        <MetricCard icon={Plane} label="Air Traffic" value={flights.length} sub="Active ADS-B tracks" accent="sky" />
+        <MetricCard icon={Anchor} label="Geospatial Assets" value={assets.length} sub="Active telemetry tracks" accent="indigo" />
+        <MetricCard icon={Plane} label="Air Traffic" value={aircraft.length} sub="Active ADS-B tracks" accent="sky" />
         <MetricCard icon={ShieldAlert} label="Critical Alerts" value={criticalCount} sub="High priority threats" accent={criticalCount > 0 ? "red" : "green"} />
         <MetricCard icon={TrendingUp} label="Avg Threat Score" value={`${avgScore}/100`} sub="Fleet average" accent="copper" />
       </div>
@@ -154,20 +154,20 @@ export default function DashboardPage() {
 
             <ScrollArea className="flex-1" style={{ padding: "12px" }}>
 
-              {/* SHIPS */}
+              {/* ASSETS */}
               <div style={{ marginBottom: "12px" }}>
-                <div className="nav-category-header" onClick={() => toggleSection("ships")}>
-                  {openSections.ships ? <ChevronDown size={14} color="#6366f1" /> : <ChevronRight size={14} color="#6366f1" />}
-                  <span className="section-eyebrow" style={{ color: "#818cf8", flex: 1 }}>Maritime Forces</span>
-                  <span className="count-pill" style={{ background: "rgba(79,70,229,0.15)", color: "#a5b4fc" }}>{ships.length}</span>
+                <div className="nav-category-header" onClick={() => toggleSection("assets")}>
+                  {openSections.assets ? <ChevronDown size={14} color="#6366f1" /> : <ChevronRight size={14} color="#6366f1" />}
+                  <span className="section-eyebrow" style={{ color: "#818cf8", flex: 1 }}>Geospatial Assets</span>
+                  <span className="count-pill" style={{ background: "rgba(79,70,229,0.15)", color: "#a5b4fc" }}>{assets.length}</span>
                 </div>
-                {openSections.ships && (
+                {openSections.assets && (
                   <div className="stack-sm" style={{ marginTop: "6px", paddingLeft: "8px" }}>
-                    {ships.slice(0, 15).map(v => (
+                    {assets.slice(0, 15).map(v => (
                       <button
                         key={v.id}
-                        onClick={() => setSearchParams({ vesselId: v.id })}
-                        className={`nav-item-btn ${selectedVesselId === v.id ? 'selected-ship' : ''} ${v.severity === 'critical' ? 'critical-item' : ''}`}
+                        onClick={() => setSearchParams({ trackId: v.id })}
+                        className={`nav-item-btn ${selectedTrackId === v.id ? 'selected-asset' : ''} ${v.severity === 'critical' ? 'critical-item' : ''}`}
                       >
                         <div>
                           <div style={{ fontSize: "0.8125rem", fontWeight: 700 }}>{v.name}</div>
@@ -180,20 +180,20 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* FLIGHTS */}
+              {/* AIRCRAFT */}
               <div style={{ marginBottom: "12px" }}>
-                <div className="nav-category-header" onClick={() => toggleSection("flights")}>
-                  {openSections.flights ? <ChevronDown size={14} color="#38bdf8" /> : <ChevronRight size={14} color="#38bdf8" />}
+                <div className="nav-category-header" onClick={() => toggleSection("aircraft")}>
+                  {openSections.aircraft ? <ChevronDown size={14} color="#38bdf8" /> : <ChevronRight size={14} color="#38bdf8" />}
                   <span className="section-eyebrow" style={{ color: "#7dd3fc", flex: 1 }}>Air Traffic</span>
-                  <span className="count-pill" style={{ background: "rgba(56,189,248,0.15)", color: "#7dd3fc" }}>{flights.length}</span>
+                  <span className="count-pill" style={{ background: "rgba(56,189,248,0.15)", color: "#7dd3fc" }}>{aircraft.length}</span>
                 </div>
-                {openSections.flights && (
+                {openSections.aircraft && (
                   <div className="stack-sm" style={{ marginTop: "6px", paddingLeft: "8px" }}>
-                    {flights.slice(0, 15).map(v => (
+                    {aircraft.slice(0, 15).map(v => (
                       <button
                         key={v.id}
-                        onClick={() => setSearchParams({ vesselId: v.id })}
-                        className={`nav-item-btn ${selectedVesselId === v.id ? 'selected-flight' : ''} ${v.severity === 'critical' ? 'critical-item' : ''}`}
+                        onClick={() => setSearchParams({ trackId: v.id })}
+                        className={`nav-item-btn ${selectedTrackId === v.id ? 'selected-aircraft' : ''} ${v.severity === 'critical' ? 'critical-item' : ''}`}
                       >
                         <div>
                           <div style={{ fontSize: "0.8125rem", fontWeight: 700 }}>{v.name}</div>
@@ -218,8 +218,8 @@ export default function DashboardPage() {
                     {STATIC_AREAS.map(a => (
                       <button
                         key={a.id}
-                        onClick={() => setSearchParams({ vesselId: a.id })}
-                        className={`nav-item-btn ${selectedVesselId === a.id ? 'selected-area' : ''}`}
+                        onClick={() => setSearchParams({ trackId: a.id })}
+                        className={`nav-item-btn ${selectedTrackId === a.id ? 'selected-area' : ''}`}
                       >
                         <div>
                           <div style={{ fontSize: "0.8125rem", fontWeight: 700 }}>{a.name}</div>
@@ -237,29 +237,29 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Selected Vessel Panel */}
-      {selectedVessel ? (
-        <Card variant={classifyObject(selectedVessel.id) === "flight" ? "flight" : "copper"} className="fade-up">
+      {/* Selected Track Panel */}
+      {selectedTrack ? (
+        <Card variant={classifyObject(selectedTrack.id) === "aircraft" ? "flight" : "copper"} className="fade-up">
           <CardContent style={{ padding: "24px" }}>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", marginBottom: "16px" }}>
               <div>
                 <div className="section-eyebrow" style={{ marginBottom: "6px" }}>Selected Target</div>
                 <h2 style={{ fontSize: "1.375rem", fontWeight: 800, color: "#f8fafc", letterSpacing: "-0.02em" }}>
-                  {selectedVessel.name}
+                  {selectedTrack.name}
                 </h2>
               </div>
-              <SeverityBadge severity={selectedVessel.severity} />
+              <SeverityBadge severity={selectedTrack.severity} />
             </div>
 
-            <div className="copper-bar" style={{ marginBottom: "20px", background: classifyObject(selectedVessel.id) === "flight" ? "linear-gradient(90deg, #38bdf8, transparent)" : undefined }} />
+            <div className="copper-bar" style={{ marginBottom: "20px", background: classifyObject(selectedTrack.id) === "aircraft" ? "linear-gradient(90deg, #38bdf8, transparent)" : undefined }} />
 
             {/* Facts Grid */}
             <div className="content-grid-2" style={{ marginBottom: "20px" }}>
               {[
-                { label: "ID", value: selectedVessel.id, icon: classifyObject(selectedVessel.id) === "flight" ? Plane : Anchor },
-                { label: "Position", value: `${selectedVessel.lat.toFixed(4)}°N, ${selectedVessel.lon.toFixed(4)}°E`, icon: MapPin },
-                { label: "Speed", value: `${selectedVessel.speed.toFixed(1)} kts`, icon: Activity },
-                { label: "Anomaly Score", value: `${selectedVessel.anomalyScore} / 100`, icon: TrendingUp },
+                { label: "ID", value: selectedTrack.id, icon: classifyObject(selectedTrack.id) === "aircraft" ? Plane : Anchor },
+                { label: "Position", value: `${selectedTrack.lat.toFixed(4)}°N, ${selectedTrack.lon.toFixed(4)}°E`, icon: MapPin },
+                { label: "Speed", value: `${selectedTrack.speed.toFixed(1)} kts`, icon: Activity },
+                { label: "Anomaly Score", value: `${selectedTrack.anomalyScore} / 100`, icon: TrendingUp },
               ].map(({ label, value, icon: Icon }) => (
                 <div
                   key={label}
@@ -290,7 +290,7 @@ export default function DashboardPage() {
                     <div className="section-eyebrow" style={{ marginBottom: "12px" }}>Detection Reasons</div>
                     <ul className="stack-sm">
                       {selectedAnomaly.reasons.map((r, i) => (
-                        <li key={i} className={classifyObject(selectedVessel.id) === "flight" ? "sky-line-left" : "indigo-line-left"} style={{ fontSize: "0.8125rem", color: "#cbd5e1" }}>
+                        <li key={i} className={classifyObject(selectedTrack.id) === "aircraft" ? "sky-line-left" : "indigo-line-left"} style={{ fontSize: "0.8125rem", color: "#cbd5e1" }}>
                           {r}
                         </li>
                       ))}
@@ -301,7 +301,7 @@ export default function DashboardPage() {
                     <ul className="stack-sm">
                       {selectedAnomaly.actions.map((a, i) => (
                         <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: "8px", fontSize: "0.8125rem", color: "#cbd5e1" }}>
-                          <ChevronRight size={14} color={classifyObject(selectedVessel.id) === "flight" ? "#38bdf8" : "#b87333"} style={{ flexShrink: 0, marginTop: "2px" }} />
+                          <ChevronRight size={14} color={classifyObject(selectedTrack.id) === "aircraft" ? "#38bdf8" : "#b87333"} style={{ flexShrink: 0, marginTop: "2px" }} />
                           {a}
                         </li>
                       ))}

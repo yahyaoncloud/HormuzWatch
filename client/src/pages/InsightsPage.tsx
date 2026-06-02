@@ -14,9 +14,9 @@ function SeverityBadge({ severity }: { severity: string }) {
 }
 
 export default function InsightsPage() {
-  const { vessels, anomalies } = useWebSocket();
+  const { tracks, anomalies } = useWebSocket();
 
-  const threatenedVessels = Array.from(vessels.values())
+  const threatenedTracks = Array.from(tracks.values())
     .filter((v) => v.severity !== "low")
     .sort((a, b) => b.anomalyScore - a.anomalyScore);
 
@@ -37,18 +37,18 @@ export default function InsightsPage() {
         </div>
       </div>
 
-      {threatenedVessels.length === 0 ? (
+      {threatenedTracks.length === 0 ? (
         <div className="intel-panel" style={{ padding: "48px", textAlign: "center", color: "#475569" }}>
           <Brain size={36} style={{ margin: "0 auto 14px", opacity: 0.25 }} />
           <div style={{ fontWeight: 600, color: "#64748b", marginBottom: "6px" }}>No Anomalies Detected</div>
-          <div style={{ fontSize: "0.875rem" }}>All vessels are operating within normal parameters</div>
+          <div style={{ fontSize: "0.875rem" }}>All assets are operating within normal parameters</div>
         </div>
       ) : (
         <div className="stack">
-          {threatenedVessels.map((vessel) => {
-            const anomaly = anomalies.get(vessel.id);
+          {threatenedTracks.map((track) => {
+            const anomaly = anomalies.get(track.id);
             return (
-              <div key={vessel.id} className="intel-panel intel-panel-indigo" style={{ padding: "20px" }}>
+              <div key={track.id} className="intel-panel intel-panel-indigo" style={{ padding: "20px" }}>
                 {/* Header */}
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: "10px", marginBottom: "14px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -56,15 +56,15 @@ export default function InsightsPage() {
                       <AlertTriangle size={15} color="#6366f1" />
                     </div>
                     <div>
-                      <div style={{ fontWeight: 700, color: "#f8fafc", fontSize: "0.9375rem" }}>{vessel.name}</div>
-                      <div style={{ fontSize: "0.6875rem", color: "#475569" }}>{vessel.id}</div>
+                      <div style={{ fontWeight: 700, color: "#f8fafc", fontSize: "0.9375rem" }}>{track.name}</div>
+                      <div style={{ fontSize: "0.6875rem", color: "#475569" }}>{track.id}</div>
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <span style={{ fontSize: "0.8125rem", color: "#94a3b8" }}>
-                      Score: <strong style={{ color: vessel.anomalyScore >= 75 ? "#ef4444" : "#b87333" }}>{vessel.anomalyScore}/100</strong>
+                      Score: <strong style={{ color: track.anomalyScore >= 75 ? "#ef4444" : "#b87333" }}>{track.anomalyScore}/100</strong>
                     </span>
-                    <SeverityBadge severity={vessel.severity} />
+                    <SeverityBadge severity={track.severity} />
                   </div>
                 </div>
 
@@ -102,7 +102,7 @@ export default function InsightsPage() {
                   </div>
                 ) : (
                   <div style={{ fontSize: "0.875rem", color: "#475569" }}>
-                    No detailed anomaly data available for this vessel.
+                    No detailed anomaly data available for this asset.
                   </div>
                 )}
               </div>

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 
-export interface Vessel {
+export interface Track {
   id: string;
   name: string;
   lat: number;
@@ -28,7 +28,7 @@ export interface HeatmapCell {
 
 interface WebSocketContextType {
   isConnected: boolean;
-  vessels: Map<string, Vessel>;
+  tracks: Map<string, Track>;
   anomalies: Map<string, AnomalyData>;
 }
 
@@ -42,7 +42,7 @@ const RECONNECT_JITTER = 500;            // ±500ms jitter to avoid thundering h
 
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [isConnected, setIsConnected] = useState(false);
-  const [vessels, setVessels] = useState<Map<string, Vessel>>(new Map());
+  const [tracks, setTracks] = useState<Map<string, Track>>(new Map());
   const [anomalies, setAnomalies] = useState<Map<string, AnomalyData>>(new Map());
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -91,7 +91,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             if (message.type === "pong" || message.type === "ping") continue;
 
             if (message.type === "telemetry") {
-              const vessel: Vessel = {
+              const track: Track = {
                 id: message.data.imo,
                 name: message.data.vesselName,
                 lat: message.data.lat,
@@ -102,16 +102,16 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
                 severity: "low",
                 lastUpdate: new Date().toISOString(),
               };
-              setVessels((prev) => new Map(prev).set(vessel.id, vessel));
+              setTracks((prev) => new Map(prev).set(track.id, track));
             } else if (message.type === "anomaly") {
               const anomaly: AnomalyData = message.data;
               setAnomalies((prev) => new Map(prev).set(anomaly.id, anomaly));
-              setVessels((prev) => {
+              setTracks((prev) => {
                 const updated = new Map(prev);
-                const vessel = updated.get(anomaly.id);
-                if (vessel) {
-                  vessel.anomalyScore = anomaly.score;
-                  vessel.severity = anomaly.severity as "low" | "medium" | "high" | "critical";
+                const track = updated.get(anomaly.id);
+                if (track) {
+                  track.anomalyScore = anomaly.score;
+                  track.severity = anomaly.severity as "low" | "medium" | "high" | "critical";
                 }
                 return updated;
               });
@@ -178,7 +178,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <WebSocketContext.Provider
-      value={{ isConnected, vessels, anomalies }}
+      value={{ isConnected, tracks, anomalies }}
     >
       {children}
     </WebSocketContext.Provider>
