@@ -101,8 +101,8 @@ func StartAISStream(h *hub.Hub) {
 				}
 
 				payload := api.TelemetryPayload{
-					IMO:               fmt.Sprintf("%d", aisMsg.MetaData.MMSI), // Using MMSI as ID
-					VesselName:        shipName,
+					TrackID:           fmt.Sprintf("%d", aisMsg.MetaData.MMSI), // Using MMSI as ID
+					AssetName:         shipName,
 					Timestamp:         aisMsg.MetaData.TimeUTC,
 					Lat:               aisMsg.MetaData.Latitude,
 					Lon:               aisMsg.MetaData.Longitude,
