@@ -31,7 +31,7 @@ export default function RootLayout() {
   const location = useLocation();
   const [darkMode, setDarkMode] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { isConnected, vessels } = useWebSocket();
+  const { isConnected, tracks } = useWebSocket();
 
   const toggleDark = () => {
     setDarkMode((p) => !p);
@@ -162,7 +162,7 @@ export default function RootLayout() {
             >
               {isConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
               {isConnected
-                ? `${vessels.size} Tracked`
+                ? `${tracks.size} Tracked`
                 : "Offline"}
             </div>
 
@@ -223,7 +223,7 @@ export default function RootLayout() {
             >
               {isConnected ? <Wifi size={14} /> : <WifiOff size={14} />}
               {isConnected
-                ? `LIVE · ${vessels.size} TRACKED`
+                ? `LIVE · ${tracks.size} TRACKED`
                 : "DISCONNECTED"}
             </div>
           </div>

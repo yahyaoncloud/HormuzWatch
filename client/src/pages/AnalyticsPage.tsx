@@ -50,26 +50,26 @@ function StatBar({
 }
 
 export default function AnalyticsPage() {
-  const { vessels, anomalies } = useWebSocket();
+  const { tracks, anomalies } = useWebSocket();
 
-  const vesselArr = Array.from(vessels.values());
-  const critical = vesselArr.filter((v) => v.severity === "critical").length;
-  const high = vesselArr.filter((v) => v.severity === "high").length;
-  const medium = vesselArr.filter((v) => v.severity === "medium").length;
-  const low = vesselArr.filter((v) => v.severity === "low").length;
-  const total = vesselArr.length || 1;
+  const trackArr = Array.from(tracks.values());
+  const critical = trackArr.filter((v) => v.severity === "critical").length;
+  const high = trackArr.filter((v) => v.severity === "high").length;
+  const medium = trackArr.filter((v) => v.severity === "medium").length;
+  const low = trackArr.filter((v) => v.severity === "low").length;
+  const total = trackArr.length || 1;
 
   const avgSpeed =
-    vesselArr.length > 0
-      ? (vesselArr.reduce((a, v) => a + v.speed, 0) / vesselArr.length).toFixed(1)
+    trackArr.length > 0
+      ? (trackArr.reduce((a, v) => a + v.speed, 0) / trackArr.length).toFixed(1)
       : "0.0";
 
   const avgScore =
-    vesselArr.length > 0
-      ? Math.round(vesselArr.reduce((a, v) => a + v.anomalyScore, 0) / vesselArr.length)
+    trackArr.length > 0
+      ? Math.round(trackArr.reduce((a, v) => a + v.anomalyScore, 0) / trackArr.length)
       : 0;
 
-  const topThreats = vesselArr
+  const topThreats = trackArr
     .sort((a, b) => b.anomalyScore - a.anomalyScore)
     .slice(0, 6);
 
@@ -85,7 +85,7 @@ export default function AnalyticsPage() {
       {/* Summary KPI row */}
       <div className="metrics-grid" style={{ marginBottom: "20px" }}>
         {[
-          { icon: Activity, label: "Total Tracked", value: vessels.size, color: "#6366f1" },
+          { icon: Activity, label: "Total Tracked", value: tracks.size, color: "#6366f1" },
           { icon: Zap, label: "Anomalies", value: anomalies.size, color: "#b87333" },
           { icon: TrendingUp, label: "Avg Speed", value: `${avgSpeed} kts`, color: "#22c55e" },
           { icon: BarChart3, label: "Avg Threat Score", value: `${avgScore}`, color: "#ef4444" },
@@ -123,7 +123,7 @@ export default function AnalyticsPage() {
           </div>
           {topThreats.length === 0 ? (
             <div style={{ color: "#475569", fontSize: "0.875rem", textAlign: "center", padding: "24px 0" }}>
-              No vessel data yet
+              No asset data yet
             </div>
           ) : (
             <div className="stack-sm">

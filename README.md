@@ -1,6 +1,6 @@
-# Maritime HormuzWatch
+# HormuzWatch - Strategic Intelligence Platform
 
-Real-time maritime surveillance and anomaly detection system for the Strait of Hormuz, featuring containerized Go backend and React Router v7 frontend with WebSocket real-time updates and anomaly heatmap visualization.
+Real-time geospatial surveillance and anomaly detection system for strategic regions, featuring containerized Go backend and React Router v7 frontend with WebSocket real-time updates and threat heatmap visualization.
 
 ---
 
@@ -56,10 +56,10 @@ docker-compose up --build
 
 ## ✨ Key Features
 
-- **Real-Time Vessel Tracking** — WebSocket updates every 2 seconds
-- **Multi-Factor Anomaly Detection** — Route deviation, stale AIS, speed drops, hot zone proximity
+- **Real-Time Asset Tracking** — WebSocket updates every 2 seconds
+- **Multi-Factor Anomaly Detection** — Route deviation, stale telemetry, speed drops, hot zone proximity
 - **Interactive Map** — OpenStreetMap with marker clustering
-- **Anomaly Heatmap** — Real-time visualization of threat hotspots
+- **Threat Heatmap** — Real-time visualization of threat hotspots
 - **Dark Mode** — Built-in theme toggle
 - **URL-Based Navigation** — React Router v7 with persistent state
 - **JWT Authentication** — Ready for Phase 3 Azure AD integration
@@ -72,12 +72,12 @@ docker-compose up --build
 - [ ] `docker-compose up --build` completes without errors
 - [ ] Both containers show "healthy" in `docker-compose ps`
 - [ ] Frontend loads at http://localhost:3000 (no blank page)
-- [ ] Vessel markers appear on map and update every 2 seconds
+- [ ] Asset markers appear on map and update every 2 seconds
 - [ ] Browser DevTools → Network → WS shows WebSocket connection
-- [ ] Anomaly scores display on vessel markers
+- [ ] Anomaly scores display on asset markers
 - [ ] Heatmap toggle button works (top-right of map)
 - [ ] Navigation links work (React Router)
-- [ ] Selected vessel persists in URL query params
+- [ ] Selected asset persists in URL query params
 
 See [IMPLEMENTATION_SUMMARY.md](./docs/project-info/IMPLEMENTATION_SUMMARY.md) for complete setup guide.
 
@@ -86,7 +86,7 @@ See [IMPLEMENTATION_SUMMARY.md](./docs/project-info/IMPLEMENTATION_SUMMARY.md) f
 ## 📁 Project Structure
 
 ```
-Maritime-HormuzWatch/
+HormuzWatch/
 ├── server/                 # Go backend
 │   ├── cmd/main.go        # Entry point
 │   ├── internal/          # Internal packages
@@ -124,7 +124,7 @@ Maritime-HormuzWatch/
 | Method | Endpoint     | Purpose             | Auth |
 | ------ | ------------ | ------------------- | ---- |
 | GET    | `/health`    | Service status      | ✓    |
-| POST   | `/telemetry` | Ingest vessel data  | ✓    |
+| POST   | `/telemetry` | Ingest track data   | ✓    |
 | POST   | `/analyze`   | Anomaly analysis    | ✓    |
 | GET    | `/ws/stream` | WebSocket real-time | ✓    |
 | GET    | `/heatmap`   | Heatmap grid data   | ✓    |
@@ -140,7 +140,7 @@ Maritime-HormuzWatch/
   "type": "telemetry",
   "data": {
     "imo": "9234567",
-    "vesselName": "Tanker ABC",
+    "vesselName": "Asset Alpha",
     "lat": 26.125,
     "lon": 56.234,
     "speed": 12.5,
@@ -249,7 +249,7 @@ docker-compose logs -f react-frontend
 
 ### No telemetry on map
 
-**Issue:** Blank map, no vessel markers  
+**Issue:** Blank map, no asset markers  
 **Solution:**
 
 1. Check WebSocket connected: DevTools → Network → WS filter
@@ -332,3 +332,9 @@ See [docs/project-info/CONTRIBUTING.md](./docs/project-info/CONTRIBUTING.md) for
 **Status**: Phase 2 - Containerized MVP Complete  
 **Next**: Phase 3 - Azure Infrastructure & Real Data Sources  
 **Updated**: June 2, 2026
+
+---
+
+## 📖 Description
+
+HormuzWatch is a multi-domain intelligence platform providing geospatial surveillance, asset tracking, anomaly detection, and situational awareness across strategic regions.
