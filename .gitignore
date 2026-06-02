@@ -66,3 +66,9 @@ htmlcov/
 *.tar.xz
 *.tar.zst
 ```
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
