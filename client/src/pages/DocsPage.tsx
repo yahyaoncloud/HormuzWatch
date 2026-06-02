@@ -1,7 +1,7 @@
 import { BookOpen, Server, Code2, Globe, ArrowRight } from "lucide-react";
 
 const ARCHITECTURE = [
-  { label: "AIS Feed", desc: "Real-time vessel telemetry ingestion", icon: Globe, color: "#6366f1" },
+  { label: "Telemetry Feed", desc: "Real-time asset tracking ingestion", icon: Globe, color: "#6366f1" },
   { label: "Go Backend", desc: "WebSocket hub & anomaly engine", icon: Server, color: "#b87333" },
   { label: "ML Scoring", desc: "Multi-factor threat assessment", icon: Code2, color: "#6366f1" },
   { label: "React Frontend", desc: "Intelligence dashboard UI", icon: BookOpen, color: "#b87333" },
@@ -26,12 +26,12 @@ export default function DocsPage() {
               <div className="section-eyebrow">Project Overview</div>
             </div>
             <h2 style={{ fontSize: "1.125rem", fontWeight: 700, color: "#f8fafc", marginBottom: "10px" }}>
-              Geospatial HormuzWatch
+              HormuzWatch Intelligence Platform
             </h2>
             <p style={{ fontSize: "0.875rem", color: "#94a3b8", lineHeight: 1.65, marginBottom: "14px" }}>
-              Real-time Geospatial intelligence platform for tracking vessel activity,
-              anomaly detection, and threat assessment across the Strait of Hormuz —
-              a critical global energy transit corridor.
+              Real-time multi-domain intelligence platform for geospatial surveillance, asset tracking,
+              anomaly detection, and threat assessment across strategic regions —
+              providing situational awareness for critical global transit corridors.
             </p>
 
             <div className="intel-divider" />
@@ -41,8 +41,8 @@ export default function DocsPage() {
             </div>
             <ul className="stack-sm">
               {[
-                "Live AIS vessel tracking via WebSocket stream",
-                "Multi-factor anomaly scoring (speed, course, AIS age)",
+                "Live telemetry tracking via WebSocket stream",
+                "Multi-factor anomaly scoring (speed, course, signal age)",
                 "Geofenced operational area monitoring",
                 "Threat heatmap visualization",
                 "Security audit trail with RBAC enforcement",

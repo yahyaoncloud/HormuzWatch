@@ -17,11 +17,11 @@ const MAX_ZOOM = 13;
 const GEO_RADIUS_KM = 1000;
 
 // ── Object type detection ────────────────────────────────────────────────────
-function classifyObject(id: string): "ship" | "flight" {
+function classifyObject(id: string): "asset" | "aircraft" {
   if (id.startsWith("FLIGHT-") || id.startsWith("ADS-") || id.startsWith("ICAO-")) {
-    return "flight";
+    return "aircraft";
   }
-  return "ship";
+  return "asset";
 }
 
 function getSeverityColor(severity: string): string {
@@ -33,8 +33,8 @@ function getSeverityColor(severity: string): string {
   }
 }
 
-// ── Ship icon (anchor/vessel shape) ─────────────────────────────────────────
-function makeShipIcon(severity: string, heading: number, selected: boolean) {
+// ── Asset icon (geospatial marker shape) ─────────────────────────────────────
+function makeAssetIcon(severity: string, heading: number, selected: boolean) {
   const color = getSeverityColor(severity);
   const scale = selected ? "scale(1.4)" : "scale(1)";
   const glow = selected
@@ -43,24 +43,24 @@ function makeShipIcon(severity: string, heading: number, selected: boolean) {
   const html = `
     <div style="transform: rotate(${heading}deg) ${scale}; color: ${color}; filter: ${glow}; transition: transform 0.25s ease, filter 0.25s ease;">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- Ship hull -->
+        <!-- Asset marker -->
         <path d="M12 2 L20 17 L12 13 L4 17 Z" fill="currentColor" opacity="0.9"/>
-        <!-- Bridge dot -->
+        <!-- Center dot -->
         <circle cx="12" cy="10" r="2.2" fill="${selected ? '#ffffff' : 'rgba(255,255,255,0.6)'}"/>
-        <!-- Wake lines -->
+        <!-- Trail lines -->
         <path d="M8 19 Q12 21 16 19" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" fill="none" opacity="0.5"/>
       </svg>
     </div>
   `;
   return L.divIcon({
     html,
-    className: "vessel-div-icon",
+    className: "track-div-icon",
     iconSize: [28, 28],
     iconAnchor: [14, 14],
   });
 }
 
-function makeBeaconIcon(id: string, severity: string, heading: number, selected: boolean) {
+function makeBeaconIcon(_id: string, severity: string, heading: number, selected: boolean) {
   const colors: Record<string, { ring: string; core: string; rim: string }> = {
     critical: { ring: "#ef4444", core: "#ef4444", rim: "#fca5a5" },
     high: { ring: "#b87333", core: "#b87333", rim: "#d4a574" },
@@ -146,8 +146,8 @@ function makeBeaconIcon(id: string, severity: string, heading: number, selected:
   });
 }
 
-// ── Flight icon (plane shape) ────────────────────────────────────────────────
-function makeFlightIcon(severity: string, heading: number, selected: boolean) {
+// ── Aircraft icon (plane shape) ───────────────────────────────────────────────
+function makeAircraftIcon(severity: string, heading: number, selected: boolean) {
   const color = selected ? "#38bdf8" : getSeverityColor(severity) === "#22c55e" ? "#38bdf8" : getSeverityColor(severity);
   const scale = selected ? "scale(1.4)" : "scale(1)";
   const glow = selected
@@ -165,16 +165,17 @@ function makeFlightIcon(severity: string, heading: number, selected: boolean) {
   `;
   return L.divIcon({
     html,
-    className: "vessel-div-icon",
+    className: "track-div-icon",
     iconSize: [26, 26],
     iconAnchor: [13, 13],
   });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function makeIcon(id: string, severity: string, heading: number, selected: boolean) {
   const type = classifyObject(id);
-  if (type === "flight") return makeFlightIcon(severity, heading, selected);
-  return makeShipIcon(severity, heading, selected);
+  if (type === "aircraft") return makeAircraftIcon(severity, heading, selected);
+  return makeAssetIcon(severity, heading, selected);
 }
 
 // ── Static Geospatial Watch Zones ──────────────────────────────────────────────
@@ -209,12 +210,12 @@ export default function HormuzMap() {
   const zoneLayersRef = useRef<Map<string, L.Polygon>>(new Map());
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const { vessels } = useWebSocket();
+  const { tracks } = useWebSocket();
 
-  const selectedVesselId = searchParams.get("vesselId");
+  const selectedTrackId = searchParams.get("trackId");
 
-  const handleVesselSelect = (vesselId: string) => {
-    setSearchParams({ vesselId });
+  const handleTrackSelect = (trackId: string) => {
+    setSearchParams({ trackId });
   };
 
   // 1. Initialize Watch Zone Overlays, Cluster Group, and Heat Layer
@@ -353,20 +354,20 @@ export default function HormuzMap() {
 
     clusterRef.current.clearLayers();
 
-    // Add vessel markers
-    vessels.forEach((vessel) => {
-      if (typeof vessel.lat !== "number" || typeof vessel.lon !== "number") return;
-      const selected = vessel.id === selectedVesselId;
-      const objectType = classifyObject(vessel.id);
-      const marker = L.marker([vessel.lat, vessel.lon], {
-        icon: makeBeaconIcon(vessel.id, vessel.severity, vessel.heading || 0, selected),
+    // Add track markers
+    tracks.forEach((track) => {
+      if (typeof track.lat !== "number" || typeof track.lon !== "number") return;
+      const selected = track.id === selectedTrackId;
+      const objectType = classifyObject(track.id);
+      const marker = L.marker([track.lat, track.lon], {
+        icon: makeBeaconIcon(track.id, track.severity, track.heading || 0, selected),
       });
-      marker.on("click", () => handleVesselSelect(vessel.id));
+      marker.on("click", () => handleTrackSelect(track.id));
 
-      const severityColor = getSeverityColor(vessel.severity);
-      const typeColor = objectType === "flight" ? "#38bdf8" : severityColor;
-      const typeLabel = objectType === "flight" ? "FLIGHT" : "VESSEL";
-      const typeIcon = objectType === "flight"
+      const severityColor = getSeverityColor(track.severity);
+      const typeColor = objectType === "aircraft" ? "#38bdf8" : severityColor;
+      const typeLabel = objectType === "aircraft" ? "AIRCRAFT" : "ASSET";
+      const typeIcon = objectType === "aircraft"
         ? `<svg width="10" height="10" viewBox="0 0 24 24" fill="${typeColor}"><path d="M12 2L15 9L22 12L15 15L12 22L9 15L2 12L9 9Z"/></svg>`
         : `<svg width="10" height="10" viewBox="0 0 24 24" fill="${typeColor}"><path d="M12 2L20 17L12 13L4 17Z"/></svg>`;
 
@@ -385,18 +386,18 @@ export default function HormuzMap() {
           <div style="background: rgba(79,70,229,0.1); border-bottom: 1px solid rgba(79,70,229,0.18); padding: 9px 12px; display: flex; align-items: center; gap: 7px;">
             ${typeIcon}
             <div>
-              <div style="font-weight: 700; color: #f8fafc; font-size: 13px; letter-spacing: -0.01em;">${vessel.name}</div>
-              <div style="color: #475569; font-size: 9px; font-family: 'JetBrains Mono', monospace; margin-top: 1px; letter-spacing: 0.08em;">${typeLabel} · ${vessel.id}</div>
+              <div style="font-weight: 700; color: #f8fafc; font-size: 13px; letter-spacing: -0.01em;">${track.name}</div>
+              <div style="color: #475569; font-size: 9px; font-family: 'JetBrains Mono', monospace; margin-top: 1px; letter-spacing: 0.08em;">${typeLabel} · ${track.id}</div>
             </div>
           </div>
           <div style="padding: 10px 12px; display: grid; gap: 6px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="color: #64748b; font-size: 11px;">Speed</span>
-              <span style="color: #e2e8f0; font-weight: 600; font-family: 'JetBrains Mono', monospace;">${vessel.speed.toFixed(1)} ${objectType === "flight" ? "kts" : "kts"}</span>
+              <span style="color: #e2e8f0; font-weight: 600; font-family: 'JetBrains Mono', monospace;">${track.speed.toFixed(1)} kts</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="color: #64748b; font-size: 11px;">Position</span>
-              <span style="color: #e2e8f0; font-weight: 600; font-size: 11px; font-family: 'JetBrains Mono', monospace;">${vessel.lat.toFixed(3)}°, ${vessel.lon.toFixed(3)}°</span>
+              <span style="color: #e2e8f0; font-weight: 600; font-size: 11px; font-family: 'JetBrains Mono', monospace;">${track.lat.toFixed(3)}°, ${track.lon.toFixed(3)}°</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="color: #64748b; font-size: 11px;">Threat</span>
@@ -411,11 +412,11 @@ export default function HormuzMap() {
                 padding: 2px 8px;
                 border-radius: 3px;
                 font-family: 'JetBrains Mono', monospace;
-              ">${vessel.severity}</span>
+              ">${track.severity}</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="color: #64748b; font-size: 11px;">Score</span>
-              <span style="color: ${severityColor}; font-weight: 700; font-family: 'JetBrains Mono', monospace;">${vessel.anomalyScore}/100</span>
+              <span style="color: ${severityColor}; font-weight: 700; font-family: 'JetBrains Mono', monospace;">${track.anomalyScore}/100</span>
             </div>
           </div>
         </div>
@@ -427,7 +428,7 @@ export default function HormuzMap() {
       clusterRef.current.addLayer(marker);
 
       if (selected) {
-        map.flyTo([vessel.lat, vessel.lon], 11, {
+        map.flyTo([track.lat, track.lon], 11, {
           duration: 1.5,
           animate: true,
         });
@@ -437,7 +438,7 @@ export default function HormuzMap() {
 
     // Area selection logic
     zoneLayersRef.current.forEach((polygon, id) => {
-      const isSelected = id === selectedVesselId;
+      const isSelected = id === selectedTrackId;
       polygon.setStyle({
         fillOpacity: isSelected ? 0.2 : 0.04,
         weight: isSelected ? 3 : 1.5,
@@ -450,7 +451,7 @@ export default function HormuzMap() {
       }
     });
 
-  }, [map, vessels, selectedVesselId]);
+  }, [map, tracks, selectedTrackId]);
 
   return (
     <section style={{ position: "relative" }} aria-label="Strait of Hormuz operational map">

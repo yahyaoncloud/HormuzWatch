@@ -14,11 +14,11 @@ function SeverityBadge({ severity }: { severity: string }) {
 }
 
 export default function AlertsPage() {
-  const { vessels, anomalies } = useWebSocket();
+  const { tracks, anomalies } = useWebSocket();
 
   const rows = Array.from(anomalies.entries()).map(([id, anomaly]) => ({
     id,
-    vessel: vessels.get(id),
+    track: tracks.get(id),
     anomaly,
   }));
 
@@ -67,7 +67,7 @@ export default function AlertsPage() {
               style={{ margin: "0 auto 12px", opacity: 0.3 }}
             />
             <div style={{ fontSize: "0.875rem" }}>
-              No active alerts — all vessels nominal
+              No active alerts — all tracks nominal
             </div>
           </div>
         ) : (
@@ -75,7 +75,7 @@ export default function AlertsPage() {
             <table className="intel-table">
               <thead>
                 <tr>
-                  <th>IMO / Vessel</th>
+                  <th>Track ID / Asset</th>
                   <th>Severity</th>
                   <th>Score</th>
                   <th>Position</th>
@@ -85,7 +85,7 @@ export default function AlertsPage() {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map(({ id, vessel, anomaly }) => (
+                {sorted.map(({ id, track, anomaly }) => (
                   <tr key={id}>
                     <td>
                       <div
@@ -95,7 +95,7 @@ export default function AlertsPage() {
                           fontSize: "0.8125rem",
                         }}
                       >
-                        {vessel?.name ?? "Unknown"}
+                        {track?.name ?? "Unknown"}
                       </div>
                       <div style={{ fontSize: "0.6875rem", color: "#475569" }}>
                         {id}
@@ -123,12 +123,12 @@ export default function AlertsPage() {
                       </span>
                     </td>
                     <td style={{ color: "#94a3b8", fontSize: "0.75rem" }}>
-                      {vessel
-                        ? `${vessel.lat.toFixed(3)}°N, ${vessel.lon.toFixed(3)}°E`
+                      {track
+                        ? `${track.lat.toFixed(3)}°N, ${track.lon.toFixed(3)}°E`
                         : "—"}
                     </td>
                     <td style={{ color: "#94a3b8" }}>
-                      {vessel ? `${vessel.speed.toFixed(1)} kts` : "—"}
+                      {track ? `${track.speed.toFixed(1)} kts` : "—"}
                     </td>
                     <td>
                       <ul
@@ -150,8 +150,8 @@ export default function AlertsPage() {
                     </td>
                     <td style={{ color: "#475569", fontSize: "0.75rem" }}>
                       <Clock size={11} style={{ display: "inline", marginRight: 4 }} />
-                      {vessel?.lastUpdate
-                        ? new Date(vessel.lastUpdate).toLocaleTimeString()
+                      {track?.lastUpdate
+                        ? new Date(track.lastUpdate).toLocaleTimeString()
                         : "—"}
                     </td>
                   </tr>
