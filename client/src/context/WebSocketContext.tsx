@@ -92,8 +92,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
             if (message.type === "telemetry") {
               const track: Track = {
-                id: message.data.imo,
-                name: message.data.vesselName,
+                id: message.data.trackId || message.data.id,
+                name: message.data.assetName || message.data.name,
                 lat: message.data.lat,
                 lon: message.data.lon,
                 speed: message.data.speed,

@@ -1,12 +1,12 @@
 import { Shield, User, Clock, CheckCircle, XCircle } from "lucide-react";
 
 const EVENTS = [
-  { actor: "analyst.ops@hormuzwatch.mil", action: "VIEW", target: "Vessel IMO-9876543", time: "09:41:02Z", result: "allowed" },
+  { actor: "analyst.ops@hormuzwatch.mil", action: "VIEW", target: "Track ID-9876543", time: "09:41:02Z", result: "allowed" },
   { actor: "system.anomaly@engine", action: "DETECT", target: "Anomaly #A-441", time: "09:40:55Z", result: "allowed" },
   { actor: "admin.fleet@hormuzwatch.mil", action: "EXPORT", target: "Alert Report Q2", time: "09:39:11Z", result: "allowed" },
   { actor: "analyst.ops@hormuzwatch.mil", action: "DELETE", target: "Config Rule #12", time: "09:38:44Z", result: "denied" },
   { actor: "system.geofence@monitor", action: "ALERT", target: "Zone Bravo Breach", time: "09:37:22Z", result: "allowed" },
-  { actor: "external.api@ais-feed", action: "PUSH", target: "Telemetry batch #8812", time: "09:36:50Z", result: "allowed" },
+  { actor: "external.api@telemetry-feed", action: "PUSH", target: "Telemetry batch #8812", time: "09:36:50Z", result: "allowed" },
   { actor: "admin.fleet@hormuzwatch.mil", action: "MODIFY", target: "Geofence Zone Alpha", time: "09:35:03Z", result: "allowed" },
   { actor: "analyst.jr@hormuzwatch.mil", action: "ACCESS", target: "Classified Route Data", time: "09:33:18Z", result: "denied" },
 ];
