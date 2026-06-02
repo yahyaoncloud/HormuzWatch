@@ -1,0 +1,245 @@
+[
+    {
+        "site_name": "Tehran (Pasteur District & Government Assets)",
+        "country": "Iran",
+        "latitude": 35.6892,
+        "longitude": 51.3890,
+        "primary_target_type": "Command & Leadership Infrastructure",
+        "conflict_context": "Struck by joint U.S.-Israeli air operations during the opening phase of the war. Targets included the Thar-Allah Headquarters and multiple administrative assets.",
+        "reported_date": "2026-02-28"
+    },
+    {
+        "site_name": "Isfahan Military Complex",
+        "country": "Iran",
+        "latitude": 32.6546,
+        "longitude": 51.6680,
+        "primary_target_type": "Nuclear & Ballistic Missile Facility",
+        "conflict_context": "Targeted intensely during western air campaigns to degrade Iranian long-range delivery systems and subterranean military infrastructure.",
+        "reported_date": "2026-02-28"
+    },
+    {
+        "site_name": "Port of Bandar Abbas",
+        "country": "Iran",
+        "latitude": 27.1833,
+        "longitude": 56.2667,
+        "primary_target_type": "Naval & Geospatial Logistics Base",
+        "conflict_context": "The strategic port facility and nearby IRGC Navy assets were set ablaze during a series of precision airstrikes.",
+        "reported_date": "2026-03-05"
+    },
+    {
+        "site_name": "Bushehr Logistics Base",
+        "country": "Iran",
+        "latitude": 28.9234,
+        "longitude": 50.8344,
+        "primary_target_type": "Ammunition Depot & Air Defense",
+        "conflict_context": "A secondary logistics node and ammunition storage warehouse was detonated via precision U.S.-Israeli aerial bombardment.",
+        "reported_date": "2026-03-05"
+    },
+    {
+        "site_name": "Qeshm Island",
+        "country": "Iran",
+        "latitude": 26.7492,
+        "longitude": 55.8239,
+        "primary_target_type": "Radar & Coastal Drone Operations",
+        "conflict_context": "U.S. Central Command confirmed strikes flattening radar tracking arrays and ground control units used to threaten local Geospatial lanes.",
+        "reported_date": "2026-05-31"
+    },
+    {
+        "site_name": "Prince Sultan Air Base",
+        "country": "Saudi Arabia",
+        "latitude": 24.0641,
+        "longitude": 47.5667,
+        "primary_target_type": "U.S. Military Air Facility",
+        "conflict_context": "Hit heavily by Iranian retaliatory missile salvos. Satellite verification noted critical damage to U.S. refueling units and surveillance aircraft.",
+        "reported_date": "2026-02-28"
+    },
+    {
+        "site_name": "Muwaffaq Salti Air Base",
+        "country": "Jordan",
+        "latitude": 31.8364,
+        "longitude": 36.7864,
+        "primary_target_type": "U.S. / Coalition Allied Airbase",
+        "conflict_context": "Targeted by Iranian drone swarms and long-range systems, resulting in the degradation of advanced anti-ballistic missile batteries.",
+        "reported_date": "2026-02-28"
+    },
+    {
+        "site_name": "Ali Al Salem Air Base",
+        "country": "Kuwait",
+        "latitude": 29.3456,
+        "longitude": 47.5208,
+        "primary_target_type": "U.S. Forward Command Node",
+        "conflict_context": "Faced recurrent ballistic missile fire. While many projectiles were intercepted, several struck fuel storage bunkers and accommodation zones.",
+        "reported_date": "2026-06-01"
+    },
+    {
+        "site_name": "U.S. Navy 5th Fleet Headquarters (NSA Bahrain)",
+        "country": "Bahrain",
+        "latitude": 26.2086,
+        "longitude": 50.6083,
+        "primary_target_type": "Naval Command Hub",
+        "conflict_context": "A key naval installation subjected to early direct ballistic missile strikes during wide-scale regional retaliation from Tehran.",
+        "reported_date": "2026-02-28"
+    },
+    {
+        "site_name": "Al Udeid Air Base",
+        "country": "Qatar",
+        "latitude": 25.1172,
+        "longitude": 51.3147,
+        "primary_target_type": "U.S. Air Operations Command",
+        "conflict_context": "Reported as an intended target for multiple retaliatory cluster munitions and long-range UAVs launched from Iranian territory.",
+        "reported_date": "2026-02-28"
+    },
+    {
+        "site_name": "Dubai International Airport / City Perimeter",
+        "country": "United Arab Emirates",
+        "latitude": 25.2532,
+        "longitude": 55.3657,
+        "primary_target_type": "Logistics & Civil Infrastructure",
+        "conflict_context": "Sustained impacts from incoming missile shrapnel and loitering munitions, temporarily shutting down operations and igniting nearby peripheral blazes.",
+        "reported_date": "2026-02-28"
+    },
+    {
+        "site_name": "Abu Dhabi Metropolitan Area & Vicinity",
+        "country": "United Arab Emirates",
+        "latitude": 24.4539,
+        "longitude": 54.3773,
+        "primary_target_type": "Capital City & Civilian/Military Infrastructure",
+        "conflict_context": "Iranian ballistic missiles and drones targeted areas near Abu Dhabi. Interceptions occurred, but debris and impacts caused casualties and damage in the capital region, including proximity to key government and economic zones.",
+        "reported_date": "2026-02-28"
+    },
+    {
+        "site_name": "Al Dhafra Air Base",
+        "country": "United Arab Emirates",
+        "latitude": 24.2482,
+        "longitude": 54.5479,
+        "primary_target_type": "U.S. Air Operations & Surveillance",
+        "conflict_context": "Iranian ballistic and cruise missile strikes caused damage to hangars and runways supporting U.S. aircraft operations.",
+        "reported_date": "2026-03-01"
+    },
+    {
+        "site_name": "Natanz Nuclear Facility",
+        "country": "Iran",
+        "latitude": 33.7250,
+        "longitude": 51.8800,
+        "primary_target_type": "Nuclear Enrichment Complex",
+        "conflict_context": "Primary underground enrichment halls and centrifuge assembly areas were hit in follow-on strikes aimed at setting back Iran's nuclear program by years.",
+        "reported_date": "2026-03-02"
+    },
+    {
+        "site_name": "Kharg Island Oil Terminal",
+        "country": "Iran",
+        "latitude": 29.2333,
+        "longitude": 50.3333,
+        "primary_target_type": "Major Oil Export Hub",
+        "conflict_context": "Precision strikes damaged loading jetties and storage tanks, disrupting a significant portion of Iran's crude export capacity and triggering regional oil price spikes.",
+        "reported_date": "2026-03-10"
+    },
+    {
+        "site_name": "Fordow Fuel Enrichment Plant",
+        "country": "Iran",
+        "latitude": 34.8850,
+        "longitude": 50.9950,
+        "primary_target_type": "Underground Nuclear Facility",
+        "conflict_context": "Mountain-buried enrichment site targeted with bunker-buster munitions to degrade hardened nuclear infrastructure.",
+        "reported_date": "2026-03-01"
+    },
+    {
+        "site_name": "Ras Tanura Oil Terminal",
+        "country": "Saudi Arabia",
+        "latitude": 26.6500,
+        "longitude": 50.0500,
+        "primary_target_type": "Oil Export Infrastructure",
+        "conflict_context": "Hit by Iranian drones and missiles in retaliation, leading to temporary halts in Saudi crude exports and fires at processing facilities.",
+        "reported_date": "2026-03-05"
+    },
+    {
+        "site_name": "Ain al-Asad Air Base",
+        "country": "Iraq",
+        "latitude": 33.7856,
+        "longitude": 42.4411,
+        "primary_target_type": "U.S. / Coalition Airbase",
+        "conflict_context": "Targeted by Iranian-backed militias and direct Iranian rockets, resulting in damage to aircraft and personnel areas.",
+        "reported_date": "2026-03-03"
+    },
+    {
+        "site_name": "Jask Oil Terminal",
+        "country": "Iran",
+        "latitude": 25.9333,
+        "longitude": 57.7667,
+        "primary_target_type": "Alternative Oil Export Port",
+        "conflict_context": "Struck to prevent bypass of Hormuz chokepoint vulnerabilities; limited damage reported but operations disrupted.",
+        "reported_date": "2026-03-15"
+    },
+    {
+        "site_name": "Camp Buehring",
+        "country": "Kuwait",
+        "latitude": 29.8000,
+        "longitude": 47.7167,
+        "primary_target_type": "U.S. Army Logistics & Training Base",
+        "conflict_context": "Sustained indirect fire and drone attacks affecting prepositioned equipment and troop movements.",
+        "reported_date": "2026-03-20"
+    },
+    {
+        "site_name": "Dimona Nuclear Research Center",
+        "country": "Israel",
+        "latitude": 31.0000,
+        "longitude": 35.0333,
+        "primary_target_type": "Nuclear & Research Facility",
+        "conflict_context": "Attempted Iranian long-range missile strikes; partial intercepts reported with some debris impacts nearby.",
+        "reported_date": "2026-03-02"
+    },
+    {
+        "site_name": "Abqaiq Oil Processing Facility",
+        "country": "Saudi Arabia",
+        "latitude": 25.9167,
+        "longitude": 49.6667,
+        "primary_target_type": "Oil Processing Infrastructure",
+        "conflict_context": "Recurrent Iranian attacks echoing 2019 incidents, causing production disruptions.",
+        "reported_date": "2026-04-05"
+    },
+    {
+        "site_name": "IRGC Ground Forces Base (Tehran)",
+        "country": "Iran",
+        "latitude": 35.7219,
+        "longitude": 51.3347,
+        "primary_target_type": "Internal Security Infrastructure",
+        "conflict_context": "IDF airstrike reportedly destroyed an IRGC ground forces base in Tehran, indicating a strategy to degrade Iran's internal security apparatus and regime stability assets. Confirmed via Iranian state media reports.",
+        "reported_date": "2026-03-12"
+    },
+    {
+        "site_name": "Tehran-Karaj Highway Bridge",
+        "country": "Iran",
+        "latitude": 35.7000,
+        "longitude": 51.2500,
+        "primary_target_type": "Civilian & Military Logistics Infrastructure",
+        "conflict_context": "IDF airstrike damaged a major highway bridge connecting Tehran to Karaj, disrupting critical transportation links for both civilian life and military mobility. Part of 'strategic paralysis' campaign.",
+        "reported_date": "2026-03-12"
+    },
+    {
+        "site_name": "Container Ship Touska",
+        "country": "International Waters (Gulf of Oman)",
+        "latitude": 25.5000,
+        "longitude": 59.5000,
+        "primary_target_type": "Commercial Vessel / Geospatial Asset",
+        "conflict_context": "Suspected Iranian drone attack caused significant hull damage. Vessel was later seized by Iranian authorities. Demonstrates persistent asymmetric threat to commercial shipping lanes post-March.",
+        "reported_date": "2026-04-20"
+    },
+    {
+        "site_name": "Ras Laffan AIS Disruption Zone",
+        "country": "Qatar",
+        "latitude": 25.9167,
+        "longitude": 51.5500,
+        "primary_target_type": "Geospatial Anomaly / Unlisted Strike Zone",
+        "conflict_context": "Significant AIS disruptions reported by ICIS near Ras Laffan. Indicates high volume of unrecorded kinetic or near-kinetic events and hostile actions against vessels in this critical LNG export hub.",
+        "reported_date": "2026-03-18"
+    },
+    {
+        "site_name": "Secondary Logistics Nodes (General)",
+        "country": "Iran",
+        "latitude": 32.0000,
+        "longitude": 51.0000,
+        "primary_target_type": "General Logistical Support",
+        "conflict_context": "Implied by campaign objectives to degrade Iranian long-range delivery systems. Satellite imagery suggests damage to dozens of smaller ammunition depots, fuel storage facilities, and communication relay stations.",
+        "reported_date": "2026-03-01"
+    }
+]

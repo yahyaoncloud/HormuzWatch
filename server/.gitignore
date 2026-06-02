@@ -1,0 +1,32 @@
+# Binaries
+*.out
+*.exe
+*.dll
+*.so
+*.dylib
+harmuz-server
+
+# Dependencies
+vendor/
+
+# Build artifacts
+bin/
+dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local

@@ -1,0 +1,45 @@
+services:
+  prometheus:
+    image: prom/prometheus:v3.8.1
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    ports:
+      - "9090:9090"
+    volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml:ro"
+
+  grafana:
+    image: grafana/grafana:12.3.1
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "hormuzshield"
+
+  opensearch:
+    image: opensearchproject/opensearch:3.3.2
+    ports:
+      - "9200:9200"
+    environment:
+      discovery.type: "single-node"
+      plugins.security.disabled: "true"
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: "HormuzShield-Dev-Only-ChangeMe1!"
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.76.0
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.142.0
+    command:
+      - "--config=/etc/otelcol/config.yml"
+    volumes:
+      - "./otel-collector.yml:/etc/otelcol/config.yml:ro"
+    ports:
+      - "4318:4318"
+
+  fluent-bit:
+    image: fluent/fluent-bit:4.2.1
+    volumes:
+      - "./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro"

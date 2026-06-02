@@ -1,0 +1,9 @@
+variable "name_prefix" { type = string }
+variable "resource_group_name" { type = string }
+variable "location" { type = string }
+variable "key_vault_id" { type = string }
+variable "storage_account_id" { type = string }
+variable "application_insights_id" { type = string }
+variable "private_endpoint_subnet" { type = string }
+variable "cognitive_private_dns_zone" { type = string }
+variable "tags" { type = map(string) }

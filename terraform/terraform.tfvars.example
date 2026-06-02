@@ -1,0 +1,11 @@
+project             = "hormuzshield"
+environment         = "dev"
+location            = "eastus"
+alert_email         = "cloud-ops@example.com"
+allowed_public_cidr = "203.0.113.10/32"
+
+tags = {
+  workload = "Geospatial-analytics"
+  owner    = "platform-engineering"
+  cost     = "portfolio"
+}

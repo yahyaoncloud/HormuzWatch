@@ -1,0 +1,71 @@
+services:
+  go-server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: harmuz-server
+    ports:
+      - "8081:8080"
+    environment:
+      - PORT=8080
+      - AUTH_DISABLED=true
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - API_AUDIENCE=${API_AUDIENCE}
+      - GOVERNMENT_API_BASE_URL=${GOVERNMENT_API_BASE_URL}
+      - THIRD_PARTY_API_BASE_URL=${THIRD_PARTY_API_BASE_URL}
+      - INTERNAL_API_BASE_URL=${INTERNAL_API_BASE_URL}
+      - EVENT_HUB_CONNECTION_STRING=${EVENT_HUB_CONNECTION_STRING}
+      - EVENT_HUB_NAME=${EVENT_HUB_NAME}
+      - AISSTREAM_API_KEY=${AISSTREAM_API_KEY}
+      - OPENSKY_USERNAME=${OPENSKY_USERNAME}
+      - OPENSKY_PASSWORD=${OPENSKY_PASSWORD}
+      - FIRMS_MAP_KEY=${FIRMS_MAP_KEY}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    networks:
+      - harmuz-network
+
+  react-frontend:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    container_name: harmuz-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://go-server:8080
+    depends_on:
+      go-server:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000/",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    networks:
+      - harmuz-network
+
+networks:
+  harmuz-network:
+    driver: bridge
