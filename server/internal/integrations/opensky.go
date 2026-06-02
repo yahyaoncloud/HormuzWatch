@@ -89,8 +89,8 @@ func StartOpenSky(h *hub.Hub) {
 			}
 
 			payload := api.TelemetryPayload{
-				IMO:               fmt.Sprintf("FLIGHT-%s", icao24),
-				VesselName:        callsign,
+				TrackID:           fmt.Sprintf("FLIGHT-%s", icao24),
+				AssetName:         callsign,
 				Timestamp:         time.Now().UTC().Format(time.RFC3339),
 				Lat:               lat,
 				Lon:               lon,

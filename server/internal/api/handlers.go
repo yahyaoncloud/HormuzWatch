@@ -22,8 +22,8 @@ func NewHandlers(h *hub.Hub) *Handlers {
 
 // TelemetryPayload represents incoming telemetry data
 type TelemetryPayload struct {
-	IMO               string  `json:"imo" binding:"required"`
-	VesselName        string  `json:"vesselName" binding:"required"`
+	TrackID           string  `json:"trackId" binding:"required"`
+	AssetName         string  `json:"assetName" binding:"required"`
 	Timestamp         string  `json:"timestamp" binding:"required"`
 	Lat               float64 `json:"lat" binding:"required"`
 	Lon               float64 `json:"lon" binding:"required"`
@@ -63,13 +63,13 @@ func (h *Handlers) PostTelemetry(c *gin.Context) {
 		Data: payload,
 	}:
 	default:
-		log.Printf("[Handler] Hub broadcast channel full, dropping telemetry for %s", payload.IMO)
+		log.Printf("[Handler] Hub broadcast channel full, dropping telemetry for %s", payload.TrackID)
 	}
 
 	// Return 202 Accepted
 	c.JSON(http.StatusAccepted, gin.H{
-		"status": "accepted",
-		"imo":    payload.IMO,
+		"status":  "accepted",
+		"trackId": payload.TrackID,
 	})
 }
 
@@ -95,7 +95,7 @@ func (h *Handlers) Analyze(c *gin.Context) {
 
 	// Create anomaly response
 	anomalyResult := anomaly.Result{
-		ID:       payload.IMO,
+		ID:       payload.TrackID,
 		Score:    score,
 		Severity: anomaly.SeverityLevel(score),
 		Reasons:  anomaly.GetReasons(score, payload.CourseDelta, float64(payload.AisAgeMinutes), payload.Speed, payload.PreviousSpeed, payload.HotZoneDistanceNm),
