@@ -1,6 +1,7 @@
 package heatmap
 
 import (
+	"fmt"
 	"sync"
 	"time"
 )
@@ -108,8 +109,8 @@ func ClearOldData() {
 
 // cellKey generates a unique key for a grid cell
 func cellKey(lat, lon float64) string {
-	// Simple string concatenation with fixed precision
-	return "" + string(int(lat*10)) + "," + string(int(lon*10))
+	// Format with 1 decimal place precision
+	return fmt.Sprintf("%.1f,%.1f", lat, lon)
 }
 
 // StartCleanupRoutine starts a background routine to clean old data every 5 minutes

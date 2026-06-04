@@ -8,8 +8,11 @@ import (
 	"os"
 	"time"
 
+	"Geospatial-harmuz-watch/server/internal/anomaly"
 	"Geospatial-harmuz-watch/server/internal/api"
+	"Geospatial-harmuz-watch/server/internal/db"
 	"Geospatial-harmuz-watch/server/internal/heatmap"
+	"Geospatial-harmuz-watch/server/internal/intelligence"
 	"Geospatial-harmuz-watch/server/internal/websocket/hub"
 )
 
@@ -18,7 +21,7 @@ type OpenSkyResponse struct {
 	States [][]interface{} `json:"states"`
 }
 
-func StartOpenSky(h *hub.Hub) {
+func StartOpenSky(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *intelligence.MLClient) {
 	username := os.Getenv("OPENSKY_USERNAME")
 	password := os.Getenv("OPENSKY_PASSWORD")
 
@@ -29,8 +32,8 @@ func StartOpenSky(h *hub.Hub) {
 	// Middle East Bounding Box: 22°N to 30°N, 48°E to 60°E
 	url := "https://opensky-network.org/api/states/all?lamin=22&lomin=48&lamax=30&lomax=60"
 
-	// Rate limit: every 30 seconds to avoid hitting OpenSky limits
-	ticker := time.NewTicker(30 * time.Second)
+	// Rate limit: every 5 minutes to avoid hitting OpenSky limits
+	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -102,9 +105,70 @@ func StartOpenSky(h *hub.Hub) {
 
 			heatmap.AddTelemetry(payload.Lat, payload.Lon)
 
+			// ── Intelligence Pipeline ──────────────────────────
+			deltas := tsm.Update(payload.TrackID, payload.AssetName,
+				payload.Lat, payload.Lon, payload.Speed, payload.Heading)
+			payload.CourseDelta = deltas.CourseDelta
+			payload.PreviousSpeed = deltas.PreviousSpeed
+
+			features := intelligence.ExtractFeatures(
+				payload.TrackID, payload.Lat, payload.Lon,
+				payload.Speed, deltas)
+
+			ruleScore := anomaly.Score(
+				features.CourseDelta, features.AISGapMinutes,
+				features.Speed, features.PreviousSpeed,
+				features.DistToRestrictedZone,
+				features.InRestrictedZone, features.NearHistoricalAttack)
+
+			mlScore, explanation := mlClient.Predict(features)
+			geoScore := intelligence.GeoStore.ScoreForLocation(payload.Lat, payload.Lon)
+
+			assessment := intelligence.ComputeComposite(features, ruleScore, mlScore, geoScore, explanation)
+
 			h.Broadcast <- hub.Message{
 				Type: "telemetry",
 				Data: payload,
+			}
+
+			// Persist to SQLite
+			trackQuery := `
+				INSERT INTO tracks (track_id, asset_name, timestamp, lat, lon, speed, previous_speed, heading, course_delta, ais_age_minutes, hot_zone_distance_nm, last_updated)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+				ON CONFLICT(track_id) DO UPDATE SET
+					asset_name=excluded.asset_name,
+					timestamp=excluded.timestamp,
+					lat=excluded.lat,
+					lon=excluded.lon,
+					speed=excluded.speed,
+					previous_speed=excluded.previous_speed,
+					heading=excluded.heading,
+					course_delta=excluded.course_delta,
+					ais_age_minutes=excluded.ais_age_minutes,
+					hot_zone_distance_nm=excluded.hot_zone_distance_nm,
+					last_updated=CURRENT_TIMESTAMP;
+			`
+			db.DB.Exec(trackQuery, payload.TrackID, payload.AssetName, payload.Timestamp, payload.Lat, payload.Lon, payload.Speed, payload.PreviousSpeed, payload.Heading, payload.CourseDelta, payload.AisAgeMinutes, payload.HotZoneDistanceNm)
+
+			// Broadcast anomaly if score > 0
+			if assessment.FinalScore > 0 {
+				h.Broadcast <- hub.Message{
+					Type: "anomaly",
+					Data: assessment,
+				}
+				reasonsJSON, _ := json.Marshal(assessment.Reasons)
+				actionsJSON, _ := json.Marshal(assessment.Actions)
+				anomalyQuery := `
+					INSERT INTO anomalies (track_id, score, severity, reasons, actions, last_updated)
+					VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+					ON CONFLICT(track_id) DO UPDATE SET
+						score=excluded.score,
+						severity=excluded.severity,
+						reasons=excluded.reasons,
+						actions=excluded.actions,
+						last_updated=CURRENT_TIMESTAMP;
+				`
+				db.DB.Exec(anomalyQuery, assessment.TrackID, assessment.FinalScore, assessment.Severity, string(reasonsJSON), string(actionsJSON))
 			}
 		}
 

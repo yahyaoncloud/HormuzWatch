@@ -1,0 +1,192 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+% Colors based on client/src/index.css theme
+\usepackage{xcolor}
+\definecolor{bgprimary}{HTML}{050816}
+\definecolor{bgsecondary}{HTML}{0F172A}
+\definecolor{textprimary}{HTML}{F8FAFC}
+\definecolor{textsecondary}{HTML}{94A3B8}
+\definecolor{indigoprimary}{HTML}{4F46E5}
+\definecolor{copperprimary}{HTML}{B87333}
+
+\usepackage{pagecolor}
+\pagecolor{bgprimary}
+\color{textprimary}
+
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=indigoprimary,
+    filecolor=copperprimary,      
+    urlcolor=indigoprimary,
+    pdftitle={HormuzWatch Whitepaper},
+    pdfpagemode=FullScreen,
+}
+
+\usepackage{titlesec}
+\titleformat{\section}
+  {\normalfont\Large\bfseries\color{indigoprimary}}{\thesection}{1em}{}
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\color{copperprimary}}{\thesubsection}{1em}{}
+
+% Use a sans-serif font to match the web app
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{helvet}
+
+\usepackage{enumitem}
+\setlist{label=\textcolor{textsecondary}{\textbullet}}
+
+\title{\vspace{-2cm}\color{textprimary}\textbf{HormuzWatch: Strategic Intelligence Platform}\\\vspace{0.5cm}\Large\color{textsecondary}Whitepaper}
+\author{\color{textsecondary}June 2026}
+\date{}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+\noindent\textcolor{textsecondary}{\rule{\textwidth}{0.5pt}}
+
+\section{Executive Summary}
+HormuzWatch is a multi-domain intelligence and geospatial surveillance platform designed to provide real-time asset tracking, anomaly detection, and situational awareness across strategic maritime and geographic regions. As maritime chokepoints and global trade routes face increasing risks, HormuzWatch delivers an automated, high-performance solution for detecting deviations, identifying potential threats, and visualizing intelligence data in real time.
+
+Built on a robust, containerized architecture utilizing a high-concurrency Go backend and a modern React Router v7 frontend, the platform integrates continuous telemetry ingestion with a multi-factor anomaly scoring engine. This whitepaper outlines the architecture, core capabilities, technological foundations, and future roadmap of the HormuzWatch platform.
+
+\noindent\textcolor{textsecondary}{\rule{\textwidth}{0.5pt}}
+
+\section{Introduction \& Problem Statement}
+In an increasingly volatile geopolitical landscape, the monitoring of strategic chokepoints (such as the Strait of Hormuz) is critical for global supply chain stability and security operations. Traditional surveillance methods often suffer from fragmented data sources, high latency, and manual threat analysis, which can delay critical decision-making.
+
+\subsection*{The Challenge:}
+\begin{itemize}
+    \item Inability to quickly synthesize massive amounts of high-frequency telemetry data.
+    \item High latency between data ingestion and threat visualization.
+    \item Manual evaluation of anomalous asset behaviors (e.g., course deviation, sudden speed drops).
+    \item Lack of scalable architecture to integrate intelligence from multiple distinct domains (maritime, aviation, geopolitical).
+\end{itemize}
+
+\subsection*{The Solution:}
+HormuzWatch addresses these challenges by offering a low-latency, containerized intelligence platform that automatically ingests telemetry data, calculates risk scores using a multi-factor anomaly detection engine, and broadcasts intelligence to analysts via an interactive, real-time heatmap and dashboard.
+
+\noindent\textcolor{textsecondary}{\rule{\textwidth}{0.5pt}}
+
+\section{Core Features \& Capabilities}
+HormuzWatch is designed to empower analysts and operations teams with immediate insights:
+
+\begin{itemize}
+    \item \textbf{Real-Time Asset Tracking:} High-frequency data ingestion and WebSocket broadcasting ensure that the frontend client updates every 2 seconds.
+    \item \textbf{Multi-Factor Anomaly Detection:} An automated scoring engine evaluates behavior against established baselines, identifying:
+    \begin{itemize}
+        \item Route and course deviations.
+        \item Stale telemetry (sensor spoofing or failure).
+        \item Unexplained speed drops.
+        \item Proximity to high-risk zones.
+    \end{itemize}
+    \item \textbf{Dynamic Threat Heatmap:} A real-time grid visualization overlays aggregated anomaly hotspots directly onto an OpenStreetMap interface, enabling operators to instantly identify high-threat sectors.
+    \item \textbf{Interactive Geospatial Dashboard:} Utilizing Leaflet, marker clustering, and severity-based color coding, the dashboard provides a seamless user experience, further enhanced by React Router v7 for persistent state management and deep-linking.
+    \item \textbf{Dark Mode Support:} Built-in theme toggles optimize the interface for command-center environments.
+\end{itemize}
+
+\noindent\textcolor{textsecondary}{\rule{\textwidth}{0.5pt}}
+
+\section{System Architecture}
+The HormuzWatch architecture emphasizes separation of concerns, scalability, and real-time responsiveness. It is currently in Phase 2 of its deployment lifecycle (Containerized MVP).
+
+\subsection{Backend: High-Concurrency Go API}
+\begin{itemize}
+    \item \textbf{Framework:} Go 1.23 utilizing the Gin HTTP web framework.
+    \item \textbf{Responsibilities:}
+    \begin{itemize}
+        \item REST API for telemetry ingestion and historical analysis.
+        \item A robust WebSocket hub to manage persistent, bidirectional communication with client applications.
+        \item Processing telemetry through the Anomaly Scoring Engine.
+        \item Aggregating data for the Heatmap generation.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Frontend: React 19 Client}
+\begin{itemize}
+    \item \textbf{Framework:} React 19, integrated with Vite and TypeScript.
+    \item \textbf{Routing:} React Router v7 handles client-side routing across 7 distinct views (Dashboard, Analytics, Alerts, Health, Audit, Insights, Docs).
+    \item \textbf{Responsibilities:}
+    \begin{itemize}
+        \item Consuming the WebSocket stream to update the UI with minimal latency.
+        \item Rendering the \texttt{HormuzMap} component with geospatial data and interactive layers.
+        \item Managing URL-based state to ensure the platform remains robust during refreshes or direct link sharing.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Orchestration}
+\begin{itemize}
+    \item \textbf{Docker Compose:} Both backend and frontend are containerized using multi-stage Docker builds to ensure minimal footprint (Alpine-based) and environmental parity across development, testing, and production.
+    \item \textbf{Network Isolation:} Services communicate over a dedicated local bridge network, ensuring secure, isolated execution.
+\end{itemize}
+
+\noindent\textcolor{textsecondary}{\rule{\textwidth}{0.5pt}}
+
+\section{Anomaly Detection Engine}
+At the core of HormuzWatch's intelligence capability is its Anomaly Scoring Engine. As telemetry data arrives via the REST API or WebSocket, the engine evaluates the data payload against several risk heuristics:
+
+\begin{enumerate}[label=\textcolor{textsecondary}{\arabic*.}]
+    \item \textbf{Course Deviation:} Compares the asset's current heading against expected navigational corridors.
+    \item \textbf{Kinematic Anomalies:} Detects sudden deceleration or acceleration indicative of distress, boarding, or evasion.
+    \item \textbf{Signal Integrity:} Flags stale telemetry which may indicate AIS spoofing, jamming, or equipment failure.
+    \item \textbf{Geospatial Proximity:} Increases threat scores when assets enter known high-risk or exclusion zones.
+\end{enumerate}
+
+Calculated scores (e.g., 0-100) are mapped to severity tiers (Low, Medium, High, Critical) and instantly broadcast to the frontend, updating the asset's badge and influencing the regional heatmap intensity.
+
+\noindent\textcolor{textsecondary}{\rule{\textwidth}{0.5pt}}
+
+\section{Security \& Compliance}
+Security is embedded into the HormuzWatch architecture, laying the groundwork for stringent enterprise and government deployments:
+
+\begin{itemize}
+    \item \textbf{Authentication:} JWT middleware is implemented, structured for upcoming Azure Active Directory (Azure AD) JWKS integration.
+    \item \textbf{Traffic Control:} Rate limiting (e.g., 120 requests/60 seconds per IP) protects APIs from abuse or DoS attacks.
+    \item \textbf{Data Validation:} Strict Zod schema validations ensure data integrity and prevent injection vectors.
+    \item \textbf{Cross-Origin Resource Sharing (CORS):} Enforced at the middleware level to restrict unauthorized domain access.
+\end{itemize}
+
+\noindent\textcolor{textsecondary}{\rule{\textwidth}{0.5pt}}
+
+\section{Roadmap \& Future Vision}
+HormuzWatch is executing against a structured, 6-phase roadmap. Having successfully completed Phase 1 (Foundation) and Phase 2 (Containerization), the platform is preparing for enterprise-scale integration.
+
+\subsection{Phase 3: Production Infrastructure}
+\begin{itemize}
+    \item Migration to Azure via Terraform.
+    \item Integration of real-world data feeds: AISStream (Maritime), OpenSky (Aviation), and NASA FIRMS (Thermal).
+    \item Ingestion pipeline utilizing Azure Event Hubs and Azure Functions for massive scale.
+\end{itemize}
+
+\subsection{Phase 4: Advanced Intelligence}
+\begin{itemize}
+    \item Geopolitical intelligence enrichment via the GDELT database.
+    \item Integration with Azure OpenAI for natural language querying of anomaly reports and predictive insights.
+\end{itemize}
+
+\subsection{Phase 5: Predictive Analytics}
+\begin{itemize}
+    \item Machine learning models for historical route analysis and predictive deviation detection.
+    \item Generation of automated daily risk index reports for strategic regions.
+\end{itemize}
+
+\subsection{Phase 6: Enterprise Polish}
+\begin{itemize}
+    \item Comprehensive Security Audits.
+    \item FinOps validation for cost-optimized cloud scaling.
+    \item Extensive test coverage and Architectural Decision Records (ADR).
+\end{itemize}
+
+\noindent\textcolor{textsecondary}{\rule{\textwidth}{0.5pt}}
+
+\section{Conclusion}
+HormuzWatch represents a next-generation approach to strategic maritime and geospatial surveillance. By combining a highly concurrent Go backend, a responsive modern React frontend, and a scalable containerized architecture, it transforms raw telemetry into actionable, real-time intelligence. As the platform evolves toward cloud-native integration and advanced AI-driven analytics, it stands poised to become an essential tool for operations centers tasked with monitoring global strategic chokepoints.
+
+\end{document}

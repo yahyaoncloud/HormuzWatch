@@ -2,7 +2,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { MapContainer, TileLayer } from "react-leaflet";
+import { MapContainer, TileLayer, ZoomControl } from "react-leaflet";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster/dist/leaflet.markercluster.js";
@@ -17,7 +17,8 @@ const MAX_ZOOM = 13;
 const GEO_RADIUS_KM = 1000;
 
 // ── Object type detection ────────────────────────────────────────────────────
-function classifyObject(id: string): "asset" | "aircraft" {
+function classifyObject(id: string | undefined): "asset" | "aircraft" {
+  if (!id) return "asset";
   if (id.startsWith("FLIGHT-") || id.startsWith("ADS-") || id.startsWith("ICAO-")) {
     return "aircraft";
   }
@@ -183,26 +184,86 @@ const WATCH_ZONES = [
   {
     id: "AREA-HORMUZ",
     name: "Strait of Hormuz",
-    coords: [[26.5, 56.0], [26.8, 56.5], [27.2, 57.5], [26.9, 57.8], [26.3, 57.0], [26.0, 56.2]] as [number, number][],
+    coords: [
+      // Northern Boundary (Iran Coastline flowing West to East)
+      [26.70, 55.40], // Western entry point (South of Qeshm)
+      [26.75, 55.90], // South-central Qeshm Island
+      [26.95, 56.30], // Hormuz Island southern waters
+      [27.10, 56.50], // East of Hormuz Island / Iranian Coast
+      [27.00, 56.80], // Coastline near Minab approach
+      [26.70, 57.10], // Northeastern opening (Iran side)
+      
+      // Eastern Boundary / Outer Gate (Crossing South to Oman)
+      [26.35, 57.15], // Eastern boundary mid-channel
+      [25.95, 56.90], // Southeastern corner near Ras Limah
+      
+      // Southern Boundary (Oman Musandam Peninsula flowing East to West)
+      [26.30, 56.50], // Kumzar / Northernmost tip of Musandam
+      [26.20, 56.25], // Khasab offshore waters
+      [26.15, 55.90], // Outer Western Musandam
+      
+      // Western Boundary / Inner Gate (Crossing North back to start)
+      [26.30, 55.60], // Mid-gate western opening
+    ] as [number, number][],
     color: "#ef4444",
     label: "HORMUZ",
   },
   {
     id: "AREA-PGULF",
     name: "Persian Gulf (N)",
-    coords: [[27.5, 50.0], [29.5, 50.5], [30.0, 55.0], [28.5, 56.5], [27.0, 55.0], [27.0, 51.0]] as [number, number][],
+    coords: [
+      // Northern Boundary (Iraq / Iran Coast flowing Northwest to Southeast)
+      [29.80, 48.75], // Mouth of Shatt al-Arab / Al-Faw
+      [29.90, 49.30], // Offshore Bandar Imam Khomeini
+      [29.10, 50.50], // Offshore Bandar Bushehr
+      [27.70, 52.20], // Offshore Asaluyeh
+      [26.50, 54.00], // Near Lavan Island
+      [26.35, 54.80], // Near Kish Island
+      [26.40, 55.20], // Western approach to Strait of Hormuz
+      
+      // Southern Boundary (UAE / Qatar / Saudi / Kuwait flowing Southeast to Northwest)
+      [25.80, 55.30], // UAE Coast near Sharjah / Ajman
+      [25.10, 54.20], // Offshore Abu Dhabi
+      [24.50, 52.50], // Near Ghasha / Ruwais waters
+      [24.80, 51.70], // Saudi / Qatar Southeastern maritime border
+      [25.60, 51.50], // East of Doha, Qatar
+      [26.50, 51.30], // North of Ras Rakan (Qatar northern tip)
+      [27.00, 50.00], // Offshore Jubail, Saudi Arabia
+      [28.00, 49.20], // Offshore Khafji (Saudi/Kuwait border zone)
+      [29.20, 48.50], // Kuwait Bay approach
+      [29.60, 48.40], // Bubiyan Island southern tip
+    ] as [number, number][],
     color: "#b87333",
     label: "P.GULF",
   },
   {
     id: "AREA-GOMAN",
     name: "Gulf of Oman",
-    coords: [[23.0, 57.0], [24.0, 59.5], [22.5, 60.5], [21.5, 59.0], [22.0, 57.5]] as [number, number][],
+    coords: [
+      // Northwest Boundary (Shared Gate with Strait of Hormuz)
+      [25.95, 56.90], // Ras Limah (Oman Musandam)
+      [26.35, 57.15], // Mid-channel line
+      [26.70, 57.10], // Ras al Kuh area (Iran side)
+      
+      // Northern Boundary (Iranian/Pakistani Coast flowing West to East)
+      [25.75, 57.80], // Jask offshore anchorage
+      [25.35, 59.50], // Western approach to Chabahar
+      [25.20, 60.70], // Pasabandar / Iran-Pakistan border waters
+      [25.00, 61.80], // Gwadar offshore (Pakistan) - Eastern Boundary Anchor
+      
+      // Southern Boundary (Omani Coast flowing East to West/Northwest)
+      [22.50, 59.80], // Ras al Hadd (Southeastern corner limit of Gulf)
+      [23.20, 59.00], // Sur offshore waters
+      [23.70, 58.50], // Muscat / Mutrah anchorage area
+      [24.30, 57.40], // Offshore Suwayq (Al Batinah Coast)
+      [24.55, 56.70], // Offshore Sohar
+      [25.10, 56.50], // Offshore Fujairah (UAE East Coast)
+      [25.60, 56.40], // Offshore Dibba
+    ] as [number, number][],
     color: "#38bdf8",
     label: "G.OMAN",
   },
 ];
-
 export default function HormuzMap() {
   const [map, setMap] = useState<L.Map | null>(null);
   const clusterRef = useRef<any>(null);
@@ -212,11 +273,32 @@ export default function HormuzMap() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { tracks } = useWebSocket();
 
+  // Animation state for smooth data transitions
+  const prevPointsRef = useRef<number[][]>([]);
+  const interpRafRef = useRef<number | null>(null);
+
   const selectedTrackId = searchParams.get("trackId");
 
   const handleTrackSelect = (trackId: string) => {
     setSearchParams({ trackId });
   };
+
+  // Inject heatmap CSS animation once
+  useEffect(() => {
+    if (document.getElementById("heatmap-pulse-style")) return;
+    const style = document.createElement("style");
+    style.id = "heatmap-pulse-style";
+    style.textContent = `
+      @keyframes heatmap-breathe {
+        0%, 100% { opacity: 0.82; }
+        50% { opacity: 0.95; }
+      }
+      .leaflet-overlay-pane canvas {
+        transition: opacity 0.5s ease;
+      }
+    `;
+    document.head.appendChild(style);
+  }, []);
 
   // 1. Initialize Watch Zone Overlays, Cluster Group, and Heat Layer
   useEffect(() => {
@@ -289,22 +371,65 @@ export default function HormuzMap() {
       map.addLayer(clusterRef.current);
     }
 
-    // Initialize Heat Layer
+    // Initialize Heat Layer with enriched gradient
     if (!heatRef.current) {
       heatRef.current = (L as any).heatLayer([], {
-        radius: 35,
-        blur: 20,
+        radius: 38,
+        blur: 25,
         maxZoom: 13,
         gradient: {
-          0.0: "#22c55e",
-          0.35: "#d97706",
-          0.6: "#b87333",
-          0.85: "#ef4444",
-          1.0: "#dc2626",
+          0.0:  "#0f172a",
+          0.15: "#312e81",
+          0.35: "#1d4ed8",
+          0.55: "#d97706",
+          0.75: "#b87333",
+          0.9:  "#ef4444",
+          1.0:  "#fca5a5",
         },
       });
     }
   }, [map]);
+
+  // Smooth data interpolation between old and new heat points
+  const animatePointTransition = (from: number[][], to: number[][], durationMs: number) => {
+    if (interpRafRef.current) cancelAnimationFrame(interpRafRef.current);
+
+    const matched = to.map(([lat, lon, intensity]) => {
+      const prev = from.find(([plat, plon]) =>
+        Math.abs(plat - lat) < 0.05 && Math.abs(plon - lon) < 0.05
+      );
+      return { lat, lon, fromI: prev ? prev[2] : 0, toI: intensity };
+    });
+
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / durationMs);
+      const ease = 1 - Math.pow(1 - t, 3); // cubic ease-out
+      const pts = matched.map(({ lat, lon, fromI, toI }) => [
+        lat, lon, fromI + (toI - fromI) * ease,
+      ]);
+      if (map?.hasLayer(heatRef.current)) {
+        heatRef.current.setLatLngs(pts);
+      }
+      if (t < 1) {
+        interpRafRef.current = requestAnimationFrame(tick);
+      } else {
+        interpRafRef.current = null;
+      }
+    };
+    interpRafRef.current = requestAnimationFrame(tick);
+  };
+
+  // Apply breathing pulse to the heat layer canvas once it exists
+  const applyPulse = () => {
+    // Wait briefly for leaflet.heat to create its canvas after addLayer
+    setTimeout(() => {
+      const canvas = heatRef.current?._canvas as HTMLCanvasElement | undefined;
+      if (canvas) {
+        canvas.style.animation = "heatmap-breathe 3.5s ease-in-out infinite";
+      }
+    }, 100);
+  };
 
   // 2. Handle Heatmap Updates
   useEffect(() => {
@@ -312,22 +437,33 @@ export default function HormuzMap() {
 
     let intervalId: any;
 
-    const fetchHeatmap = async () => {
+    const fetchHeatmap = async (isFirstFetch = false) => {
       try {
         const res = await fetch("/api/heatmap");
         if (!res.ok) throw new Error("Failed to fetch heatmap");
         const json = await res.json();
 
         if (json.type === "heatmap" && Array.isArray(json.data)) {
-          const heatPoints = json.data.map((cell: any) => [
+          const newPoints = json.data.map((cell: any) => [
             cell.lat,
             cell.lon,
             Math.min(1, cell.intensity / 50),
           ]);
-          heatRef.current.setLatLngs(heatPoints);
+
           if (!map.hasLayer(heatRef.current)) {
+            // First time: add layer to map, then set data
             map.addLayer(heatRef.current);
+            heatRef.current.setLatLngs(newPoints);
+            applyPulse();
+          } else if (isFirstFetch || prevPointsRef.current.length === 0) {
+            // First fetch after re-enable: snap to new data
+            heatRef.current.setLatLngs(newPoints);
+          } else {
+            // Subsequent: smooth interpolation
+            animatePointTransition(prevPointsRef.current, newPoints, 800);
           }
+
+          prevPointsRef.current = newPoints;
         }
       } catch (err) {
         console.error("Heatmap fetch error:", err);
@@ -335,17 +471,21 @@ export default function HormuzMap() {
     };
 
     if (showHeatmap) {
-      fetchHeatmap();
-      intervalId = setInterval(fetchHeatmap, 10000); // refresh every 10s while active
+      fetchHeatmap(true);
+      intervalId = setInterval(() => fetchHeatmap(false), 10000);
     } else {
+      // Remove layer (CSS transition handles the fade via overlay pane rule)
       if (map.hasLayer(heatRef.current)) {
         map.removeLayer(heatRef.current);
       }
+      prevPointsRef.current = [];
     }
 
     return () => {
       if (intervalId) clearInterval(intervalId);
+      if (interpRafRef.current) cancelAnimationFrame(interpRafRef.current);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, showHeatmap]);
 
   // 3. Handle Markers and Area Selection
@@ -393,11 +533,11 @@ export default function HormuzMap() {
           <div style="padding: 10px 12px; display: grid; gap: 6px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="color: #64748b; font-size: 11px;">Speed</span>
-              <span style="color: #e2e8f0; font-weight: 600; font-family: 'JetBrains Mono', monospace;">${track.speed.toFixed(1)} kts</span>
+              <span style="color: #e2e8f0; font-weight: 600; font-family: 'JetBrains Mono', monospace;">${(track.speed || 0).toFixed(1)} kts</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="color: #64748b; font-size: 11px;">Position</span>
-              <span style="color: #e2e8f0; font-weight: 600; font-size: 11px; font-family: 'JetBrains Mono', monospace;">${track.lat.toFixed(3)}°, ${track.lon.toFixed(3)}°</span>
+              <span style="color: #e2e8f0; font-weight: 600; font-size: 11px; font-family: 'JetBrains Mono', monospace;">${(track.lat || 0).toFixed(3)}°, ${(track.lon || 0).toFixed(3)}°</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="color: #64748b; font-size: 11px;">Threat</span>
@@ -418,6 +558,11 @@ export default function HormuzMap() {
               <span style="color: #64748b; font-size: 11px;">Score</span>
               <span style="color: ${severityColor}; font-weight: 700; font-family: 'JetBrains Mono', monospace;">${track.anomalyScore}/100</span>
             </div>
+            <div style="margin-top: 6px; padding-top: 8px; border-top: 1px solid rgba(148,163,184,0.1);">
+              <button id="watchlist-btn-${track.id}" style="
+                background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3); border-radius: 4px; color: #818cf8; font-size: 10px; padding: 4px; cursor: pointer; width: 100%; font-weight: 600;
+              ">Add to Watchlist</button>
+            </div>
           </div>
         </div>
       `;
@@ -425,6 +570,34 @@ export default function HormuzMap() {
         className: "intel-popup",
         maxWidth: 230,
       });
+
+      marker.on("popupopen", () => {
+        const btn = document.getElementById(`watchlist-btn-${track.id}`);
+        if (btn) {
+          btn.onclick = async () => {
+            btn.innerHTML = "Saving...";
+            try {
+              const res = await fetch(`/api/watchlist/${track.id}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ notes: "" })
+              });
+              if (res.ok) {
+                btn.innerHTML = "Saved to Watchlist ✓";
+                btn.style.color = "#22c55e";
+                btn.style.borderColor = "#22c55e";
+                btn.style.background = "rgba(34,197,94,0.1)";
+              } else {
+                throw new Error("Failed");
+              }
+            } catch (err) {
+              btn.innerHTML = "Error saving";
+              btn.style.color = "#ef4444";
+            }
+          };
+        }
+      });
+
       clusterRef.current.addLayer(marker);
 
       if (selected) {
@@ -454,8 +627,9 @@ export default function HormuzMap() {
   }, [map, tracks, selectedTrackId]);
 
   return (
-    <section style={{ position: "relative" }} aria-label="Strait of Hormuz operational map">
-      <div style={{ position: "relative", height: "520px", width: "100%" }}>
+    <section style={{ position: "relative", height: "100%", width: "100%" }} aria-label="Strait of Hormuz operational map">
+      <div style={{ position: "relative", height: "100%", width: "100%", background: "black"
+      }}>
         {/* Heatmap Toggle */}
         <button
           onClick={() => setShowHeatmap(!showHeatmap)}
@@ -495,6 +669,7 @@ export default function HormuzMap() {
           style={{ height: "100%", width: "100%" }}
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
+          zoomControl={false}
           ref={setMap as any}
           whenReady={() => {
             if (!map) return;
@@ -507,6 +682,7 @@ export default function HormuzMap() {
             );
           }}
         >
+          <ZoomControl position="topright" />
           {/* CartoDB Dark Matter — dark mode map tiles */}
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'

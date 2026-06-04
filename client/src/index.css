@@ -768,6 +768,10 @@ pre {
 }
 
 /* Dark zoom controls */
+.leaflet-control-zoom {
+  margin-top: 80px !important;
+}
+
 .leaflet-control-zoom a {
   background: rgba(15, 23, 42, 0.9) !important;
   color: #94a3b8 !important;

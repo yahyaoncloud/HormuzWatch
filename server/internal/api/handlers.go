@@ -1,10 +1,13 @@
 package api
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"Geospatial-harmuz-watch/server/internal/anomaly"
+	"Geospatial-harmuz-watch/server/internal/db"
 	"Geospatial-harmuz-watch/server/internal/heatmap"
 	"Geospatial-harmuz-watch/server/internal/websocket/hub"
 
@@ -56,6 +59,28 @@ func (h *Handlers) PostTelemetry(c *gin.Context) {
 	// Store telemetry for heatmap aggregation
 	heatmap.AddTelemetry(payload.Lat, payload.Lon)
 
+	// Persist to SQLite
+	query := `
+		INSERT INTO tracks (track_id, asset_name, timestamp, lat, lon, speed, previous_speed, heading, course_delta, ais_age_minutes, hot_zone_distance_nm, last_updated)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		ON CONFLICT(track_id) DO UPDATE SET
+			asset_name=excluded.asset_name,
+			timestamp=excluded.timestamp,
+			lat=excluded.lat,
+			lon=excluded.lon,
+			speed=excluded.speed,
+			previous_speed=excluded.previous_speed,
+			heading=excluded.heading,
+			course_delta=excluded.course_delta,
+			ais_age_minutes=excluded.ais_age_minutes,
+			hot_zone_distance_nm=excluded.hot_zone_distance_nm,
+			last_updated=CURRENT_TIMESTAMP;
+	`
+	_, err := db.DB.Exec(query, payload.TrackID, payload.AssetName, payload.Timestamp, payload.Lat, payload.Lon, payload.Speed, payload.PreviousSpeed, payload.Heading, payload.CourseDelta, payload.AisAgeMinutes, payload.HotZoneDistanceNm)
+	if err != nil {
+		log.Printf("[Handler] Failed to persist track %s to SQLite: %v", payload.TrackID, err)
+	}
+
 	// Broadcast to WebSocket clients (non-blocking)
 	select {
 	case h.hub.Broadcast <- hub.Message{
@@ -84,6 +109,9 @@ func (h *Handlers) Analyze(c *gin.Context) {
 		return
 	}
 
+	inRestrictedZone, restrictedZoneName := anomaly.CheckGeofence(payload.Lat, payload.Lon)
+	nearHistoricalAttack := IsNearHistoricalAttack(payload.Lat, payload.Lon)
+
 	// Calculate anomaly score
 	score := anomaly.Score(
 		payload.CourseDelta,
@@ -91,6 +119,8 @@ func (h *Handlers) Analyze(c *gin.Context) {
 		payload.Speed,
 		payload.PreviousSpeed,
 		payload.HotZoneDistanceNm,
+		inRestrictedZone,
+		nearHistoricalAttack,
 	)
 
 	// Create anomaly response
@@ -98,8 +128,26 @@ func (h *Handlers) Analyze(c *gin.Context) {
 		ID:       payload.TrackID,
 		Score:    score,
 		Severity: anomaly.SeverityLevel(score),
-		Reasons:  anomaly.GetReasons(score, payload.CourseDelta, float64(payload.AisAgeMinutes), payload.Speed, payload.PreviousSpeed, payload.HotZoneDistanceNm),
+		Reasons:  anomaly.GetReasons(score, payload.CourseDelta, float64(payload.AisAgeMinutes), payload.Speed, payload.PreviousSpeed, payload.HotZoneDistanceNm, inRestrictedZone, nearHistoricalAttack, restrictedZoneName),
 		Actions:  anomaly.GetActions(anomaly.SeverityLevel(score)),
+	}
+
+	// Persist to SQLite
+	reasonsJSON, _ := json.Marshal(anomalyResult.Reasons)
+	actionsJSON, _ := json.Marshal(anomalyResult.Actions)
+	query := `
+		INSERT INTO anomalies (track_id, score, severity, reasons, actions, last_updated)
+		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		ON CONFLICT(track_id) DO UPDATE SET
+			score=excluded.score,
+			severity=excluded.severity,
+			reasons=excluded.reasons,
+			actions=excluded.actions,
+			last_updated=CURRENT_TIMESTAMP;
+	`
+	_, err := db.DB.Exec(query, anomalyResult.ID, anomalyResult.Score, anomalyResult.Severity, string(reasonsJSON), string(actionsJSON))
+	if err != nil {
+		log.Printf("[Handler] Failed to persist anomaly %s to SQLite: %v", anomalyResult.ID, err)
 	}
 
 	// Broadcast anomaly to WebSocket clients (non-blocking)
@@ -120,7 +168,7 @@ func (h *Handlers) Health(c *gin.Context) {
 	c.JSON(http.StatusOK, HealthResponse{
 		Status:                 "healthy",
 		ManagedIdentityEnabled: false, // TODO: Check actual managed identity availability
-		Timestamp:              "2025-06-02T00:00:00Z",
+		Timestamp:              time.Now().UTC().Format(time.RFC3339),
 	})
 }
 
@@ -158,6 +206,53 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 	// Start client read/write loops
 	go client.ReadPump()
 	go client.WritePump()
+
+	// Hydrate the dashboard from SQLite (async to prevent blocking the HTTP handler)
+	go func() {
+		// Fetch tracks updated in the last 2 hours
+		query := `
+			SELECT track_id, asset_name, timestamp, lat, lon, speed, previous_speed, heading, course_delta, ais_age_minutes, hot_zone_distance_nm 
+			FROM tracks 
+			WHERE last_updated >= datetime('now', '-2 hours')
+		`
+		rows, err := db.DB.Query(query)
+		if err == nil {
+			for rows.Next() {
+				var p TelemetryPayload
+				if err := rows.Scan(&p.TrackID, &p.AssetName, &p.Timestamp, &p.Lat, &p.Lon, &p.Speed, &p.PreviousSpeed, &p.Heading, &p.CourseDelta, &p.AisAgeMinutes, &p.HotZoneDistanceNm); err == nil {
+					// Add small delay to prevent overflowing the websocket writer too aggressively
+					time.Sleep(2 * time.Millisecond)
+					client.Send <- hub.Message{Type: "telemetry", Data: p}
+				}
+			}
+			rows.Close()
+		} else {
+			log.Printf("[Hydration] Failed to fetch tracks: %v", err)
+		}
+
+		// Fetch anomalies updated in the last 2 hours
+		query = `
+			SELECT track_id, score, severity, reasons, actions 
+			FROM anomalies 
+			WHERE last_updated >= datetime('now', '-2 hours')
+		`
+		rows, err = db.DB.Query(query)
+		if err == nil {
+			for rows.Next() {
+				var res anomaly.Result
+				var reasonsJSON, actionsJSON string
+				if err := rows.Scan(&res.ID, &res.Score, &res.Severity, &reasonsJSON, &actionsJSON); err == nil {
+					json.Unmarshal([]byte(reasonsJSON), &res.Reasons)
+					json.Unmarshal([]byte(actionsJSON), &res.Actions)
+					time.Sleep(2 * time.Millisecond)
+					client.Send <- hub.Message{Type: "anomaly", Data: res}
+				}
+			}
+			rows.Close()
+		} else {
+			log.Printf("[Hydration] Failed to fetch anomalies: %v", err)
+		}
+	}()
 }
 
 // GetHeatmap returns current heatmap data

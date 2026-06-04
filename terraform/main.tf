@@ -69,10 +69,6 @@ module "app" {
   name_prefix                = local.name_prefix
   resource_group_name        = azurerm_resource_group.main.name
   location                   = azurerm_resource_group.main.location
-  function_subnet_id         = module.networking.function_subnet_id
-  storage_account_name       = module.storage.function_storage_account_name
-  storage_account_access_key = module.storage.function_storage_account_key
-  app_insights_connection    = module.monitoring.application_insights_connection_string
   log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
   tags                       = local.tags
 }

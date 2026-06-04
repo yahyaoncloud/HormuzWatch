@@ -1,39 +1,56 @@
 package anomaly
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 // Score calculates the anomaly score for a vessel based on multiple factors
 // Returns a score 0-100
-func Score(courseDelta, aisAgeMinutes, speed, previousSpeed, hotZoneDistanceNm float64) int {
-	score := 0
+func Score(courseDelta, aisGapMinutes, speed, previousSpeed, distToZone float64, inRestrictedZone bool, nearHistoricalAttack bool) int {
+	score := 0.0
 
-	// Route deviation: +34 points if course delta >= 45 degrees
-	if courseDelta >= 45 {
-		score += 34
+	// ── Factor 1: Course deviation (max 34 pts) ─────────────────────
+	// Proportional: ramps linearly from 0 at 10° to max at 90°
+	if courseDelta > 10 {
+		score += math.Min(34, (courseDelta-10)/(90-10)*34)
 	}
 
-	// Stale AIS: +26 points if age >= 15 minutes
-	if aisAgeMinutes >= 15 {
-		score += 26
+	// ── Factor 2: AIS signal staleness (max 26 pts) ─────────────────
+	// Proportional: ramps from 0 at 5 min to max at 30 min
+	if aisGapMinutes > 5 {
+		score += math.Min(26, (aisGapMinutes-5)/(30-5)*26)
 	}
 
-	// Speed drop: +22 points if abrupt deceleration (speed <= 3 knots and delta >= 5 knots)
-	speedDelta := previousSpeed - speed
-	if speed <= 3 && speedDelta >= 5 {
-		score += 22
+	// ── Factor 3: Speed anomaly (max 22 pts) ────────────────────────
+	// Deceleration: proportional to the magnitude of the drop
+	speedDrop := previousSpeed - speed
+	if speedDrop > 2 {
+		score += math.Min(22, (speedDrop-2)/(15-2)*22)
+	}
+	// Excessive speed (> 25 kts in strait): partial contribution
+	if speed > 25 {
+		score += math.Min(11, (speed-25)/(40-25)*11)
 	}
 
-	// Hot zone: +18 points if distance <= 8 nautical miles
-	if hotZoneDistanceNm <= 8 {
-		score += 18
+	// ── Factor 4: Proximity to restricted zone (max 30 pts) ─────────
+	if inRestrictedZone {
+		score += 30
+	} else if distToZone < 0.3 { // Approaching zone (< ~18nm)
+		score += (0.3 - distToZone) / 0.3 * 15 // up to 15 pts
+	}
+
+	// ── Factor 5: Historical attack proximity (max 15 pts) ──────────
+	if nearHistoricalAttack {
+		score += 15
 	}
 
 	// Cap at 100
-	if score > 100 {
-		score = 100
+	result := int(math.Round(score))
+	if result > 100 {
+		result = 100
 	}
-
-	return score
+	return result
 }
 
 // SeverityLevel returns the severity classification for a score
@@ -51,24 +68,38 @@ func SeverityLevel(score int) string {
 }
 
 // GetReasons returns the list of reasons for the anomaly score
-func GetReasons(score int, courseDelta, aisAgeMinutes, speed, previousSpeed, hotZoneDistanceNm float64) []string {
+func GetReasons(score int, courseDelta, aisGapMinutes, speed, previousSpeed, distToZone float64, inRestrictedZone bool, nearHistoricalAttack bool, restrictedZoneName string) []string {
 	var reasons []string
 
-	if courseDelta >= 45 {
-		reasons = append(reasons, fmt.Sprintf("Course deviation: %.1f° (> 45° threshold)", courseDelta))
+	if courseDelta > 10 {
+		reasons = append(reasons, fmt.Sprintf("Course deviation: %.1f° (> 10° threshold)", courseDelta))
 	}
 
-	if aisAgeMinutes >= 15 {
-		reasons = append(reasons, fmt.Sprintf("Stale AIS data: %.0f minutes old (> 15 min threshold)", aisAgeMinutes))
+	if aisGapMinutes > 5 {
+		reasons = append(reasons, fmt.Sprintf("Stale AIS data: %.0f minutes old (> 5 min threshold)", aisGapMinutes))
 	}
 
-	speedDelta := previousSpeed - speed
-	if speed <= 3 && speedDelta >= 5 {
-		reasons = append(reasons, fmt.Sprintf("Abrupt deceleration: from %.1f to %.1f knots (delta: %.1f)", previousSpeed, speed, speedDelta))
+	speedDrop := previousSpeed - speed
+	if speedDrop > 2 {
+		reasons = append(reasons, fmt.Sprintf("Abrupt deceleration: from %.1f to %.1f knots (delta: %.1f)", previousSpeed, speed, speedDrop))
 	}
 
-	if hotZoneDistanceNm <= 8 {
-		reasons = append(reasons, fmt.Sprintf("Near Hormuz hot zone: %.1f nm away (< 8 nm threshold)", hotZoneDistanceNm))
+	if speed > 25 {
+		reasons = append(reasons, fmt.Sprintf("Excessive speed: %.1f knots (> 25 kts)", speed))
+	}
+
+	if inRestrictedZone {
+		reasons = append(reasons, fmt.Sprintf("Inside Restricted Zone: %s", restrictedZoneName))
+	} else if distToZone < 0.3 {
+		reasons = append(reasons, fmt.Sprintf("Approaching Restricted Zone: %.2f° away", distToZone))
+	}
+
+	if nearHistoricalAttack {
+		reasons = append(reasons, "Proximity to historical attack site")
+	}
+
+	if len(reasons) == 0 && score > 0 {
+		reasons = append(reasons, "Minor anomalies detected below individual reporting thresholds")
 	}
 
 	return reasons

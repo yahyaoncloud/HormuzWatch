@@ -57,10 +57,16 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     function connect() {
       if (!isMounted.current) return;
 
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setIsConnected(false);
+        return;
+      }
+
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = window.location.host;
-      const wsUrl =
-        import.meta.env.VITE_WS_URL || `${protocol}//${host}/api/ws/stream`;
+      let wsUrl = import.meta.env.VITE_WS_URL || `${protocol}//${host}/api/ws/stream`;
+      wsUrl += `?token=${token}`;
 
       console.log(`[WebSocket] Connecting to ${wsUrl}...`);
       const ws = new WebSocket(wsUrl);
@@ -162,12 +168,38 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
+    const handleSessionStarted = () => {
+      if (!wsRef.current) {
+        reconnectDelay.current = INITIAL_RECONNECT_DELAY;
+        connect();
+      }
+    };
+
+    const handleSessionCleared = () => {
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      if (heartbeatTimer.current) clearInterval(heartbeatTimer.current);
+      reconnectTimer.current = null;
+      heartbeatTimer.current = null;
+      reconnectDelay.current = INITIAL_RECONNECT_DELAY;
+      setIsConnected(false);
+      setTracks(new Map());
+      setAnomalies(new Map());
+      if (wsRef.current) {
+        wsRef.current.close(1000, "Session ended");
+        wsRef.current = null;
+      }
+    };
+
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("auth:session-started", handleSessionStarted);
+    window.addEventListener("auth:session-cleared", handleSessionCleared);
     connect();
 
     return () => {
       isMounted.current = false;
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("auth:session-started", handleSessionStarted);
+      window.removeEventListener("auth:session-cleared", handleSessionCleared);
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
       if (heartbeatTimer.current) clearInterval(heartbeatTimer.current);
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"Geospatial-harmuz-watch/server/internal/heatmap"
+	"Geospatial-harmuz-watch/server/internal/intelligence"
 )
 
 type GDELTGeoJSON struct {
@@ -75,6 +76,9 @@ func StartGDELT() {
 				for i := 0; i < 5; i++ {
 					heatmap.AddTelemetry(lat, lon)
 				}
+				
+				intelligence.GeoStore.AddEvent(lat, lon, 1.0)
+				
 				count++
 			}
 		}

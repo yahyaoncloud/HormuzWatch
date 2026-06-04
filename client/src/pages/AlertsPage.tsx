@@ -124,11 +124,11 @@ export default function AlertsPage() {
                     </td>
                     <td style={{ color: "#94a3b8", fontSize: "0.75rem" }}>
                       {track
-                        ? `${track.lat.toFixed(3)}°N, ${track.lon.toFixed(3)}°E`
+                        ? `${(track.lat || 0).toFixed(3)}°N, ${(track.lon || 0).toFixed(3)}°E`
                         : "—"}
                     </td>
                     <td style={{ color: "#94a3b8" }}>
-                      {track ? `${track.speed.toFixed(1)} kts` : "—"}
+                      {track ? `${(track.speed || 0).toFixed(1)} kts` : "—"}
                     </td>
                     <td>
                       <ul
