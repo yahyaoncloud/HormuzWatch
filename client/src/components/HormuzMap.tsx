@@ -682,7 +682,7 @@ export default function HormuzMap() {
             );
           }}
         >
-          <ZoomControl position="topright" />
+          {/* <ZoomControl position="topleft"  /> */}
           {/* CartoDB Dark Matter — dark mode map tiles */}
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'

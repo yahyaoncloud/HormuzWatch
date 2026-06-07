@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"Geospatial-harmuz-watch/server/internal/db"
+
 	"github.com/gin-gonic/gin"
 )
 

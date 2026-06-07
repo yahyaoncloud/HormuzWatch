@@ -9,7 +9,7 @@ const ARCHITECTURE = [
 
 export default function DocsPage() {
   return (
-    <div className="page-container">
+    <div className="page-container fade-up">
       <div className="page-header">
         <div className="section-eyebrow" style={{ marginBottom: "4px" }}>
           System Reference

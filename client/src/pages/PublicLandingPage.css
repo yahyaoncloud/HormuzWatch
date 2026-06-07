@@ -1,0 +1,190 @@
+/* ─── PublicLandingPage.css ─── */
+
+/* ══════════════════════════════════════════
+   BASE (desktop — all screens ≥ 768px)
+   ══════════════════════════════════════════ */
+
+.landing-root {
+  position: relative;
+  width: 100vw;
+  height: 100dvh;          /* dvh: iOS Safari address-bar fix */
+  overflow: hidden;
+  background: #020617;
+}
+
+/* ── Nav ── */
+.landing-nav {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 1001;
+  padding: 16px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(
+    to bottom,
+    rgba(2,6,23,0.95) 0%,
+    rgba(2,6,23,0.70) 60%,
+    transparent 100%
+  );
+}
+
+.landing-logo-img-wrap {
+  width: 40px; height: 40px;
+  background: rgba(15,23,42,0.4);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; border-radius: 6px; flex-shrink: 0;
+}
+
+.landing-logo-title {
+  font-size: 1.125rem; font-weight: 800; color: #f8fafc;
+  margin: 0; letter-spacing: -0.02em;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.landing-utc-clock {
+  color: #475569; font-size: 0.6875rem;
+  font-family: "JetBrains Mono", monospace; letter-spacing: 0.05em;
+}
+
+/* ── Stats strip (desktop: vertical column, left side) ── */
+.landing-stats-strip {
+  position: absolute;
+  top: 90px; left: 20px;
+  z-index: 1001;
+  display: flex; flex-direction: column; gap: 12px;
+  width: 220px;
+}
+
+/* ── Info card (desktop: bottom-left) ── */
+.landing-info-card {
+  position: absolute;
+  bottom: 30px; left: 20px;
+  z-index: 1001;
+  width: 340px;
+  background: rgba(11,18,32,0.8);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(148,163,184,0.1);
+  border-radius: 10px; padding: 24px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+}
+
+.landing-feat-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 8px; margin-bottom: 20px;
+}
+
+/* ── Threat ticker (desktop: bottom-right) ── */
+.landing-threat-ticker {
+  position: absolute;
+  bottom: 30px; right: 20px;
+  z-index: 1001;
+  width: 300px;
+  background: rgba(11,18,32,0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(239,68,68,0.15);
+  border-radius: 10px; padding: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+/* ══════════════════════════════════════════
+   MOBILE  (≤ 767px)
+   Strategy:
+     • Nav  → single compact row (logo + status dot + buttons)
+     • Stats → slim horizontal bar pinned at top, below nav
+               (icon + number only, no label text)
+     • Info card → compact strip at very bottom (title + CTA only,
+                   paragraph + feature grid hidden)
+     • Threat ticker → HIDDEN (screen too small)
+   This leaves ~85% of the viewport as usable map.
+   ══════════════════════════════════════════ */
+@media (max-width: 767px) {
+
+  /* ── Nav: single tight row ── */
+  .landing-nav {
+    padding: 8px 12px;
+    flex-wrap: nowrap;
+    gap: 0;
+    /* measured height ≈ 52px */
+  }
+
+  .landing-logo-img-wrap { width: 28px; height: 28px; }
+  .landing-logo-title    { font-size: 0.875rem; }
+
+  /* Hide the subtitle "Geospatial Intel" on mobile */
+  .landing-logo-subtitle { display: none; }
+
+  /* Hide UTC clock */
+  .landing-utc-clock { display: none; }
+
+  /* ── Stats strip: slim horizontal bar right under nav ── */
+  .landing-stats-strip {
+    /* Pin just below the 52px nav */
+    top: 52px;
+    left: 0; right: 0;
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 0;
+    /* No height declared — intrinsic; ≈ 40px */
+    background: rgba(2,6,23,0.82);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(148,163,184,0.08);
+    padding: 0 8px;
+    box-sizing: border-box;
+  }
+
+  /* Each stat card: equal-width flex item, no individual background/border */
+  .landing-stat-card {
+    flex: 1;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 8px 4px !important;
+    justify-content: center;
+    gap: 6px !important;
+  }
+
+  /* Hide the text label (VESSELS / AIRCRAFT / etc.) */
+  .landing-stat-label { display: none; }
+
+  /* Shrink icon badge */
+  .landing-stat-icon-wrap {
+    padding: 4px !important;
+  }
+
+  /* Shrink the number */
+  .landing-stat-value {
+    font-size: 0.9rem !important;
+  }
+
+  /* ── Info card: compact strip at very bottom ── */
+  .landing-info-card {
+    left: 10px; right: 10px; bottom: 10px;
+    width: auto; max-width: 100%;
+    padding: 12px 14px;
+  }
+
+  /* Hide description paragraph on mobile */
+  .landing-info-desc { display: none; }
+
+  /* Hide feature grid on mobile */
+  .landing-feat-grid { display: none; }
+
+  /* Tighten heading margin since paragraph is gone */
+  .landing-info-heading {
+    margin-bottom: 12px !important;
+  }
+
+  /* ── Threat ticker: hidden on mobile ── */
+  .landing-threat-ticker { display: none; }
+}
+
+/* ══════════════════════════════════════════
+   PULSE keyframe
+   ══════════════════════════════════════════ */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}

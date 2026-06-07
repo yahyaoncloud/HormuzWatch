@@ -42,3 +42,4 @@ async def health():
         "model_loaded": model.model is not None,
         "model_version": model.version,
     }
+    

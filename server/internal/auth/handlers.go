@@ -226,3 +226,47 @@ func GetPendingUsers(c *gin.Context) {
 
 	c.JSON(http.StatusOK, users)
 }
+
+
+func DeleteUser(c *gin.Context) {
+	username := c.Param("username")
+	if username == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username parameter required"})
+		return
+	}
+
+	_, err := db.DB.Exec("DELETE FROM users WHERE username = ?", username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "User deleted successfully"})
+}
+
+func UpdateUser(c *gin.Context){
+	username := c.Param("username")
+	if username == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username parameter required"})
+		return
+	}
+
+	var req struct {
+		Status string `json:"status"`
+		Email  string `json:"email"`
+		Role   string `json:"role"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	_, err := db.DB.Exec("UPDATE users SET status = ?, email = ?, role = ? WHERE username = ?", req.Status, req.Email, req.Role, username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "User updated successfully"})
+}
+

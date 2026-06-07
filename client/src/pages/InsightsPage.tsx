@@ -21,7 +21,7 @@ export default function InsightsPage() {
     .sort((a, b) => b.anomalyScore - a.anomalyScore);
 
   return (
-    <div className="page-container">
+    <div className="page-container fade-up">
       <div className="page-header" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
         <div>
           <div className="section-eyebrow" style={{ marginBottom: "4px" }}>
