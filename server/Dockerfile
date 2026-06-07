@@ -7,8 +7,7 @@ RUN apk add --no-cache git
 WORKDIR /build
 
 # Copy source code (includes go.mod)
-COPY server/ ./
-
+COPY . ./
 # Tidy dependencies based on actual imports
 RUN go mod tidy
 
