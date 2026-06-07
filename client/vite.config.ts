@@ -1,55 +1,52 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
-/**
- * Vite Configuration for PHASE 2 Client
- *
- * Features:
- * - React 19 with Fast Refresh
- * - TypeScript support
- * - API proxy for backend integration
- * - Optimized build for production
- * - Source maps for debugging
- */
-export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  root: ".",
-  build: {
-    outDir: "dist",
-    sourcemap: true,
-  },
-  server: {
-    port: 5173,
-    host: true,
-    proxy: {
-      "/api": {
-        target: process.env.VITE_API_URL ,
-        changeOrigin: true,
-        ws: true,
-        rewrite: (path) => path.replace(/^\/api/, ""),
+export default defineConfig(({ mode }) => {
+  // Load env file based on `mode` in the current working directory.
+  // Set the third parameter to '' to load all env variables regardless of the VITE_ prefix.
+  const env = loadEnv(mode, process.cwd(), '');
+
+  return {
+    plugins: [react(), tailwindcss()],
+    root: ".",
+    build: {
+      outDir: "dist",
+      sourcemap: true,
+    },
+    server: {
+      port: 5173,
+      host: true,
+      proxy: {
+        "/api": {
+          // Use the loaded env object here
+          target: env.VITE_API_URL || "http://localhost:8080", 
+          changeOrigin: true,
+          ws: true,
+          rewrite: (path) => path.replace(/^\/api/, ""),
+        },
+      },
+      middlewareMode: false,
+    },
+    preview: {
+      port: 4173,
+      host: true,
+    },
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
       },
     },
-    middlewareMode: false,
-  },
-  preview: {
-    port: 4173,
-    host: true,
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+    optimizeDeps: {
+      include: [
+        "react",
+        "react-dom",
+        "react-router-dom",
+        "leaflet",
+        "recharts",
+        "lucide-react",
+      ],
     },
-  },
-  optimizeDeps: {
-    include: [
-      "react",
-      "react-dom",
-      "react-router-dom",
-      "leaflet",
-      "recharts",
-      "lucide-react",
-    ],
-  },
+  };
 });
