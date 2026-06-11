@@ -1,0 +1,24 @@
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Vercel
+.vercel/
+
+# Local data files (not committed)
+data/
+*.csv
+*.json.bk
+
+# Model artifacts ARE committed (Vercel bundles them)
+# models/*.joblib  ← do NOT add this line

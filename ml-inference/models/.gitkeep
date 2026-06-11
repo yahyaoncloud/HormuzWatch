@@ -1,0 +1,2 @@
+# Trained model artifacts are committed to the repo so Vercel bundles them.
+# This file ensures the models/ directory is tracked even when empty.

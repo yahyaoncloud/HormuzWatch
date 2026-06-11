@@ -65,3 +65,15 @@ func SendUserApprovalNotification(userEmail string) {
 
 	_ = sendEmail([]string{userEmail}, subject, body)
 }
+
+// SendBlacklistNotification notifies a user that their access has been revoked.
+func SendBlacklistNotification(userEmail string) {
+	subject := "HormuzWatch: Access Revoked"
+	body := "Hello,\n\n" +
+		"Your access to the HormuzWatch platform has been REVOKED by an administrator.\n\n" +
+		"You will no longer be able to log in or access the command center.\n" +
+		"If you believe this is an error, please contact your system administrator.\n\n" +
+		"HormuzWatch Automated System"
+
+	_ = sendEmail([]string{userEmail}, subject, body)
+}

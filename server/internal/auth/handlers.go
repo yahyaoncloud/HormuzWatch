@@ -71,6 +71,11 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	if status == "blacklisted" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Your account has been blacklisted by an administrator. Contact administrator for assistance."})
+		return
+	}
+
 	if status != "approved" {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Your account access has been revoked or denied."})
 		return
@@ -132,6 +137,22 @@ func GetSession(c *gin.Context) {
 		return
 	}
 
+	// When auth is disabled, the JWT middleware injects a virtual session — skip DB lookup
+	if user.SessionID == "auth-disabled-session" {
+		expiresAt := time.Now().UTC().Add(24 * time.Hour).Format(time.RFC3339)
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "success",
+			"sessionId": user.SessionID,
+			"expiresAt": expiresAt,
+			"user": gin.H{
+				"username": user.Username,
+				"email":    user.Email,
+				"role":     user.Role,
+			},
+		})
+		return
+	}
+
 	var expiresAt string
 	err := db.DB.QueryRow("SELECT expires_at FROM sessions WHERE id = ?", user.SessionID).Scan(&expiresAt)
 	if err != nil {
@@ -162,6 +183,12 @@ func Logout(c *gin.Context) {
 	user, ok := authUserValue.(AuthenticatedUser)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authenticated session"})
+		return
+	}
+
+	// When auth is disabled, the JWT middleware uses a virtual session — no DB row to revoke
+	if user.SessionID == "auth-disabled-session" {
+		c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Logged out successfully"})
 		return
 	}
 
@@ -244,7 +271,7 @@ func DeleteUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "User deleted successfully"})
 }
 
-func UpdateUser(c *gin.Context){
+func UpdateUser(c *gin.Context) {
 	username := c.Param("username")
 	if username == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "username parameter required"})
@@ -268,5 +295,114 @@ func UpdateUser(c *gin.Context){
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "User updated successfully"})
+}
+
+// GetAllUsers returns a list of all registered users (Admin only)
+func GetAllUsers(c *gin.Context) {
+	rows, err := db.DB.Query("SELECT id, username, email, role, status, created_at FROM users ORDER BY created_at DESC")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query users"})
+		return
+	}
+	defer rows.Close()
+
+	type UserInfo struct {
+		ID        string `json:"id"`
+		Username  string `json:"username"`
+		Email     string `json:"email"`
+		Role      string `json:"role"`
+		Status    string `json:"status"`
+		CreatedAt string `json:"createdAt"`
+	}
+
+	var users []UserInfo
+	for rows.Next() {
+		var u UserInfo
+		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Role, &u.Status, &u.CreatedAt); err == nil {
+			users = append(users, u)
+		}
+	}
+
+	if users == nil {
+		users = []UserInfo{}
+	}
+
+	c.JSON(http.StatusOK, users)
+}
+
+// BlacklistUser sets a user's status to 'blacklisted', revokes all sessions, and notifies them (Admin only)
+func BlacklistUser(c *gin.Context) {
+	username := c.Param("username")
+	if username == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username parameter required"})
+		return
+	}
+
+	// Prevent admin from blacklisting themselves
+	authUserValue, _ := c.Get("authUser")
+	if authUser, ok := authUserValue.(AuthenticatedUser); ok && authUser.Username == username {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot blacklist yourself"})
+		return
+	}
+
+	// Fetch user email before updating
+	var email string
+	err := db.DB.QueryRow("SELECT email FROM users WHERE username = ?", username).Scan(&email)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	// Set status to blacklisted
+	_, err = db.DB.Exec("UPDATE users SET status = 'blacklisted' WHERE username = ?", username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to blacklist user"})
+		return
+	}
+
+	// Revoke all active sessions for this user
+	_, _ = db.DB.Exec("UPDATE sessions SET revoked_at = ? WHERE username = ? AND revoked_at IS NULL", time.Now().UTC().Format(time.RFC3339), username)
+
+	// Notify the blacklisted user
+	if email != "" {
+		go SendBlacklistNotification(email)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "User blacklisted successfully"})
+}
+
+// UnblacklistUser restores a blacklisted user to 'approved' status (Admin only)
+func UnblacklistUser(c *gin.Context) {
+	username := c.Param("username")
+	if username == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username parameter required"})
+		return
+	}
+
+	// Fetch current status and email
+	var status, email string
+	err := db.DB.QueryRow("SELECT status, email FROM users WHERE username = ?", username).Scan(&status, &email)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	if status != "blacklisted" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user is not blacklisted"})
+		return
+	}
+
+	_, err = db.DB.Exec("UPDATE users SET status = 'approved' WHERE username = ?", username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to unblacklist user"})
+		return
+	}
+
+	// Notify the user that access has been restored
+	if email != "" {
+		go SendUserApprovalNotification(email)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "User unblacklisted successfully"})
 }
 

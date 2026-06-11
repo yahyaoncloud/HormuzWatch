@@ -28,8 +28,21 @@ type AuthenticatedUser struct {
 // JWTMiddleware validates JWT tokens from Authorization header
 func JWTMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Check if auth is disabled
+		// Check if auth is disabled — inject a default admin session
 		if os.Getenv("AUTH_DISABLED") == "true" {
+			c.Set("authUser", AuthenticatedUser{
+				Username:  config.PrimaryAdminUsername,
+				Email:     config.PrimaryAdminEmail,
+				Role:      "admin",
+				Status:    "approved",
+				SessionID: "auth-disabled-session",
+			})
+			c.Set("user", jwt.MapClaims{
+				"username": config.PrimaryAdminUsername,
+				"email":    config.PrimaryAdminEmail,
+				"role":     "admin",
+				"sid":      "auth-disabled-session",
+			})
 			c.Next()
 			return
 		}
@@ -83,6 +96,7 @@ func JWTMiddleware() gin.HandlerFunc {
 func AdminOnlyMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if os.Getenv("AUTH_DISABLED") == "true" {
+			// When auth is disabled, the JWT middleware already set a default admin user
 			c.Next()
 			return
 		}

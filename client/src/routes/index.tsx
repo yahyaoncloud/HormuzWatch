@@ -8,6 +8,7 @@ import AboutPage from "../pages/AboutPage";
 import NewsPage from "../pages/NewsPage";
 import { AuthProvider } from "../context/AuthContext";
 import { ProtectedRoute } from "../components/ProtectedRoute";
+import DisclaimerBanner from "../components/DisclaimerBanner";
 
 // Lazy load page components for better code splitting
 const DashboardPage = lazy(() => import("../pages/DashboardPage"));
@@ -20,6 +21,7 @@ const PublicLandingPage = lazy(() => import("../pages/PublicLandingPage"));
 const LoginPage = lazy(() => import("../pages/LoginPage"));
 const RegisterPage = lazy(() => import("../pages/RegisterPage"));
 const AdminPage = lazy(() => import("../pages/AdminPage"));
+const PublicLivePage = lazy(() => import("../pages/PublicLivePage"));
 
 // Lazy load fallback for async route loading
 const LazyPageWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -31,6 +33,7 @@ export const routes: RouteObject[] = [
     path: "/",
     element: (
       <AuthProvider>
+        <DisclaimerBanner />
         <Outlet />
       </AuthProvider>
     ),
@@ -63,6 +66,37 @@ export const routes: RouteObject[] = [
           </LazyPageWrapper>
         ),
       },
+      {
+        path: "live",
+        element: (
+          <LazyPageWrapper>
+            <PublicLivePage />
+          </LazyPageWrapper>
+        ),
+        handle: {
+          title: "Live Maritime Feed",
+          description: "Real-time top 10 anomalous vessel traces",
+        },
+      },
+
+      // Public App Routes (Wrapped in RootLayout with Sidebar)
+      {
+        element: <RootLayout />,
+        children: [
+          {
+            path: "docs",
+            element: (
+              <LazyPageWrapper>
+                <DocsPage />
+              </LazyPageWrapper>
+            ),
+            handle: {
+              title: "Documentation",
+              description: "API reference and system documentation",
+            },
+          },
+        ],
+      },
 
       // Protected App Routes (Wrapped in RootLayout with Sidebar)
       {
@@ -81,7 +115,8 @@ export const routes: RouteObject[] = [
             ),
             handle: {
               title: "Dashboard",
-              description: "Real-time Geospatial telemetry and threat monitoring",
+              description:
+                "Real-time Geospatial telemetry and threat monitoring",
             },
           },
           {
@@ -117,7 +152,8 @@ export const routes: RouteObject[] = [
             ),
             handle: {
               title: "Analytics",
-              description: "Historical data analysis, metrics, and trend visualization",
+              description:
+                "Historical data analysis, metrics, and trend visualization",
             },
           },
           {
@@ -144,18 +180,7 @@ export const routes: RouteObject[] = [
               description: "AI-driven threat analysis and recommendations",
             },
           },
-          {
-            path: "docs",
-            element: (
-              <LazyPageWrapper>
-                <DocsPage />
-              </LazyPageWrapper>
-            ),
-            handle: {
-              title: "Documentation",
-              description: "API reference and system documentation",
-            },
-          },
+
           {
             path: "settings",
             element: (

@@ -102,8 +102,25 @@ func main() {
 	router.POST("/auth/register", auth.Register)
 	router.POST("/auth/login", auth.Login)
 
+	// Public streaming endpoints (no auth required)
+	router.GET("/public/top-traces", api.GetTopTraces)
+	router.GET("/public/stream", api.PublicTopTracesStream)
+
 	// Unauthenticated routes for testing (can be removed in production)
 	if isAuthDisabled {
+		// Auth session endpoints still needed for client-side auth flow
+		router.GET("/auth/session", auth.JWTMiddleware(), auth.GetSession)
+		router.POST("/auth/logout", auth.JWTMiddleware(), auth.Logout)
+
+		// Admin user management endpoints (JWT middleware injects default admin)
+		router.POST("/auth/approve/:username", auth.JWTMiddleware(), auth.AdminOnlyMiddleware(), auth.ApproveUser)
+		router.GET("/auth/pending", auth.JWTMiddleware(), auth.AdminOnlyMiddleware(), auth.GetPendingUsers)
+		router.GET("/auth/users", auth.JWTMiddleware(), auth.AdminOnlyMiddleware(), auth.GetAllUsers)
+		router.PUT("/auth/users/:username", auth.JWTMiddleware(), auth.AdminOnlyMiddleware(), auth.UpdateUser)
+		router.DELETE("/auth/users/:username", auth.JWTMiddleware(), auth.AdminOnlyMiddleware(), auth.DeleteUser)
+		router.POST("/auth/blacklist/:username", auth.JWTMiddleware(), auth.AdminOnlyMiddleware(), auth.BlacklistUser)
+		router.POST("/auth/unblacklist/:username", auth.JWTMiddleware(), auth.AdminOnlyMiddleware(), auth.UnblacklistUser)
+
 		router.POST("/telemetry", handlers.PostTelemetry)
 		router.POST("/analyze", handlers.Analyze)
 		router.GET("/integrations/identity-token-check", handlers.IdentityTokenCheck)
@@ -137,6 +154,11 @@ func main() {
 		router.POST("/auth/logout", authMiddleware, auth.Logout)
 		router.POST("/auth/approve/:username", authMiddleware, adminMiddleware, auth.ApproveUser)
 		router.GET("/auth/pending", authMiddleware, adminMiddleware, auth.GetPendingUsers)
+		router.GET("/auth/users", authMiddleware, adminMiddleware, auth.GetAllUsers)
+		router.PUT("/auth/users/:username", authMiddleware, adminMiddleware, auth.UpdateUser)
+		router.DELETE("/auth/users/:username", authMiddleware, adminMiddleware, auth.DeleteUser)
+		router.POST("/auth/blacklist/:username", authMiddleware, adminMiddleware, auth.BlacklistUser)
+		router.POST("/auth/unblacklist/:username", authMiddleware, adminMiddleware, auth.UnblacklistUser)
 
 		router.POST("/telemetry", authMiddleware, handlers.PostTelemetry)
 		router.POST("/analyze", authMiddleware, handlers.Analyze)

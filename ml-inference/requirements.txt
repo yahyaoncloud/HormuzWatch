@@ -1,0 +1,13 @@
+# HormuzWatch ML Inference — Vercel Deployment
+# Runtime dependencies only (no training deps, no pandas)
+# Dev/training extras: pip install pandas
+
+scikit-learn==1.5.0
+numpy==1.26.4
+pydantic==2.7.2
+joblib==1.4.2
+shap==0.45.1
+
+# ─── Dev / test only (not bundled into Vercel) ───────────────────────────────
+# pytest==8.2.2
+# pandas==2.2.2     # Required by api/train.py — not deployed
