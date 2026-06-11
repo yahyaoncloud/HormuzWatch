@@ -1,5 +1,7 @@
 # HormuzWatch - Strategic Intelligence Platform
 
+> **Disclaimer:** This is an educational and portfolio project. It is not an operational intelligence product and does not represent real-world intent or actual events. Please read the full [Disclaimer & Terms of Use](docs/website_documents/DISCLAIMER.md) before exploring.
+
 Real-time geospatial surveillance and anomaly detection system for strategic regions, featuring containerized Go backend and React Router v7 frontend with WebSocket real-time updates and threat heatmap visualization.
 
 ---

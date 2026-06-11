@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { Newspaper, ExternalLink, ShieldAlert, Radio, Filter, Clock, MapPin, Search } from "lucide-react";
+import { api } from "../services/api";
 
 interface NewsItem {
   id: string;
@@ -24,7 +25,7 @@ export default function NewsPage() {
   const [selectedCountry, setSelectedCountry] = useState("All");
 
   useEffect(() => {
-    fetch("/api/news")
+    api.getNews()
       .then((res) => res.json())
       .then((data) => {
         if (data && data.news) {
@@ -80,7 +81,7 @@ export default function NewsPage() {
   };
 
   return (
-    <div className="page-container fade-up" style={{ paddingBottom: "24px", height: "calc(100vh - 64px - 80px)", display: "flex", flexDirection: "column" }}>
+    <div className="page-container fade-up max-w-6xl" style={{ paddingBottom: "24px", height: "calc(100vh - 64px - 80px)", display: "flex", flexDirection: "column" }}>
       {/* Header */}
       <div className="page-header" style={{ marginBottom: "16px", flexShrink: 0 }}>
         <div className="section-eyebrow" style={{ marginBottom: "6px" }}>Global Threat Feed</div>

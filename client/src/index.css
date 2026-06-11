@@ -146,7 +146,7 @@ pre {
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45), 0 1px 4px rgba(0, 0, 0, 0.3);
   transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .intel-panel::before {
@@ -621,7 +621,7 @@ pre {
    ============================================================ */
 
 .page-container {
-  max-width: 1400px;
+  max-width: 100%;
   margin: 0 auto;
   padding: 24px 16px;
   position: relative;
@@ -636,35 +636,176 @@ pre {
 
 @media (min-width: 1280px) {
   .page-container {
-    padding: 32px 32px;
+    padding: 32px 48px;
   }
 }
 
-/* ── Page Header ── */
-.page-header {
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+/* ── Docs Layout ── */
+.docs-layout-grid {
+  grid-template-columns: 240px 1fr;
+  gap: 40px;
 }
 
-.page-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  background: linear-gradient(135deg, #f8fafc 0%, #a5b4fc 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  display: inline-block;
-}
-
-@media (min-width: 768px) {
-  .page-title {
-    font-size: 1.875rem;
+@media (max-width: 900px) {
+  .docs-layout-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .docs-sidebar {
+    display: none !important;
+  }
+  .docs-mobile-nav {
+    display: flex !important;
   }
 }
 
-/* ── Metric Grid ── */
+/* ── HUD Layout ────────────────────────────────────────────────────── */
+/* Desktop: left-panel | map | right-panel in a single tall row */
+.hud-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 64px);
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+  padding: 10px;
+  gap: 10px;
+  box-sizing: border-box;
+}
+
+.hud-main-grid {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  gap: 10px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Left/Right panels — fixed width on desktop */
+.hud-panel-left  { width: 280px; flex-shrink: 0; }
+.hud-panel-right { width: 340px; flex-shrink: 0; }
+
+/* Centre takes remaining space */
+.hud-center {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Shared panel chrome */
+.hud-panel {
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, rgba(11,18,32,0.98) 0%, rgba(8,13,24,0.98) 100%);
+  border: 1px solid rgba(148,163,184,0.15);
+  border-radius: 6px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Desktop: panels-row sits to the right of the map, holding only the right intel panel */
+/* Track list is rendered outside panels-row (before the map) */
+.hud-panels-row {
+  display: contents;  /* transparent wrapper on desktop — children behave as if direct grid children */
+}
+
+/* ── iPad / Tablet (768– 1279px): map on top, panels row below ── */
+@media (max-width: 1279px) {
+  .hud-container {
+    height: auto;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .hud-main-grid {
+    flex-direction: column;
+    overflow: visible;
+    gap: 8px;
+    height: auto;
+  }
+  .hud-center {
+    order: -1;              /* map always first */
+    min-height: 320px;
+    height: 50vw;
+    max-height: 56vh;
+    flex-shrink: 0;
+  }
+  .hud-panel-left  { width: auto; flex: 1; max-height: 300px; }
+  .hud-panel-right { width: auto; flex: 1; max-height: 300px; }
+  /* Track list + intel panel sit side-by-side below map */
+  .hud-panels-row {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+  }
+}
+
+/* ── Mobile (<768px): full-screen map, bottom-sheet panels ── */
+@media (max-width: 767px) {
+  .hud-container {
+    height: 100dvh;
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+    position: relative;
+  }
+  .hud-main-grid {
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+    gap: 0;
+    flex-direction: column;
+  }
+  /* Map fills everything */
+  .hud-center {
+    position: absolute !important;
+    inset: 0;
+    border-radius: 0;
+    z-index: 1;
+    min-height: 0;
+    max-height: none;
+    height: 100%;
+  }
+  /* Panels are bottom drawers */
+  .hud-panels-row {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: row;
+    pointer-events: auto;
+  }
+  .hud-panel-left {
+    width: 50%;
+    max-height: 44vh;
+    border-radius: 12px 0 0 0;
+    border-right: 1px solid rgba(148,163,184,0.08);
+    border-bottom: none;
+    border-left: none;
+    background: rgba(6,10,20,0.97) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .hud-panel-right {
+    width: 50%;
+    max-height: 44vh;
+    border-radius: 0 12px 0 0;
+    border-right: none;
+    border-bottom: none;
+    background: rgba(6,10,20,0.97) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+}
+
+/* ── Metric Grid ────────────────────────────────────────────────── */
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -736,6 +877,47 @@ pre {
   overflow: hidden;
   border: 1px solid rgba(148, 163, 184, 0.15);
   box-shadow: 0 4px 32px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+/* ── Prevent Leaflet white flash before tiles load ── */
+.leaflet-container {
+  background: #050816 !important;
+}
+.leaflet-tile-pane {
+  background: #050816;
+}
+
+/* ── Mobile-only: compact overlay metric cards ── */
+@media (max-width: 767px) {
+  /* Shrink the 4-col metrics strip on mobile map overlay */
+  .hud-overlay-metrics {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 5px !important;
+  }
+  /* Compact card padding + font sizes on mobile */
+  .hud-overlay-metrics > div {
+    padding: 7px 9px !important;
+    gap: 5px !important;
+  }
+  .hud-overlay-metrics > div [style*="font-size: 2rem"],
+  .hud-overlay-metrics > div [style*="font-size:2rem"] {
+    font-size: 1.1rem !important;
+  }
+  .hud-overlay-metrics > div [style*="font-size: 0.6875rem"],
+  .hud-overlay-metrics > div [style*="font-size:0.6875rem"] {
+    font-size: 0.5rem !important;
+  }
+  /* Hide sub-text on mobile cards */
+  .hud-overlay-metrics > div [style*="font-size: 0.75rem"] {
+    display: none !important;
+  }
+  /* Shrink icon box */
+  .hud-overlay-metrics > div [style*="width: 32px"] {
+    width: 20px !important;
+    height: 20px !important;
+  }
+  /* Hide the title/eyebrow on mobile map overlay */
+  .hud-map-title { display: none !important; }
 }
 
 /* Leaflet popup override for dark theme */
@@ -946,4 +1128,12 @@ pre {
   font-weight: 700;
   letter-spacing: 0.02em;
   font-family: "JetBrains Mono", monospace;
+}
+
+/* ── HUD Layout responsive classes ── */
+.hud-panel-left { width: 320px; flex-shrink: 0; }
+.hud-panel-right { width: 360px; flex-shrink: 0; }
+.hud-center { flex: 1; position: relative; min-width: 0; border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; min-height: 50vh; }
+@media (max-width: 1024px) {
+  .hud-panel-left, .hud-panel-right { width: 100%; }
 }

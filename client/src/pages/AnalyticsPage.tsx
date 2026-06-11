@@ -18,6 +18,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useWebSocket } from "../context/WebSocketContext";
 import IntelMetric from "../components/IntelMetric";
+import { api } from "../services/api";
 
 function classifyObject(id: string | undefined): "asset" | "aircraft" {
   if (!id) return "asset";
@@ -62,7 +63,7 @@ export default function AnalyticsPage() {
 
   const fetchWatchlist = async () => {
     try {
-      const res = await fetch("/api/watchlist");
+      const res = await api.getWatchlist();
       if (res.ok) {
         setWatchlist(await res.json());
       }
@@ -75,11 +76,7 @@ export default function AnalyticsPage() {
 
   const addToWatchlist = async (trackId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    await fetch(`/api/watchlist/${trackId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notes: "" })
-    });
+    await api.addToWatchlist(trackId);
     fetchWatchlist();
   };
 
@@ -362,7 +359,7 @@ export default function AnalyticsPage() {
                           Details
                         </button>
                         <button
-                          onClick={async () => { await fetch(`/api/watchlist/${w.track_id}`, { method: "DELETE" }); fetchWatchlist(); }}
+                          onClick={async () => { await api.removeFromWatchlist(w.track_id); fetchWatchlist(); }}
                           style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "4px", padding: "4px 10px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600 }}
                         >
                           Remove

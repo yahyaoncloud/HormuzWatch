@@ -15,6 +15,7 @@ import {
   Ban,
   RotateCcw,
 } from "lucide-react";
+import { api } from "../services/api";
 
 interface UserRecord {
   id: string;
@@ -57,10 +58,7 @@ export default function AdminPage() {
     setLoading(true);
     setError("");
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("/api/auth/users", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.getUsers();
       if (res.ok) {
         const data = await res.json();
         setUsers(data || []);
@@ -95,11 +93,7 @@ export default function AdminPage() {
 
   const approveUser = async (username: string) => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`/api/auth/approve/${username}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.approveUser(username);
       if (res.ok) {
         showStatus(`${username} approved successfully`);
         setUsers((prev) =>
@@ -116,11 +110,7 @@ export default function AdminPage() {
 
   const blacklistUser = async (username: string) => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`/api/auth/blacklist/${username}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.blacklistUser(username);
       if (res.ok) {
         showStatus(`${username} blacklisted successfully`);
         setUsers((prev) =>
@@ -137,11 +127,7 @@ export default function AdminPage() {
 
   const unblacklistUser = async (username: string) => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`/api/auth/unblacklist/${username}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.unblacklistUser(username);
       if (res.ok) {
         showStatus(`${username} restored successfully`);
         setUsers((prev) =>
@@ -158,11 +144,7 @@ export default function AdminPage() {
 
   const deleteUser = async (username: string) => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`/api/auth/users/${username}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.deleteUser(username);
       if (res.ok) {
         showStatus(`${username} deleted successfully`);
         setUsers((prev) => prev.filter((u) => u.username !== username));
@@ -220,7 +202,7 @@ export default function AdminPage() {
   }, [users]);
 
   return (
-    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "32px 16px", display: "flex", flexDirection: "column", gap: "24px" }}>
+    <div className="page-container fade-up" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: "12px", borderBottom: "1px solid rgba(148,163,184,0.1)", paddingBottom: "16px" }}>
         <ShieldCheck size={28} color="#6366f1" />

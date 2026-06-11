@@ -1,7 +1,24 @@
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 
+// ── Session Storage Token (Survives Refresh, Not in LocalStorage) ─────────────
+// The user requested not to use localStorage. We use sessionStorage instead so
+// that the token survives a tab refresh but is cleared when the tab is closed.
+
+export function getInMemoryToken(): string | null {
+  return sessionStorage.getItem("auth_token");
+}
+
+function setInMemoryToken(token: string | null) {
+  if (token) {
+    sessionStorage.setItem("auth_token", token);
+  } else {
+    sessionStorage.removeItem("auth_token");
+  }
+}
+
+// ── Types ──────────────────────────────────────────────────────────────────────
 interface User {
   username: string;
   email: string;
@@ -9,7 +26,6 @@ interface User {
 }
 
 interface AuthContextType {
-  token: string | null;
   user: User | null;
   sessionId: string | null;
   expiresAt: string | null;
@@ -21,140 +37,112 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// ── AuthProvider ───────────────────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
-  const [sessionId, setSessionId] = useState<string | null>(localStorage.getItem("sessionId"));
-  const [expiresAt, setExpiresAt] = useState<string | null>(localStorage.getItem("expiresAt"));
-  const [isSessionLoading, setIsSessionLoading] = useState(() => !!localStorage.getItem("token"));
-  const [user, setUser] = useState<User | null>(() => {
-    const savedUser = localStorage.getItem("user");
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  // Start in loading state; we validate via server on mount
+  const [isSessionLoading, setIsSessionLoading] = useState(true);
   const navigate = useNavigate();
+  const logoutTimerRef = useRef<number | null>(null);
 
   const clearSession = useCallback(() => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("sessionId");
-    localStorage.removeItem("expiresAt");
-    setToken(null);
+    setInMemoryToken(null);
     setUser(null);
     setSessionId(null);
     setExpiresAt(null);
-    window.dispatchEvent(new Event("auth:session-cleared"));
+    if (logoutTimerRef.current) window.clearTimeout(logoutTimerRef.current);
   }, []);
 
-  const login = (newToken: string, newUser: User, session?: { sessionId?: string; expiresAt?: string }) => {
-    localStorage.setItem("token", newToken);
-    localStorage.setItem("user", JSON.stringify(newUser));
-    if (session?.sessionId) {
-      localStorage.setItem("sessionId", session.sessionId);
-    }
-    if (session?.expiresAt) {
-      localStorage.setItem("expiresAt", session.expiresAt);
-    }
-    setToken(newToken);
+  const scheduleAutoLogout = useCallback((expiry: string) => {
+    const delay = new Date(expiry).getTime() - Date.now();
+    if (delay <= 0) { clearSession(); return; }
+    if (logoutTimerRef.current) window.clearTimeout(logoutTimerRef.current);
+    logoutTimerRef.current = window.setTimeout(() => {
+      clearSession();
+      navigate("/login");
+    }, delay);
+  }, [clearSession, navigate]);
+
+  const login = useCallback((newToken: string, newUser: User, session?: { sessionId?: string; expiresAt?: string }) => {
+    setInMemoryToken(newToken);
     setUser(newUser);
-    setSessionId(session?.sessionId || null);
-    setExpiresAt(session?.expiresAt || null);
+    setSessionId(session?.sessionId ?? null);
+    setExpiresAt(session?.expiresAt ?? null);
     setIsSessionLoading(false);
-    window.dispatchEvent(new Event("auth:session-started"));
+    if (session?.expiresAt) scheduleAutoLogout(session.expiresAt);
     navigate("/dashboard");
-  };
+  }, [navigate, scheduleAutoLogout]);
 
   const logout = useCallback(async () => {
-    const activeToken = localStorage.getItem("token");
-    if (activeToken) {
+    // Best-effort server logout
+    const token = getInMemoryToken();
+    if (token) {
       try {
         await fetch("/api/auth/logout", {
           method: "POST",
-          headers: { Authorization: `Bearer ${activeToken}` },
+          headers: { Authorization: `Bearer ${token}` },
         });
-      } catch (err) {
-        console.warn("[Auth] Logout request failed; clearing local session.", err);
-      }
+      } catch { /* ignore */ }
     }
-
     clearSession();
     setIsSessionLoading(false);
     navigate("/login");
   }, [clearSession, navigate]);
 
+  // ── On mount: validate session via server ─────────────────────────────────
   useEffect(() => {
-    if (!token) {
-      setIsSessionLoading(false);
-      return;
-    }
-
     let cancelled = false;
 
     async function validateSession() {
-      setIsSessionLoading(true);
+      const tokenToSend = getInMemoryToken();
+      if (!tokenToSend) {
+        setIsSessionLoading(false);
+        return;
+      }
+
       try {
         const res = await fetch("/api/auth/session", {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${tokenToSend}` },
         });
 
-        if (!res.ok) {
-          throw new Error("Session is no longer valid");
-        }
+        if (!res.ok) throw new Error("Session invalid");
 
         const data = await res.json();
         if (cancelled) return;
 
-        localStorage.setItem("user", JSON.stringify(data.user));
-        localStorage.setItem("sessionId", data.sessionId);
-        localStorage.setItem("expiresAt", data.expiresAt);
         setUser(data.user);
         setSessionId(data.sessionId);
         setExpiresAt(data.expiresAt);
-      } catch (err) {
-        if (!cancelled) {
-          clearSession();
-        }
+        if (data.expiresAt) scheduleAutoLogout(data.expiresAt);
+      } catch {
+        if (!cancelled) clearSession();
       } finally {
-        if (!cancelled) {
-          setIsSessionLoading(false);
-        }
+        if (!cancelled) setIsSessionLoading(false);
       }
     }
 
     validateSession();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [clearSession, token]);
-
+  // ── Listen for 401s from any fetch call ───────────────────────────────────
   useEffect(() => {
-    if (!expiresAt) return;
-
-    const delay = new Date(expiresAt).getTime() - Date.now();
-    if (delay <= 0) {
-      void logout();
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      void logout();
-    }, delay);
-
-    return () => window.clearTimeout(timer);
-  }, [expiresAt, logout]);
-
-  useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === "token" && !event.newValue) {
-        clearSession();
-      }
+    const handler = () => {
+      clearSession();
+      setIsSessionLoading(false);
+      navigate("/login");
     };
+    window.addEventListener("auth:unauthorized", handler);
+    return () => window.removeEventListener("auth:unauthorized", handler);
+  }, [clearSession, navigate]);
 
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, [clearSession]);
+  const isAuthenticated = !!user && !!getInMemoryToken();
 
   return (
-    <AuthContext.Provider value={{ token, user, sessionId, expiresAt, login, logout, isAuthenticated: !!token && !!user, isSessionLoading }}>
+    <AuthContext.Provider value={{ user, sessionId, expiresAt, login, logout, isAuthenticated, isSessionLoading }}>
       {children}
     </AuthContext.Provider>
   );
@@ -162,8 +150,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  };
+  if (context === undefined) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }

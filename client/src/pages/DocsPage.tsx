@@ -1,4 +1,5 @@
 import { BookOpen, Server, Code2, Globe, ArrowRight, Shield, Activity, Cpu, Database } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const ARCHITECTURE = [
   { label: "Telemetry Feed", desc: "Real-time asset tracking ingestion (AISStream, OpenSky)", icon: Globe, color: "#6366f1" },
@@ -10,7 +11,7 @@ const ARCHITECTURE = [
 
 export default function DocsPage() {
   return (
-    <div className="page-container fade-up" style={{ paddingBottom: "60px" }}>
+    <div className="page-container fade-up" style={{ paddingBottom: "60px", maxWidth: "1400px", margin: "0 auto" }}>
       <div className="page-header">
         <div className="section-eyebrow" style={{ marginBottom: "4px" }}>
           System Reference
@@ -94,7 +95,7 @@ export default function DocsPage() {
               HormuzWatch is an <strong>educational project</strong> and is not an operational intelligence product. The platform must not be used for navigation, military planning, security decisions, or any real-world safety-critical purpose.
             </p>
             <p style={{ fontSize: "0.875rem", color: "#94a3b8" }}>
-              Please review the full terms in the <a href="/DISCLAIMER.md" target="_blank" rel="noreferrer" style={{ color: "#6366f1", textDecoration: "none" }}>DISCLAIMER.md</a> file at the repository root.
+              Please review the full terms in the <Link to="/disclaimer" style={{ color: "#6366f1", textDecoration: "none" }}>Disclaimer</Link> page.
             </p>
           </div>
         </div>

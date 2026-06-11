@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import HormuzMap from "../components/HormuzMap";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useWebSocket } from "../context/WebSocketContext";
+import { useAuth } from "../context/AuthContext";
 import {
   LogIn,
   UserPlus,
@@ -17,6 +18,8 @@ import {
   Zap,
   Menu,
   X,
+  BookOpen,
+  LogOut,
 } from "lucide-react";
 import logo from "../assets/logo.png";
 
@@ -24,6 +27,13 @@ export default function PublicLandingPage() {
   const { tracks, isConnected } = useWebSocket();
   const [clock, setClock] = useState(new Date());
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
   
   // Fix #3: SSR Safety
   const [windowWidth, setWindowWidth] = useState(
@@ -52,8 +62,8 @@ export default function PublicLandingPage() {
   }, [isMobile]);
 
   const trackArray = Array.from(tracks.values());
-  const vessels = trackArray.filter((t) => !t.id.startsWith("FLIGHT-"));
-  const aircraft = trackArray.filter((t) => t.id.startsWith("FLIGHT-"));
+  const vessels = trackArray.filter((t) => !t.id?.startsWith("FLIGHT-"));
+  const aircraft = trackArray.filter((t) => t.id?.startsWith("FLIGHT-"));
   const threats = trackArray.filter((t) => t.anomalyScore >= 40);
   const criticals = trackArray.filter((t) => t.severity === "critical" || t.severity === "high");
 
@@ -159,12 +169,31 @@ export default function PublicLandingPage() {
           </button>
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <Link to="/login" className="btn btn-ghost">
-              <LogIn size={14} /> Sign In
+            <Link to="/docs" className="btn btn-ghost" style={{ color: "#94a3b8" }}>
+              <BookOpen size={14} /> Documentation
             </Link>
-            <Link to="/register" className="btn btn-primary">
-              <UserPlus size={14} /> Request Access
+            <Link to="/disclaimer" className="btn btn-ghost" style={{ color: "#94a3b8" }}>
+              <Shield size={14} /> Disclaimer
             </Link>
+            {isAuthenticated ? (
+              <>
+                <Link to="/dashboard" className="btn btn-ghost" style={{ color: "#818cf8" }}>
+                  <Activity size={14} /> Dashboard
+                </Link>
+                <button onClick={handleLogout} className="btn btn-ghost" style={{ color: "#fca5a5", borderColor: "rgba(239,68,68,0.2)", background: "rgba(239,68,68,0.06)" }}>
+                  <LogOut size={14} /> Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="btn btn-ghost">
+                  <LogIn size={14} /> Sign In
+                </Link>
+                <Link to="/register" className="btn btn-primary">
+                  <UserPlus size={14} /> Request Access
+                </Link>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -200,12 +229,31 @@ export default function PublicLandingPage() {
               {clock.toISOString().slice(11, 19)} UTC
             </span>
           </div>
-          <Link to="/login" className="btn btn-ghost" style={{ justifyContent: "center", width: "100%", padding: "10px" }} onClick={() => setMobileMenuOpen(false)}>
-            <LogIn size={14} /> Sign In
+          <Link to="/docs" className="btn btn-ghost" style={{ justifyContent: "center", width: "100%", padding: "10px", color: "#94a3b8" }} onClick={() => setMobileMenuOpen(false)}>
+            <BookOpen size={14} /> Documentation
           </Link>
-          <Link to="/register" className="btn btn-primary" style={{ justifyContent: "center", width: "100%", padding: "10px" }} onClick={() => setMobileMenuOpen(false)}>
-            <UserPlus size={14} /> Request Access
+          <Link to="/disclaimer" className="btn btn-ghost" style={{ justifyContent: "center", width: "100%", padding: "10px", color: "#94a3b8" }} onClick={() => setMobileMenuOpen(false)}>
+            <Shield size={14} /> Disclaimer
           </Link>
+          {isAuthenticated ? (
+            <>
+              <Link to="/dashboard" className="btn btn-ghost" style={{ justifyContent: "center", width: "100%", padding: "10px", color: "#818cf8" }} onClick={() => setMobileMenuOpen(false)}>
+                <Activity size={14} /> Dashboard
+              </Link>
+              <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="btn btn-ghost" style={{ justifyContent: "center", width: "100%", padding: "10px", color: "#fca5a5", borderColor: "rgba(239,68,68,0.2)", background: "rgba(239,68,68,0.06)" }}>
+                <LogOut size={14} /> Sign Out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="btn btn-ghost" style={{ justifyContent: "center", width: "100%", padding: "10px" }} onClick={() => setMobileMenuOpen(false)}>
+                <LogIn size={14} /> Sign In
+              </Link>
+              <Link to="/register" className="btn btn-primary" style={{ justifyContent: "center", width: "100%", padding: "10px" }} onClick={() => setMobileMenuOpen(false)}>
+                <UserPlus size={14} /> Request Access
+              </Link>
+            </>
+          )}
         </div>
       )}
 
@@ -422,6 +470,15 @@ export default function PublicLandingPage() {
           </div>
         )
       )}
+
+      {/* ─── WATERMARK ─── */}
+      <div style={{
+        position: "absolute", bottom: "10px", left: "50%", transform: "translateX(-50%)",
+        zIndex: 1000, color: "rgba(148,163,184,0.4)", fontSize: "0.65rem", fontFamily: "'Space Grotesk', sans-serif",
+        letterSpacing: "0.05em", pointerEvents: "auto",
+      }}>
+        Made by <a href="https://yahyaoncloud.vercel.app/about" target="_blank" rel="noreferrer" style={{ color: "rgba(148,163,184,0.6)", textDecoration: "none", transition: "color 0.2s" }} onMouseOver={(e) => e.currentTarget.style.color = "rgba(148,163,184,0.9)"} onMouseOut={(e) => e.currentTarget.style.color = "rgba(148,163,184,0.6)"}>Yahya</a>
+      </div>
 
       {/* ─── PULSE ANIMATION KEYFRAMES ─── */}
       <style>{`

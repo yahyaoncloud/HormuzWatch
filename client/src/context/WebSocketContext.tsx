@@ -57,7 +57,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     function connect() {
       if (!isMounted.current) return;
 
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("auth_token");
       if (!token) {
         setIsConnected(false);
         return;
@@ -65,8 +65,11 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = window.location.host;
-      let wsUrl = import.meta.env.VITE_WS_URL || `${protocol}//${host}/api/ws/stream`;
-      wsUrl += `?token=${token}`;
+      // VITE_WS_URL is the base host (e.g. ws://localhost:8080), not the full path
+      const wsBase = import.meta.env.VITE_WS_URL
+        ? `${import.meta.env.VITE_WS_URL}/ws/stream`
+        : `${protocol}//${host}/api/ws/stream`;
+      const wsUrl = `${wsBase}?token=${token}`;
 
       console.log(`[WebSocket] Connecting to ${wsUrl}...`);
       const ws = new WebSocket(wsUrl);

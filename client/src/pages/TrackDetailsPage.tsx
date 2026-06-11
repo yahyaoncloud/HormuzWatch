@@ -4,6 +4,7 @@ import { ArrowLeft, Activity, MapPin, AlertTriangle, Clock } from "lucide-react"
 import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { api } from "../services/api";
 
 function getSeverityColor(severity: string): string {
   switch (severity) {
@@ -22,7 +23,7 @@ export default function TrackDetailsPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch(`/api/tracks/${id}/history`)
+    api.getTrackHistory(id || "")
       .then((res) => {
         if (!res.ok) throw new Error("Track not found or server error");
         return res.json();

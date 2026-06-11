@@ -8,11 +8,12 @@ import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster/dist/leaflet.markercluster.js";
 import "leaflet.heat";
 import { useWebSocket } from "../context/WebSocketContext";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, LocateFixed } from "lucide-react";
+import { api } from "../services/api";
 
 const CENTER: [number, number] = [26.06, 56.28];
-const ZOOM = 9;
-const MIN_ZOOM = 6;
+const ZOOM = 6;
+const MIN_ZOOM = 4;
 const MAX_ZOOM = 13;
 const GEO_RADIUS_KM = 1000;
 
@@ -36,143 +37,112 @@ function getSeverityColor(severity: string): string {
 
 // ── Asset icon (geospatial marker shape) ─────────────────────────────────────
 function makeAssetIcon(severity: string, heading: number, selected: boolean) {
-  const color = getSeverityColor(severity);
-  const scale = selected ? "scale(1.4)" : "scale(1)";
+  const baseColor = getSeverityColor(severity);
+  const mixFill = selected ? "url(#cyanIndigoMix)" : baseColor;
+  const pulseColor = selected ? "#22d3ee" : baseColor;
+  
+  const scale = selected ? "scale(1.25)" : "scale(1)";
   const glow = selected
-    ? `drop-shadow(0 0 7px ${color}) drop-shadow(0 0 3px ${color})`
+    ? `drop-shadow(0 0 8px #818cf8)`
     : `drop-shadow(0 1px 4px rgba(0,0,0,0.7))`;
+    
+  const isCritical = severity === "critical";
+  const pulseSpeed = isCritical ? "1.5s" : "2.5s";
+  const shouldPulse = selected || isCritical;
+  
+  const pulseHtml = shouldPulse ? `
+    <circle cx="24" cy="24" r="12" fill="${pulseColor}">
+      <animate attributeName="r" values="12;26;12" dur="${pulseSpeed}" calcMode="spline" keySplines="0.4 0 0.2 1; 0.4 0 0.2 1" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.4;0;0.4" dur="${pulseSpeed}" calcMode="spline" keySplines="0.4 0 0.2 1; 0.4 0 0.2 1" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="24" cy="24" r="12" fill="none" stroke="${pulseColor}" stroke-width="0.5">
+      <animate attributeName="r" values="12;30" dur="${pulseSpeed}" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.3;0" dur="${pulseSpeed}" repeatCount="indefinite"/>
+    </circle>
+  ` : "";
+
   const html = `
-    <div style="transform: rotate(${heading}deg) ${scale}; color: ${color}; filter: ${glow}; transition: transform 0.25s ease, filter 0.25s ease;">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- Asset marker -->
-        <path d="M12 2 L20 17 L12 13 L4 17 Z" fill="currentColor" opacity="0.9"/>
-        <!-- Center dot -->
-        <circle cx="12" cy="10" r="2.2" fill="${selected ? '#ffffff' : 'rgba(255,255,255,0.6)'}"/>
-        <!-- Trail lines -->
-        <path d="M8 19 Q12 21 16 19" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" fill="none" opacity="0.5"/>
+    <div style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; position: relative;">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="overflow: visible;">
+        <defs>
+          <linearGradient id="cyanIndigoMix" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#22d3ee" />
+            <stop offset="100%" stop-color="#818cf8" />
+          </linearGradient>
+        </defs>
+        <!-- Heartbeat pulse -->
+        ${pulseHtml}
+        
+        <!-- Rotating simple arrow -->
+        <g transform="translate(12, 12) rotate(${heading}, 12, 12) ${scale}" style="transform-origin: 12px 12px; transition: transform 0.25s ease;" filter="${glow}">
+          <circle cx="12" cy="12" r="10" fill="rgba(15,23,42,0.8)" stroke="${mixFill}" stroke-width="1.5"/>
+          <path d="M12 4 L18 16 L12 13 L6 16 Z" fill="${mixFill}" opacity="0.95"/>
+        </g>
       </svg>
     </div>
   `;
   return L.divIcon({
     html,
     className: "track-div-icon",
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-  });
-}
-
-function makeBeaconIcon(_id: string, severity: string, heading: number, selected: boolean) {
-  const colors: Record<string, { ring: string; core: string; rim: string }> = {
-    critical: { ring: "#ef4444", core: "#ef4444", rim: "#fca5a5" },
-    high: { ring: "#b87333", core: "#b87333", rim: "#d4a574" },
-    medium: { ring: "#d97706", core: "#d97706", rim: "#fbbf24" },
-    low: { ring: "#22c55e", core: "#22c55e", rim: "#86efac" },
-  };
-
-  const c = colors[severity] ?? colors.low;
-  const isCritical = severity === "critical";
-  const isHigh = severity === "high";
-  const pulseSpeed = isCritical ? "1.7s" : isHigh ? "2.2s" : "3s";
-  const selColor = "#38bdf8";
-  const ringColor = selected ? selColor : c.ring;
-
-  // Heading vector (high/critical only, or selected)
-  const headingRad = ((heading - 90) * Math.PI) / 180;
-  const vx = (Math.cos(headingRad) * 7).toFixed(1);
-  const vy = (Math.sin(headingRad) * 7).toFixed(1);
-  const headingDot =
-    isHigh || isCritical || selected
-      ? `<line x1="0" y1="0" x2="${vx}" y2="${vy}" stroke="${ringColor}" stroke-width="1.2" stroke-linecap="round"/>
-         <circle cx="${vx}" cy="${vy}" r="1.2" fill="${ringColor}" opacity="0.8"/>`
-      : "";
-
-  // Crosshair ticks for critical / selected
-  const ticks =
-    isCritical || selected
-      ? `<line x1="-9" y1="0" x2="-6" y2="0" stroke="${ringColor}" stroke-width="0.8" opacity="0.7"/>
-         <line x1="6"  y1="0" x2="9"  y2="0" stroke="${ringColor}" stroke-width="0.8" opacity="0.7"/>
-         <line x1="0" y1="-9" x2="0" y2="-6" stroke="${ringColor}" stroke-width="0.8" opacity="0.7"/>
-         <line x1="0" y1="6"  x2="0" y2="9"  stroke="${ringColor}" stroke-width="0.8" opacity="0.7"/>`
-      : "";
-
-  // Static dashed lock ring for selected
-  const lockRing = selected
-    ? `<circle cx="16" cy="16" r="14" fill="none" stroke="${selColor}"
-         stroke-width="1" stroke-dasharray="4 3" opacity="0.7"/>`
-    : "";
-
-  // Animated outer ring (CSS @keyframes via style)
-  const ringAnim = `
-    @keyframes bo {
-      0%   { r:8;  opacity:0.55; }
-      100% { r:26; opacity:0; }
-    }
-    @keyframes bi {
-      0%   { r:5;  opacity:0.6; }
-      100% { r:16; opacity:0; }
-    }
-  `;
-
-  const html = `
-    <div style="width:32px;height:32px;position:relative;">
-      <svg viewBox="0 0 32 32" width="32" height="32" overflow="visible"
-           style="position:absolute;top:0;left:0;">
-        <style>${ringAnim}</style>
-        <g transform="translate(16,16)">
-          ${lockRing.replace('cx="16" cy="16"', 'cx="0" cy="0"')}
-          <circle cx="0" cy="0" r="8" fill="none" stroke="${ringColor}" stroke-width="0.9">
-            <animate attributeName="r"       values="8;26"     dur="${pulseSpeed}" repeatCount="indefinite"/>
-            <animate attributeName="opacity" values="0.55;0"   dur="${pulseSpeed}" repeatCount="indefinite"/>
-          </circle>
-          ${isCritical || selected ? `
-          <circle cx="0" cy="0" r="5" fill="none" stroke="${ringColor}" stroke-width="0.8">
-            <animate attributeName="r"       values="5;17"      dur="${pulseSpeed}" begin="${parseFloat(pulseSpeed) / 2}s" repeatCount="indefinite"/>
-            <animate attributeName="opacity" values="0.6;0"     dur="${pulseSpeed}" begin="${parseFloat(pulseSpeed) / 2}s" repeatCount="indefinite"/>
-          </circle>` : ""}
-          <circle cx="0" cy="0" r="4" fill="${selected ? selColor : c.core}"/>
-          <circle cx="0" cy="0" r="4" fill="none" stroke="${c.rim}" stroke-width="0.7" opacity="0.6"/>
-          ${selected ? `<circle cx="0" cy="0" r="2" fill="white" opacity="0.9"/>` : ""}
-          ${ticks}
-          ${headingDot}
-        </g>
-      </svg>
-    </div>
-  `;
-
-  return L.divIcon({
-    html,
-    className: "beacon-div-icon",
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
   });
 }
 
 // ── Aircraft icon (plane shape) ───────────────────────────────────────────────
 function makeAircraftIcon(severity: string, heading: number, selected: boolean) {
-  const color = selected ? "#38bdf8" : getSeverityColor(severity) === "#22c55e" ? "#38bdf8" : getSeverityColor(severity);
-  const scale = selected ? "scale(1.4)" : "scale(1)";
+  const baseColor = getSeverityColor(severity) === "#22c55e" && selected ? "#38bdf8" : getSeverityColor(severity);
+  const mixFill = selected ? "url(#cyanIndigoMixPlane)" : baseColor;
+  const pulseColor = selected ? "#22d3ee" : baseColor;
+  
+  const scale = selected ? "scale(1.25)" : "scale(1)";
   const glow = selected
-    ? `drop-shadow(0 0 7px ${color}) drop-shadow(0 0 3px ${color})`
+    ? `drop-shadow(0 0 8px #818cf8)`
     : `drop-shadow(0 1px 4px rgba(0,0,0,0.7))`;
+    
+  const isCritical = severity === "critical";
+  const pulseSpeed = isCritical ? "1.5s" : "2.5s";
+  const shouldPulse = selected || isCritical;
+  
+  const pulseHtml = shouldPulse ? `
+    <circle cx="24" cy="24" r="12" fill="${pulseColor}">
+      <animate attributeName="r" values="12;26;12" dur="${pulseSpeed}" calcMode="spline" keySplines="0.4 0 0.2 1; 0.4 0 0.2 1" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.4;0;0.4" dur="${pulseSpeed}" calcMode="spline" keySplines="0.4 0 0.2 1; 0.4 0 0.2 1" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="24" cy="24" r="12" fill="none" stroke="${pulseColor}" stroke-width="0.5">
+      <animate attributeName="r" values="12;30" dur="${pulseSpeed}" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.3;0" dur="${pulseSpeed}" repeatCount="indefinite"/>
+    </circle>
+  ` : "";
+
   const html = `
-    <div style="transform: rotate(${heading}deg) ${scale}; color: ${color}; filter: ${glow}; transition: transform 0.25s ease, filter 0.25s ease;">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-        <!-- Fuselage -->
-        <path d="M12 2 L15 9 L22 12 L15 15 L12 22 L9 15 L2 12 L9 9 Z" fill="currentColor" opacity="0.85"/>
-        <!-- Center dot -->
-        <circle cx="12" cy="12" r="2" fill="${selected ? '#ffffff' : 'rgba(255,255,255,0.5)'}"/>
+    <div style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; position: relative;">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="overflow: visible;">
+        <defs>
+          <linearGradient id="cyanIndigoMixPlane" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#22d3ee" />
+            <stop offset="100%" stop-color="#818cf8" />
+          </linearGradient>
+        </defs>
+        <!-- Heartbeat pulse -->
+        ${pulseHtml}
+        
+        <!-- Rotating directional plane as an arrow -->
+        <g transform="translate(12, 12) rotate(${heading}, 12, 12) ${scale}" style="transform-origin: 12px 12px; transition: transform 0.25s ease;" filter="${glow}">
+          <circle cx="12" cy="12" r="10" fill="rgba(15,23,42,0.8)" stroke="${mixFill}" stroke-width="1.5"/>
+          <path d="M12 4 L18 16 L12 13 L6 16 Z" fill="${mixFill}" opacity="0.95"/>
+        </g>
       </svg>
     </div>
   `;
   return L.divIcon({
     html,
     className: "track-div-icon",
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
   });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function makeIcon(id: string, severity: string, heading: number, selected: boolean) {
   const type = classifyObject(id);
   if (type === "aircraft") return makeAircraftIcon(severity, heading, selected);
@@ -439,7 +409,7 @@ export default function HormuzMap() {
 
     const fetchHeatmap = async (isFirstFetch = false) => {
       try {
-        const res = await fetch("/api/heatmap");
+        const res = await api.getHeatmap();
         if (!res.ok) throw new Error("Failed to fetch heatmap");
         const json = await res.json();
 
@@ -500,7 +470,7 @@ export default function HormuzMap() {
       const selected = track.id === selectedTrackId;
       const objectType = classifyObject(track.id);
       const marker = L.marker([track.lat, track.lon], {
-        icon: makeBeaconIcon(track.id, track.severity, track.heading || 0, selected),
+        icon: makeIcon(track.id, track.severity, track.heading || 0, selected),
       });
       marker.on("click", () => handleTrackSelect(track.id));
 
@@ -577,11 +547,7 @@ export default function HormuzMap() {
           btn.onclick = async () => {
             btn.innerHTML = "Saving...";
             try {
-              const res = await fetch(`/api/watchlist/${track.id}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ notes: "" })
-              });
+              const res = await api.addToWatchlist(track.id);
               if (res.ok) {
                 btn.innerHTML = "Saved to Watchlist ✓";
                 btn.style.color = "#22c55e";
@@ -626,42 +592,99 @@ export default function HormuzMap() {
 
   }, [map, tracks, selectedTrackId]);
 
+  // 4. Handle Map Background Clicks (Reset View)
+  useEffect(() => {
+    if (!map) return;
+    const onMapClick = () => {
+      setSearchParams(new URLSearchParams());
+      map.flyTo(CENTER, ZOOM, { duration: 1.5, animate: true });
+    };
+    map.on("click", onMapClick);
+    return () => {
+      map.off("click", onMapClick);
+    };
+  }, [map, setSearchParams]);
+
+  const handleRecenter = () => {
+    setSearchParams(new URLSearchParams());
+    map?.flyTo(CENTER, ZOOM, { duration: 1.5, animate: true });
+  };
+
   return (
-    <section style={{ position: "relative", height: "100%", width: "100%" }} aria-label="Strait of Hormuz operational map">
-      <div style={{ position: "relative", height: "100%", width: "100%", background: "black"
-      }}>
-        {/* Heatmap Toggle */}
-        <button
-          onClick={() => setShowHeatmap(!showHeatmap)}
-          style={{
+    <section style={{ position: "relative", height: "100%", width: "100%", background: "#050816" }} aria-label="Strait of Hormuz operational map">
+      <div style={{ position: "relative", height: "100%", width: "100%", background: "#050816" }}>
+        
+        {/* Map Controls */}
+        <div style={{
             position: "absolute",
             top: "12px",
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 500,
             display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            padding: "6px 14px",
-            background: showHeatmap ? "rgba(79,70,229,0.9)" : "rgba(5,8,22,0.88)",
-            border: showHeatmap
-              ? "1px solid rgba(99,102,241,0.6)"
-              : "1px solid rgba(148,163,184,0.2)",
-            borderRadius: "7px",
-            color: showHeatmap ? "#ffffff" : "#94a3b8",
-            fontSize: "0.75rem",
-            fontWeight: 600,
-            cursor: "pointer",
-            backdropFilter: "blur(10px)",
-            letterSpacing: "0.04em",
-            fontFamily: "'Space Grotesk', sans-serif",
-            boxShadow: showHeatmap ? "0 4px 16px rgba(79,70,229,0.35)" : "none",
-            transition: "all 0.2s ease",
-          }}
-        >
-          {showHeatmap ? <Eye size={13} /> : <EyeOff size={13} />}
-          {showHeatmap ? "Hide Heatmap" : "Show Heatmap"}
-        </button>
+            gap: "8px",
+        }}>
+          {/* Heatmap Toggle */}
+          <button
+            onClick={() => setShowHeatmap(!showHeatmap)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "6px 14px",
+              background: showHeatmap ? "rgba(79,70,229,0.9)" : "rgba(5,8,22,0.88)",
+              border: showHeatmap
+                ? "1px solid rgba(99,102,241,0.6)"
+                : "1px solid rgba(148,163,184,0.2)",
+              borderRadius: "7px",
+              color: showHeatmap ? "#ffffff" : "#94a3b8",
+              fontSize: "0.75rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              backdropFilter: "blur(10px)",
+              letterSpacing: "0.04em",
+              fontFamily: "'Space Grotesk', sans-serif",
+              boxShadow: showHeatmap ? "0 4px 16px rgba(79,70,229,0.35)" : "none",
+              transition: "all 0.2s ease",
+            }}
+          >
+            {showHeatmap ? <Eye size={13} /> : <EyeOff size={13} />}
+            {showHeatmap ? "Hide Heatmap" : "Show Heatmap"}
+          </button>
+
+          {/* Recenter Button */}
+          <button
+            onClick={handleRecenter}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "6px 14px",
+              background: "rgba(5,8,22,0.88)",
+              border: "1px solid rgba(148,163,184,0.2)",
+              borderRadius: "7px",
+              color: "#94a3b8",
+              fontSize: "0.75rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              backdropFilter: "blur(10px)",
+              letterSpacing: "0.04em",
+              fontFamily: "'Space Grotesk', sans-serif",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "#f8fafc";
+              e.currentTarget.style.background = "rgba(15,23,42,0.95)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "#94a3b8";
+              e.currentTarget.style.background = "rgba(5,8,22,0.88)";
+            }}
+          >
+            <LocateFixed size={13} />
+            Recenter View
+          </button>
+        </div>
 
         <MapContainer
           center={CENTER}

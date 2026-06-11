@@ -73,7 +73,7 @@ func StartAISStream(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *i
 		subMsg := AISStreamSubscription{
 			APIKey:             apiKey,
 			BoundingBoxes:      [][][2]float64{boundingBox},
-			FilterMessageTypes: []string{"PositionReport"},
+			// FilterMessageTypes: []string{"PositionReport"},
 		}
 
 		subJSON, _ := json.Marshal(subMsg)
@@ -97,6 +97,7 @@ func StartAISStream(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *i
 
 			var aisMsg AISMessage
 			if err := json.Unmarshal(message, &aisMsg); err != nil {
+				log.Printf("[AISStream] Unmarshal error: %v. Raw message: %s", err, string(message))
 				continue
 			}
 

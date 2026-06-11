@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
+import { api } from "../services/api";
 
 interface SettingsState {
   retention_days: number;
@@ -37,7 +38,7 @@ export default function SettingsPage() {
   const [messageType, setMessageType] = useState<"success" | "error">("success");
 
   useEffect(() => {
-    fetch("/api/settings")
+    api.getSettings()
       .then((res) => res.json())
       .then((data) => {
         setSettings(data);
@@ -49,11 +50,7 @@ export default function SettingsPage() {
     setSaving(true);
     setMessage("");
     try {
-      const res = await fetch("/api/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
-      });
+      const res = await api.updateSettings(settings);
       if (res.ok) {
         setMessage("All settings saved successfully.");
         setMessageType("success");
@@ -411,7 +408,6 @@ export default function SettingsPage() {
       <div
         style={{
           marginTop: "24px",
-          maxWidth: "960px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",

@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import type { RouteObject } from "react-router-dom";
 import { Outlet } from "react-router-dom";
 import RootLayout from "../layouts/RootLayout";
+import PublicLayout from "../layouts/PublicLayout";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorBoundary from "../components/ErrorBoundary";
 import AboutPage from "../pages/AboutPage";
@@ -15,13 +16,14 @@ const DashboardPage = lazy(() => import("../pages/DashboardPage"));
 const AnalyticsPage = lazy(() => import("../pages/AnalyticsPage"));
 const InsightsPage = lazy(() => import("../pages/InsightsPage"));
 const DocsPage = lazy(() => import("../pages/DocsPage"));
+const PublicDocsPage = lazy(() => import("../pages/PublicDocsPage"));
 const SettingsPage = lazy(() => import("../pages/SettingsPage"));
 const TrackDetailsPage = lazy(() => import("../pages/TrackDetailsPage"));
 const PublicLandingPage = lazy(() => import("../pages/PublicLandingPage"));
-const LoginPage = lazy(() => import("../pages/LoginPage"));
-const RegisterPage = lazy(() => import("../pages/RegisterPage"));
+const AuthPage = lazy(() => import("../pages/AuthPage"));
 const AdminPage = lazy(() => import("../pages/AdminPage"));
 const PublicLivePage = lazy(() => import("../pages/PublicLivePage"));
+const DisclaimerPage = lazy(() => import("../pages/DisclaimerPage"));
 
 // Lazy load fallback for async route loading
 const LazyPageWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -54,7 +56,7 @@ export const routes: RouteObject[] = [
         path: "login",
         element: (
           <LazyPageWrapper>
-            <LoginPage />
+            <AuthPage defaultTab="login" />
           </LazyPageWrapper>
         ),
       },
@@ -62,7 +64,7 @@ export const routes: RouteObject[] = [
         path: "register",
         element: (
           <LazyPageWrapper>
-            <RegisterPage />
+            <AuthPage defaultTab="register" />
           </LazyPageWrapper>
         ),
       },
@@ -79,20 +81,46 @@ export const routes: RouteObject[] = [
         },
       },
 
-      // Public App Routes (Wrapped in RootLayout with Sidebar)
+      // Public Docs (self-contained layout)
       {
-        element: <RootLayout />,
+        path: "docs",
+        element: (
+          <LazyPageWrapper>
+            <PublicDocsPage />
+          </LazyPageWrapper>
+        ),
+        handle: {
+          title: "Documentation",
+          description: "API reference and system documentation",
+        },
+      },
+
+      // Public App Routes (with PublicLayout)
+      {
+        element: <PublicLayout />,
         children: [
           {
-            path: "docs",
+            path: "disclaimer",
             element: (
               <LazyPageWrapper>
-                <DocsPage />
+                <DisclaimerPage />
               </LazyPageWrapper>
             ),
             handle: {
-              title: "Documentation",
-              description: "API reference and system documentation",
+              title: "Disclaimer",
+              description: "Terms of Use and Disclaimer",
+            },
+          },
+          {
+            path: "disclaimer.md",
+            element: (
+              <LazyPageWrapper>
+                <DisclaimerPage />
+              </LazyPageWrapper>
+            ),
+            handle: {
+              title: "Disclaimer",
+              description: "Terms of Use and Disclaimer",
             },
           },
         ],
@@ -191,6 +219,18 @@ export const routes: RouteObject[] = [
             handle: {
               title: "Settings",
               description: "System configuration and data retention",
+            },
+          },
+          {
+            path: "docs",
+            element: (
+              <LazyPageWrapper>
+                <DocsPage />
+              </LazyPageWrapper>
+            ),
+            handle: {
+              title: "Documentation",
+              description: "Internal system reference and API documentation",
             },
           },
           {

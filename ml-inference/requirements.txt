@@ -1,4 +1,4 @@
-# HormuzWatch ML Inference — Vercel Deployment
+# HormuzWatch ML Inference — Render Deployment
 # Runtime dependencies only (no training deps, no pandas)
 # Dev/training extras: pip install pandas
 
@@ -8,6 +8,10 @@ pydantic==2.7.2
 joblib==1.4.2
 shap==0.45.1
 
-# ─── Dev / test only (not bundled into Vercel) ───────────────────────────────
+# Added for Render Deployment
+fastapi==0.111.0
+uvicorn==0.30.1
+
+# ─── Dev / test only (not deployed) ───────────────────────────────
 # pytest==8.2.2
 # pandas==2.2.2     # Required by api/train.py — not deployed

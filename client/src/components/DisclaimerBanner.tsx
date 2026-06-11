@@ -113,7 +113,7 @@ export default function DisclaimerBanner() {
           }}
         >
           <Link
-            to="/docs"
+            to="/disclaimer"
             style={{
               color: "#6366f1",
               fontSize: "0.875rem",

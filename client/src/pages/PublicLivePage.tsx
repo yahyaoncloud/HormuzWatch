@@ -10,8 +10,14 @@ import {
   Activity,
   ShieldAlert,
   Info,
+  Menu,
+  X,
+  LogOut,
+  LogIn,
 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
+import { useAuth } from "../context/AuthContext";
 
 interface TopTrace {
   trackId: string;
@@ -42,6 +48,15 @@ export default function PublicLivePage() {
   const [error, setError] = useState("");
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
 
   const connectSSE = () => {
     if (eventSourceRef.current) {
@@ -124,6 +139,7 @@ export default function PublicLivePage() {
             background: "rgba(15,23,42,0.4)",
             display: "flex", alignItems: "center", justifyContent: "center",
             overflow: "hidden",
+            borderRadius: "6px"
           }}>
             <img src={logo} alt="HormuzWatch" style={{ width: "120%", height: "120%", objectFit: "cover" }} />
           </div>
@@ -156,24 +172,64 @@ export default function PublicLivePage() {
             {connected ? <Wifi size={12} /> : <WifiOff size={12} />}
             {connected ? "LIVE" : "OFFLINE"}
           </div>
-          <a
-            href="/login"
+
+          <div className="hide-mobile" style={{ display: "flex", gap: "8px" }}>
+            {isAuthenticated ? (
+              <>
+                <Link to="/dashboard" style={{ padding: "6px 14px", borderRadius: "6px", background: "rgba(79,70,229,0.15)", border: "1px solid rgba(99,102,241,0.3)", color: "#818cf8", fontSize: "0.75rem", fontWeight: 600, textDecoration: "none" }}>
+                  Dashboard
+                </Link>
+                <button onClick={handleLogout} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 14px", borderRadius: "6px", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#fca5a5", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>
+                  <LogOut size={13} /> Sign Out
+                </button>
+              </>
+            ) : (
+              <Link to="/login" style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 14px", borderRadius: "6px", background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)", color: "#a5b4fc", fontSize: "0.75rem", fontWeight: 600, textDecoration: "none" }}>
+                <LogIn size={13} /> Operator Login
+              </Link>
+            )}
+          </div>
+
+          <button
+            className="show-mobile"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             style={{
-              padding: "6px 14px", borderRadius: "6px",
-              fontSize: "0.75rem", fontWeight: 600,
-              background: "rgba(99,102,241,0.15)",
-              border: "1px solid rgba(99,102,241,0.3)",
-              color: "#a5b4fc", textDecoration: "none",
-              fontFamily: "'Space Grotesk', sans-serif",
+              background: "transparent", border: "1px solid rgba(148,163,184,0.2)",
+              color: "#f8fafc", padding: "6px", borderRadius: "6px", cursor: "pointer",
+              display: "none"
             }}
           >
-            Operator Login
-          </a>
+            {isMobileMenuOpen ? <X size={16} /> : <Menu size={16} />}
+          </button>
         </div>
       </header>
 
+      {/* Mobile Menu Dropdown */}
+      {isMobileMenuOpen && (
+        <div className="show-mobile" style={{
+          flexDirection: "column", background: "rgba(10,15,26,0.98)", backdropFilter: "blur(12px)",
+          borderBottom: "1px solid rgba(148,163,184,0.1)", padding: "16px 24px", gap: "12px",
+          position: "sticky", top: "69px", zIndex: 99,
+        }}>
+          {isAuthenticated ? (
+            <>
+              <Link to="/dashboard" onClick={() => setIsMobileMenuOpen(false)} style={{ display: "flex", alignItems: "center", gap: "6px", color: "#818cf8", fontSize: "0.875rem", fontWeight: 600, textDecoration: "none", padding: "8px 0" }}>
+                <Activity size={14} /> Dashboard
+              </Link>
+              <button onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "6px", color: "#fca5a5", fontSize: "0.875rem", fontWeight: 600, cursor: "pointer", background: "transparent", border: "none", padding: "8px 0", width: "100%", textAlign: "left" }}>
+                <LogOut size={14} /> Sign Out
+              </button>
+            </>
+          ) : (
+            <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} style={{ display: "block", textAlign: "center", width: "100%", padding: "10px", borderRadius: "6px", fontSize: "0.875rem", fontWeight: 600, background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)", color: "#a5b4fc", textDecoration: "none" }}>
+              Operator Login
+            </Link>
+          )}
+        </div>
+      )}
+
       {/* Main Content */}
-      <main style={{ maxWidth: "1400px", margin: "0 auto", padding: "24px" }}>
+      <main className="page-container" style={{ margin: "0 auto", padding: "24px" }}>
         {/* Title Section */}
         <div style={{ marginBottom: "24px", textAlign: "center" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginBottom: "8px" }}>

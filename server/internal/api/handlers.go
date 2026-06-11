@@ -222,7 +222,10 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 				if err := rows.Scan(&p.TrackID, &p.AssetName, &p.Timestamp, &p.Lat, &p.Lon, &p.Speed, &p.PreviousSpeed, &p.Heading, &p.CourseDelta, &p.AisAgeMinutes, &p.HotZoneDistanceNm); err == nil {
 					// Add small delay to prevent overflowing the websocket writer too aggressively
 					time.Sleep(2 * time.Millisecond)
-					client.Send <- hub.Message{Type: "telemetry", Data: p}
+					func() {
+						defer func() { recover() }()
+						client.Send <- hub.Message{Type: "telemetry", Data: p}
+					}()
 				}
 			}
 			rows.Close()
@@ -245,7 +248,10 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 					json.Unmarshal([]byte(reasonsJSON), &res.Reasons)
 					json.Unmarshal([]byte(actionsJSON), &res.Actions)
 					time.Sleep(2 * time.Millisecond)
-					client.Send <- hub.Message{Type: "anomaly", Data: res}
+					func() {
+						defer func() { recover() }()
+						client.Send <- hub.Message{Type: "anomaly", Data: res}
+					}()
 				}
 			}
 			rows.Close()

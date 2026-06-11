@@ -39,6 +39,7 @@ export default function RootLayout() {
   const location = useLocation();
   const [darkMode, setDarkMode] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopMoreOpen, setDesktopMoreOpen] = useState(false);
   const { isConnected, tracks } = useWebSocket();
   const { user, logout, expiresAt } = useAuth();
   const visibleNavItems = navItems.filter((item) => !item.adminOnly || isPrimaryAdmin(user));
@@ -56,11 +57,12 @@ export default function RootLayout() {
           style={{
             maxWidth: "1400px",
             margin: "0 auto",
-            padding: "0 16px",
-            height: "64px",
+            minHeight: "64px",
+            padding: "10px 16px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            flexWrap: "wrap",
             gap: "16px",
           }}
         >
@@ -124,12 +126,12 @@ export default function RootLayout() {
               gap: "4px",
               flex: 1,
               justifyContent: "center",
-              flexWrap: "nowrap",
-              overflow: "hidden",
+              flexWrap: "wrap",
             }}
             className="hide-mobile"
           >
-            {visibleNavItems.map(({ path, icon: Icon, label }) => {
+            {/* Primary Links */}
+            {visibleNavItems.slice(0, 3).map(({ path, icon: Icon, label }) => {
               const active =
                 location.pathname === path ||
                 (path === "/dashboard" && location.pathname === "/");
@@ -144,6 +146,60 @@ export default function RootLayout() {
                 </Link>
               );
             })}
+
+            {/* Dropdown for More Links */}
+            {visibleNavItems.length > 3 && (
+              <div 
+                style={{ position: "relative" }} 
+                onMouseEnter={() => setDesktopMoreOpen(true)}
+                onMouseLeave={() => setDesktopMoreOpen(false)}
+              >
+                <button className="nav-link" style={{ cursor: "pointer", background: "transparent", border: "none" }}>
+                  <Menu size={15} strokeWidth={2} />
+                  <span>More</span>
+                </button>
+                
+                {desktopMoreOpen && (
+                  <div style={{
+                    position: "absolute",
+                    top: "100%",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    paddingTop: "8px", // Invisible bridge to prevent hover loss
+                    zIndex: 1000,
+                  }}>
+                    <div style={{
+                      background: "rgba(15,23,42,0.98)",
+                      border: "1px solid rgba(148,163,184,0.15)",
+                      borderRadius: "8px",
+                      padding: "8px",
+                      minWidth: "160px",
+                      backdropFilter: "blur(12px)",
+                      boxShadow: "0 12px 32px rgba(0,0,0,0.6)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "4px",
+                    }}>
+                      {visibleNavItems.slice(3).map(({ path, icon: Icon, label }) => {
+                        const active = location.pathname === path;
+                        return (
+                          <Link
+                            key={path}
+                            to={path}
+                            className={`nav-link ${active ? "nav-link-active" : ""}`}
+                            style={{ width: "100%", justifyContent: "flex-start", padding: "8px 12px", border: "none" }}
+                            onClick={() => setDesktopMoreOpen(false)}
+                          >
+                            <Icon size={15} strokeWidth={active ? 2.5 : 2} />
+                            <span>{label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </nav>
 
           {/* Right Controls */}
@@ -311,26 +367,33 @@ export default function RootLayout() {
       </header>
 
       {/* ── Page Content ── */}
-      <main style={{ position: "relative", zIndex: 1, flex: 1 }}>
+      <main style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column" }}>
         <Outlet />
       </main>
 
       {/* ── Footer ── */}
-      <footer style={{
-        padding: "24px 16px",
-        textAlign: "center",
-        fontSize: "0.6875rem",
-        color: "#64748b",
-        fontFamily: "'JetBrains Mono', monospace",
-        borderTop: "1px solid rgba(148,163,184,0.05)",
-        zIndex: 1,
-        position: "relative",
-        background: "rgba(11,18,32,0.8)",
-        letterSpacing: "0.05em",
-        marginTop: "auto"
-      }}>
-        HORMUZWATCH COMMAND AND CONTROL © {new Date().getFullYear()} — UNCLASSIFIED // FOR OFFICIAL USE ONLY
-      </footer>
+      {location.pathname !== "/dashboard" && location.pathname !== "/" && (
+        <footer style={{
+          padding: "24px 16px",
+          textAlign: "center",
+          fontSize: "0.6875rem",
+          color: "#64748b",
+          fontFamily: "'JetBrains Mono', monospace",
+          borderTop: "1px solid rgba(148,163,184,0.05)",
+          zIndex: 1,
+          position: "relative",
+          background: "rgba(11,18,32,0.8)",
+          letterSpacing: "0.05em",
+          marginTop: "auto"
+        }}>
+          <div style={{ marginBottom: "8px" }}>
+            HORMUZWATCH COMMAND AND CONTROL © {new Date().getFullYear()} — UNCLASSIFIED // FOR OFFICIAL USE ONLY
+          </div>
+          <div>
+            <Link to="/disclaimer" style={{ color: "#818cf8", textDecoration: "none" }}>Disclaimer & Terms of Use</Link>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }
