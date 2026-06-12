@@ -73,10 +73,10 @@ function makeAssetIcon(severity: string, heading: number, selected: boolean) {
         <!-- Heartbeat pulse -->
         ${pulseHtml}
         
-        <!-- Rotating simple arrow -->
+        <!-- Rotating vessel shape -->
         <g transform="translate(12, 12) rotate(${heading}, 12, 12) ${scale}" style="transform-origin: 12px 12px; transition: transform 0.25s ease;" filter="${glow}">
           <circle cx="12" cy="12" r="10" fill="rgba(15,23,42,0.8)" stroke="${mixFill}" stroke-width="1.5"/>
-          <path d="M12 4 L18 16 L12 13 L6 16 Z" fill="${mixFill}" opacity="0.95"/>
+          <path d="M12 4 L16 8 L16 18 L8 18 L8 8 Z" fill="${mixFill}" opacity="0.95"/>
         </g>
       </svg>
     </div>
@@ -348,13 +348,11 @@ export default function HormuzMap() {
         blur: 25,
         maxZoom: 13,
         gradient: {
-          0.0:  "#0f172a",
-          0.15: "#312e81",
-          0.35: "#1d4ed8",
-          0.55: "#d97706",
-          0.75: "#b87333",
-          0.9:  "#ef4444",
-          1.0:  "#fca5a5",
+          0.2: "#0000ff", // Blue
+          0.4: "#00ffff", // Cyan
+          0.6: "#00ff00", // Green
+          0.8: "#ffff00", // Yellow
+          1.0: "#ff0000", // Red
         },
       });
     }

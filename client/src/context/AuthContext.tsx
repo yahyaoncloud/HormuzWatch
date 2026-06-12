@@ -1,10 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-
-// ── Session Storage Token (Survives Refresh, Not in LocalStorage) ─────────────
-// The user requested not to use localStorage. We use sessionStorage instead so
-// that the token survives a tab refresh but is cleared when the tab is closed.
+import { supabase } from "../services/supabase";
 
 export function getInMemoryToken(): string | null {
   return sessionStorage.getItem("auth_token");
@@ -18,7 +15,6 @@ function setInMemoryToken(token: string | null) {
   }
 }
 
-// ── Types ──────────────────────────────────────────────────────────────────────
 interface User {
   username: string;
   email: string;
@@ -37,33 +33,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// ── AuthProvider ───────────────────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
-  // Start in loading state; we validate via server on mount
   const [isSessionLoading, setIsSessionLoading] = useState(true);
   const navigate = useNavigate();
-  const logoutTimerRef = useRef<number | null>(null);
 
   const clearSession = useCallback(() => {
     setInMemoryToken(null);
     setUser(null);
     setSessionId(null);
     setExpiresAt(null);
-    if (logoutTimerRef.current) window.clearTimeout(logoutTimerRef.current);
   }, []);
-
-  const scheduleAutoLogout = useCallback((expiry: string) => {
-    const delay = new Date(expiry).getTime() - Date.now();
-    if (delay <= 0) { clearSession(); return; }
-    if (logoutTimerRef.current) window.clearTimeout(logoutTimerRef.current);
-    logoutTimerRef.current = window.setTimeout(() => {
-      clearSession();
-      navigate("/login");
-    }, delay);
-  }, [clearSession, navigate]);
 
   const login = useCallback((newToken: string, newUser: User, session?: { sessionId?: string; expiresAt?: string }) => {
     setInMemoryToken(newToken);
@@ -71,62 +53,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSessionId(session?.sessionId ?? null);
     setExpiresAt(session?.expiresAt ?? null);
     setIsSessionLoading(false);
-    if (session?.expiresAt) scheduleAutoLogout(session.expiresAt);
     navigate("/dashboard");
-  }, [navigate, scheduleAutoLogout]);
+  }, [navigate]);
 
   const logout = useCallback(async () => {
-    // Best-effort server logout
-    const token = getInMemoryToken();
-    if (token) {
-      try {
-        await fetch("/api/auth/logout", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } catch { /* ignore */ }
-    }
+    await supabase.auth.signOut();
     clearSession();
     setIsSessionLoading(false);
     navigate("/login");
   }, [clearSession, navigate]);
 
-  // ── On mount: validate session via server ─────────────────────────────────
   useEffect(() => {
     let cancelled = false;
 
-    async function validateSession() {
-      const tokenToSend = getInMemoryToken();
-      if (!tokenToSend) {
-        setIsSessionLoading(false);
-        return;
-      }
-
-      try {
-        const res = await fetch("/api/auth/session", {
-          headers: { Authorization: `Bearer ${tokenToSend}` },
+    // Check active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return;
+      if (session) {
+        setInMemoryToken(session.access_token);
+        setUser({
+          username: session.user.email?.split("@")[0] || "SupabaseUser",
+          email: session.user.email || "",
+          role: "admin", // Defaulting to admin for MVP
         });
-
-        if (!res.ok) throw new Error("Session invalid");
-
-        const data = await res.json();
-        if (cancelled) return;
-
-        setUser(data.user);
-        setSessionId(data.sessionId);
-        setExpiresAt(data.expiresAt);
-        if (data.expiresAt) scheduleAutoLogout(data.expiresAt);
-      } catch {
-        if (!cancelled) clearSession();
-      } finally {
-        if (!cancelled) setIsSessionLoading(false);
+        setSessionId(session.user.id);
+        setExpiresAt(new Date((session.expires_at || 0) * 1000).toISOString());
+      } else {
+        clearSession();
       }
-    }
+      setIsSessionLoading(false);
+    });
 
-    validateSession();
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
+      if (session) {
+        setInMemoryToken(session.access_token);
+        setUser({
+          username: session.user.email?.split("@")[0] || "SupabaseUser",
+          email: session.user.email || "",
+          role: "admin",
+        });
+        setSessionId(session.user.id);
+        setExpiresAt(new Date((session.expires_at || 0) * 1000).toISOString());
+      } else {
+        clearSession();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [clearSession]);
 
   // ── Listen for 401s from any fetch call ───────────────────────────────────
   useEffect(() => {
