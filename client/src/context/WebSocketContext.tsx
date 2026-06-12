@@ -133,6 +133,28 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
       ws.onerror = (err) => {
         console.error("[WebSocket] Error:", err);
+        // Fallback to dummy data if API is not working
+        fetch("/dummy-vessels.json")
+          .then(res => res.json())
+          .then(data => {
+            data.forEach((msg: any) => {
+              if (msg.type === "track_update" || msg.type === "telemetry") {
+                const track: Track = {
+                  id: msg.data.id,
+                  name: msg.data.name,
+                  lat: msg.data.lat,
+                  lon: msg.data.lon,
+                  speed: msg.data.speed,
+                  heading: msg.data.heading,
+                  anomalyScore: msg.data.anomalyScore || 0,
+                  severity: msg.data.severity || "low",
+                  lastUpdate: msg.data.lastUpdate || new Date().toISOString(),
+                };
+                setTracks((prev) => new Map(prev).set(track.id, track));
+              }
+            });
+          })
+          .catch(e => console.error("Failed to load dummy vessels", e));
       };
 
       ws.onclose = (event) => {

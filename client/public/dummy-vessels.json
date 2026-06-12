@@ -1,0 +1,72 @@
+[
+  {
+    "type": "track_update",
+    "data": {
+      "id": "VESSEL-001",
+      "name": "MV PACIFIC",
+      "lat": 26.35,
+      "lon": 55.60,
+      "speed": 12.5,
+      "heading": 85,
+      "anomalyScore": 15,
+      "severity": "low",
+      "lastUpdate": "2026-06-12T00:00:00Z"
+    }
+  },
+  {
+    "type": "track_update",
+    "data": {
+      "id": "VESSEL-002",
+      "name": "STELLA MARIS",
+      "lat": 26.70,
+      "lon": 56.10,
+      "speed": 14.2,
+      "heading": 110,
+      "anomalyScore": 30,
+      "severity": "medium",
+      "lastUpdate": "2026-06-12T00:00:00Z"
+    }
+  },
+  {
+    "type": "track_update",
+    "data": {
+      "id": "VESSEL-003",
+      "name": "UNKNOWN-X",
+      "lat": 26.20,
+      "lon": 56.40,
+      "speed": 22.0,
+      "heading": 45,
+      "anomalyScore": 85,
+      "severity": "critical",
+      "lastUpdate": "2026-06-12T00:00:00Z"
+    }
+  },
+  {
+    "type": "track_update",
+    "data": {
+      "id": "VESSEL-004",
+      "name": "OASIS 1",
+      "lat": 25.95,
+      "lon": 55.80,
+      "speed": 8.0,
+      "heading": 270,
+      "anomalyScore": 10,
+      "severity": "low",
+      "lastUpdate": "2026-06-12T00:00:00Z"
+    }
+  },
+  {
+    "type": "track_update",
+    "data": {
+      "id": "VESSEL-005",
+      "name": "GULF STAR",
+      "lat": 26.50,
+      "lon": 55.90,
+      "speed": 16.5,
+      "heading": 190,
+      "anomalyScore": 65,
+      "severity": "high",
+      "lastUpdate": "2026-06-12T00:00:00Z"
+    }
+  }
+]
