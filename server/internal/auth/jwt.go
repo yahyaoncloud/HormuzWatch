@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,7 +13,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 
 	"Geospatial-harmuz-watch/server/internal/config"
-	"Geospatial-harmuz-watch/server/internal/db"
 )
 
 type AuthenticatedUser struct {
@@ -77,12 +75,28 @@ func JWTMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		authUser, err := ValidateSessionClaims(claims)
-		if err != nil {
-			log.Printf("Session validation failed: %v", err)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired session"})
-			c.Abort()
-			return
+		email, _ := claims["email"].(string)
+		sub, _ := claims["sub"].(string)
+		if sub == "" {
+			sub, _ = claims["username"].(string) // fallback for legacy custom JWTs
+		}
+		
+		role, _ := claims["role"].(string)
+		if strings.EqualFold(email, config.PrimaryAdminEmail) {
+			role = "admin"
+		}
+
+		sessionID, _ := claims["session_id"].(string)
+		if sessionID == "" {
+			sessionID, _ = claims["sid"].(string)
+		}
+
+		authUser := AuthenticatedUser{
+			Username:  sub,
+			Email:     email,
+			Role:      role,
+			SessionID: sessionID,
+			Status:    "approved",
 		}
 
 		// Attach claims to context
@@ -101,27 +115,6 @@ func AdminOnlyMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		claimsValue, exists := c.Get("user")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authenticated user"})
-			c.Abort()
-			return
-		}
-
-		claims, ok := claimsValue.(jwt.MapClaims)
-		if !ok {
-			c.JSON(http.StatusForbidden, gin.H{"error": "invalid token claims"})
-			c.Abort()
-			return
-		}
-
-		username, ok := claims["username"].(string)
-		if !ok || username == "" {
-			c.JSON(http.StatusForbidden, gin.H{"error": "invalid token subject"})
-			c.Abort()
-			return
-		}
-
 		authUser, ok := c.Get("authUser")
 		if !ok {
 			c.JSON(http.StatusForbidden, gin.H{"error": "admin access required"})
@@ -130,7 +123,7 @@ func AdminOnlyMiddleware() gin.HandlerFunc {
 		}
 
 		user, ok := authUser.(AuthenticatedUser)
-		if !ok || user.Username != username || !strings.EqualFold(user.Email, config.PrimaryAdminEmail) || user.Role != "admin" || user.Status != "approved" {
+		if !ok || !strings.EqualFold(user.Email, config.PrimaryAdminEmail) {
 			c.JSON(http.StatusForbidden, gin.H{"error": "admin access required"})
 			c.Abort()
 			return
@@ -158,41 +151,7 @@ func GenerateToken(username, email, role, sessionID string, duration time.Durati
 	return token.SignedString([]byte(secret))
 }
 
-func ValidateSessionClaims(claims jwt.MapClaims) (AuthenticatedUser, error) {
-	username, ok := claims["username"].(string)
-	if !ok || username == "" {
-		return AuthenticatedUser{}, fmt.Errorf("missing username claim")
-	}
 
-	sessionID, ok := claims["sid"].(string)
-	if !ok || sessionID == "" {
-		return AuthenticatedUser{}, fmt.Errorf("missing session claim")
-	}
-
-	now := time.Now().UTC().Format(time.RFC3339)
-	var user AuthenticatedUser
-	var revokedAt sql.NullString
-	err := db.QueryRow(`
-		SELECT u.username, u.email, u.role, u.status, s.id, s.revoked_at
-		FROM sessions s
-		JOIN users u ON u.username = s.username
-		WHERE s.id = ? AND s.username = ? AND s.expires_at > ?;
-	`, sessionID, username, now).Scan(&user.Username, &user.Email, &user.Role, &user.Status, &user.SessionID, &revokedAt)
-	if err != nil {
-		return AuthenticatedUser{}, err
-	}
-
-	if revokedAt.Valid {
-		return AuthenticatedUser{}, fmt.Errorf("session revoked")
-	}
-
-	if user.Status != "approved" {
-		return AuthenticatedUser{}, fmt.Errorf("user is not approved")
-	}
-
-	_, _ = db.Exec("UPDATE sessions SET last_seen_at = ? WHERE id = ?;", now, sessionID)
-	return user, nil
-}
 
 // ValidateToken validates a JWT token
 func ValidateToken(tokenString string) (jwt.MapClaims, error) {

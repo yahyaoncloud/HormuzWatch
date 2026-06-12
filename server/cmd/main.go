@@ -108,8 +108,8 @@ func main() {
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// Authentication endpoints (always public)
-	router.POST("/auth/register", auth.Register)
-	router.POST("/auth/login", auth.Login)
+	// router.POST("/auth/register", auth.Register)
+	// router.POST("/auth/login", auth.Login)
 
 	// Public streaming endpoints (no auth required)
 	router.GET("/public/top-traces", api.GetTopTraces)
