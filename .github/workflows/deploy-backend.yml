@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - azure-dep  # → prod
-      - mvp        # → dev
     paths:
       - "server/**"
       - "ml-service/**"
