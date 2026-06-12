@@ -19,7 +19,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.*
 import io.hormuzwatch.deploy.auth.AuthViewModel
 import io.hormuzwatch.deploy.ui.theme.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.material3.ExperimentalMaterial3Api
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     authViewModel: AuthViewModel,
@@ -131,7 +134,7 @@ fun SettingsScreen(
                     ExposedDropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
-                        containerColor = Navy800
+                        modifier = Modifier.background(Navy800)
                     ) {
                         listOf("DEBUG", "INFO", "WARN", "ERROR", "CRITICAL").forEach { level ->
                             DropdownMenuItem(
