@@ -26,6 +26,7 @@ class PredictRequest(BaseModel):
     explain: bool = False
 
 class PredictResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     track_id: str
     anomaly_score: float = Field(ge=0, le=100)
     is_anomaly: bool
@@ -39,6 +40,7 @@ class TrainRequest(BaseModel):
     contamination: float = Field(default=0.05, ge=0.01, le=0.5)
 
 class TrainResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     status: str
     model_version: str
     n_samples: int
