@@ -31,6 +31,7 @@ func getJWKS() (keyfunc.Keyfunc, error) {
 		if url == "" {
 			url = "https://dipuwvlnauqkjrqcfeqw.supabase.co"
 		}
+		url = strings.TrimSuffix(url, "/")
 		jwksURL := fmt.Sprintf("%s/auth/v1/.well-known/jwks.json", url)
 		jwks, err = keyfunc.NewDefault([]string{jwksURL})
 	})
