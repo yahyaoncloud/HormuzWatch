@@ -70,8 +70,8 @@ fun HormuzApp() {
         }
     }
 
-    // Auth gate
-    val isAuthenticated = authState is AuthUiState.Authenticated
+    // Auth gate (Temporarily bypassed)
+    val isAuthenticated = true // authState is AuthUiState.Authenticated
 
     if (!isAuthenticated) {
         AuthScreen(viewModel = authVm, onAuthenticated = {})

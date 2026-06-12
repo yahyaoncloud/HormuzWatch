@@ -18,6 +18,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -102,6 +103,9 @@ func main() {
 
 	// Health check endpoint (no auth)
 	router.GET("/health", handlers.Health)
+
+	// Prometheus metrics endpoint (no auth)
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// Authentication endpoints (always public)
 	router.POST("/auth/register", auth.Register)
