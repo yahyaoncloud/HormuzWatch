@@ -55,7 +55,8 @@ func StartOpenSky(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *int
 
 		resp, err := client.Do(req)
 		if err != nil {
-			log.Printf("OpenSky Do error: %v", err)
+			// Mute noisy timeouts on free public API
+			// log.Printf("[WARNING] OpenSky network timeout or connection error")
 			<-ticker.C
 			continue
 		}

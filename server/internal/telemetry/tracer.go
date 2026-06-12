@@ -18,6 +18,12 @@ import (
 func InitTracer() func(context.Context) error {
 	ctx := context.Background()
 
+	otelEnabled := os.Getenv("OTEL_ENABLED")
+	if otelEnabled == "false" {
+		log.Println("OpenTelemetry tracing is explicitly disabled (OTEL_ENABLED=false).")
+		return func(context.Context) error { return nil }
+	}
+
 	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	if endpoint == "" {
 		endpoint = "localhost:4317" // Default if not running in docker-compose
