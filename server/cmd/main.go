@@ -33,11 +33,7 @@ func main() {
 	authDisabled := os.Getenv("AUTH_DISABLED")
 	isAuthDisabled := authDisabled == "true"
 
-<<<<<<< HEAD
-	// Initialize PostgreSQL (Supabase)
-=======
 	// Initialize PostgreSQL
->>>>>>> 68ae3a8 (feat(azure): complete cloud infra, DevOps, globe continent mapping)
 	if err := db.InitDB(); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
