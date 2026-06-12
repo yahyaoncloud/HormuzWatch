@@ -72,7 +72,7 @@ func GetTrackHistory(c *gin.Context) {
 	}
 
 	var track TrackRecord
-	err := db.DB.QueryRow(`
+	err := db.QueryRow(`
 		SELECT track_id, asset_name, lat, lon, speed, heading, course_delta, ais_age_minutes, hot_zone_distance_nm, last_updated 
 		FROM tracks WHERE track_id = ?`, trackID).
 		Scan(&track.TrackID, &track.AssetName, &track.Lat, &track.Lon, &track.Speed, &track.Heading, &track.CourseDelta, &track.AisAgeMinutes, &track.HotZoneDistanceNm, &track.LastUpdated)
@@ -98,7 +98,7 @@ func GetTrackHistory(c *gin.Context) {
 	}
 
 	var reasonsJSON, actionsJSON string
-	err = db.DB.QueryRow(`
+	err = db.QueryRow(`
 		SELECT score, severity, reasons, actions 
 		FROM anomalies WHERE track_id = ?`, trackID).
 		Scan(&anomalyRec.Score, &anomalyRec.Severity, &reasonsJSON, &actionsJSON)

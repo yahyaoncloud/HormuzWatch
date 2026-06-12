@@ -37,7 +37,7 @@ func GetWatchlist(c *gin.Context) {
 		LEFT JOIN anomalies a ON w.track_id = a.track_id
 		ORDER BY w.added_at DESC
 	`
-	rows, err := db.DB.Query(query)
+	rows, err := db.Query(query)
 	if err != nil {
 		log.Printf("[Watchlist] Query error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
@@ -71,7 +71,7 @@ func AddToWatchlist(c *gin.Context) {
 		VALUES (?, ?, CURRENT_TIMESTAMP)
 		ON CONFLICT(track_id) DO UPDATE SET notes=excluded.notes;
 	`
-	_, err := db.DB.Exec(query, trackID, req.Notes)
+	_, err := db.Exec(query, trackID, req.Notes)
 	if err != nil {
 		log.Printf("[Watchlist] Insert error for %s: %v", trackID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add to watchlist"})
@@ -82,7 +82,7 @@ func AddToWatchlist(c *gin.Context) {
 
 func RemoveFromWatchlist(c *gin.Context) {
 	trackID := c.Param("id")
-	_, err := db.DB.Exec("DELETE FROM watchlist WHERE track_id = ?", trackID)
+	_, err := db.Exec("DELETE FROM watchlist WHERE track_id = ?", trackID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove from watchlist"})
 		return

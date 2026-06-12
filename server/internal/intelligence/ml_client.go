@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -21,6 +22,9 @@ func NewMLClient() *MLClient {
 	url := os.Getenv("ML_SERVICE_URL")
 	if url == "" {
 		url = "http://localhost:8090"
+	}
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		url = "http://" + url
 	}
 	return &MLClient{
 		baseURL: url,

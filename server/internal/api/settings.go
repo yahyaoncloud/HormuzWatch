@@ -20,7 +20,7 @@ type SettingsData struct {
 
 func getSetting(key, fallback string) string {
 	var val string
-	err := db.DB.QueryRow("SELECT value FROM settings WHERE key = ?", key).Scan(&val)
+	err := db.QueryRow("SELECT value FROM settings WHERE key = ?", key).Scan(&val)
 	if err != nil {
 		return fallback
 	}
@@ -58,7 +58,7 @@ func UpdateSettings(c *gin.Context) {
 	}
 
 	for key, val := range updates {
-		_, err := db.DB.Exec("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", key, val)
+		_, err := db.Exec("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", key, val)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update setting: " + key})
 			return

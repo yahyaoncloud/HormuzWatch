@@ -39,7 +39,7 @@ func Register(c *gin.Context) {
 	}
 
 	id := uuid.New().String()
-	_, err = db.DB.Exec("INSERT INTO users (id, username, email, password_hash, status) VALUES (?, ?, ?, ?, 'pending')", id, req.Username, req.Email, string(hash))
+	_, err = db.Exec("INSERT INTO users (id, username, email, password_hash, status) VALUES (?, ?, ?, ?, 'pending')", id, req.Username, req.Email, string(hash))
 	if err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "Username or email already exists"})
 		return
@@ -60,7 +60,7 @@ func Login(c *gin.Context) {
 	}
 
 	var storedHash, email, role, status string
-	err := db.DB.QueryRow("SELECT password_hash, email, role, status FROM users WHERE username = ?", req.Username).Scan(&storedHash, &email, &role, &status)
+	err := db.QueryRow("SELECT password_hash, email, role, status FROM users WHERE username = ?", req.Username).Scan(&storedHash, &email, &role, &status)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
@@ -89,7 +89,7 @@ func Login(c *gin.Context) {
 	sessionID := uuid.New().String()
 	now := time.Now().UTC()
 	expiresAt := now.Add(24 * time.Hour)
-	_, err = db.DB.Exec(
+	_, err = db.Exec(
 		"INSERT INTO sessions (id, username, created_at, expires_at, last_seen_at) VALUES (?, ?, ?, ?, ?)",
 		sessionID,
 		req.Username,
@@ -154,7 +154,7 @@ func GetSession(c *gin.Context) {
 	}
 
 	var expiresAt string
-	err := db.DB.QueryRow("SELECT expires_at FROM sessions WHERE id = ?", user.SessionID).Scan(&expiresAt)
+	err := db.QueryRow("SELECT expires_at FROM sessions WHERE id = ?", user.SessionID).Scan(&expiresAt)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authenticated session"})
 		return
@@ -210,13 +210,13 @@ func ApproveUser(c *gin.Context) {
 	}
 
 	var email string
-	err := db.DB.QueryRow("SELECT email FROM users WHERE username = ?", username).Scan(&email)
+	err := db.QueryRow("SELECT email FROM users WHERE username = ?", username).Scan(&email)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
 	}
 
-	_, err = db.DB.Exec("UPDATE users SET status = 'approved' WHERE username = ?", username)
+	_, err = db.Exec("UPDATE users SET status = 'approved' WHERE username = ?", username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to approve user"})
 		return
@@ -230,7 +230,7 @@ func ApproveUser(c *gin.Context) {
 
 // GetPendingUsers returns a list of all users with 'pending' status
 func GetPendingUsers(c *gin.Context) {
-	rows, err := db.DB.Query("SELECT username, email, created_at FROM users WHERE status = 'pending'")
+	rows, err := db.Query("SELECT username, email, created_at FROM users WHERE status = 'pending'")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query pending users"})
 		return
@@ -262,7 +262,7 @@ func DeleteUser(c *gin.Context) {
 		return
 	}
 
-	_, err := db.DB.Exec("DELETE FROM users WHERE username = ?", username)
+	_, err := db.Exec("DELETE FROM users WHERE username = ?", username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete user"})
 		return
@@ -288,7 +288,7 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
-	_, err := db.DB.Exec("UPDATE users SET status = ?, email = ?, role = ? WHERE username = ?", req.Status, req.Email, req.Role, username)
+	_, err := db.Exec("UPDATE users SET status = ?, email = ?, role = ? WHERE username = ?", req.Status, req.Email, req.Role, username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update user"})
 		return

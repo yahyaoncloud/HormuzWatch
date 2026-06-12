@@ -1,34 +1,33 @@
-# Multi-stage build for Go server
+# syntax=docker/dockerfile:1
+
 FROM golang:1.25-alpine AS builder
-# Install git for go mod download
+
 RUN apk add --no-cache git
 
-WORKDIR /build
+WORKDIR /src/server
 
-# Copy source code (includes go.mod)
-COPY . ./
-# Tidy dependencies based on actual imports
-RUN go mod tidy
+COPY server/go.mod server/go.sum ./
+RUN go mod download
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o harmuz-server ./cmd/main.go
+COPY server/ ./
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /out/hormuz-server ./cmd
 
-# Runtime stage
-FROM alpine:3.19
+FROM alpine:3.20
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates tzdata wget
 
 WORKDIR /app
 
-COPY --from=builder /build/harmuz-server .
+COPY --from=builder /out/hormuz-server ./hormuz-server
+COPY server/data ./data
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
-
-EXPOSE 8080
-
-ENV PORT=8080 \
+ENV GIN_MODE=release \
+    PORT=10000 \
     AUTH_DISABLED=true
 
-CMD ["./harmuz-server"]
+EXPOSE 10000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider "http://127.0.0.1:${PORT:-10000}/health" || exit 1
+
+CMD ["./hormuz-server"]

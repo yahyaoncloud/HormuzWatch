@@ -17,6 +17,9 @@ import (
 // StartFIRMS polls the NASA FIRMS API for active fire data
 func StartFIRMS(h *hub.Hub) {
 	apiKey := os.Getenv("MAP_KEY")
+	if apiKey == "" {
+		apiKey = os.Getenv("FIRMS_MAP_KEY")
+	}
 	if apiKey == "" || apiKey == "your_firms_api_key" {
 		log.Println("MAP_KEY not configured. Skipping NASA FIRMS integration.")
 		return

@@ -76,9 +76,9 @@ func (h *Handlers) PostTelemetry(c *gin.Context) {
 			hot_zone_distance_nm=excluded.hot_zone_distance_nm,
 			last_updated=CURRENT_TIMESTAMP;
 	`
-	_, err := db.DB.Exec(query, payload.TrackID, payload.AssetName, payload.Timestamp, payload.Lat, payload.Lon, payload.Speed, payload.PreviousSpeed, payload.Heading, payload.CourseDelta, payload.AisAgeMinutes, payload.HotZoneDistanceNm)
+	_, err := db.Exec(query, payload.TrackID, payload.AssetName, payload.Timestamp, payload.Lat, payload.Lon, payload.Speed, payload.PreviousSpeed, payload.Heading, payload.CourseDelta, payload.AisAgeMinutes, payload.HotZoneDistanceNm)
 	if err != nil {
-		log.Printf("[Handler] Failed to persist track %s to SQLite: %v", payload.TrackID, err)
+		log.Printf("[Handler] Failed to persist track %s: %v", payload.TrackID, err)
 	}
 
 	// Broadcast to WebSocket clients (non-blocking)
@@ -145,9 +145,9 @@ func (h *Handlers) Analyze(c *gin.Context) {
 			actions=excluded.actions,
 			last_updated=CURRENT_TIMESTAMP;
 	`
-	_, err := db.DB.Exec(query, anomalyResult.ID, anomalyResult.Score, anomalyResult.Severity, string(reasonsJSON), string(actionsJSON))
+	_, err := db.Exec(query, anomalyResult.ID, anomalyResult.Score, anomalyResult.Severity, string(reasonsJSON), string(actionsJSON))
 	if err != nil {
-		log.Printf("[Handler] Failed to persist anomaly %s to SQLite: %v", anomalyResult.ID, err)
+		log.Printf("[Handler] Failed to persist anomaly %s: %v", anomalyResult.ID, err)
 	}
 
 	// Broadcast anomaly to WebSocket clients (non-blocking)
@@ -213,19 +213,16 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 		query := `
 			SELECT track_id, asset_name, timestamp, lat, lon, speed, previous_speed, heading, course_delta, ais_age_minutes, hot_zone_distance_nm 
 			FROM tracks 
-			WHERE last_updated >= datetime('now', '-2 hours')
+			WHERE last_updated >= NOW() - INTERVAL '2 hours'
 		`
-		rows, err := db.DB.Query(query)
+		rows, err := db.Query(query)
 		if err == nil {
 			for rows.Next() {
 				var p TelemetryPayload
 				if err := rows.Scan(&p.TrackID, &p.AssetName, &p.Timestamp, &p.Lat, &p.Lon, &p.Speed, &p.PreviousSpeed, &p.Heading, &p.CourseDelta, &p.AisAgeMinutes, &p.HotZoneDistanceNm); err == nil {
 					// Add small delay to prevent overflowing the websocket writer too aggressively
 					time.Sleep(2 * time.Millisecond)
-					func() {
-						defer func() { recover() }()
-						client.Send <- hub.Message{Type: "telemetry", Data: p}
-					}()
+					client.Send <- hub.Message{Type: "telemetry", Data: p}
 				}
 			}
 			rows.Close()
@@ -237,9 +234,9 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 		query = `
 			SELECT track_id, score, severity, reasons, actions 
 			FROM anomalies 
-			WHERE last_updated >= datetime('now', '-2 hours')
+			WHERE last_updated >= NOW() - INTERVAL '2 hours'
 		`
-		rows, err = db.DB.Query(query)
+		rows, err = db.Query(query)
 		if err == nil {
 			for rows.Next() {
 				var res anomaly.Result
@@ -248,10 +245,7 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 					json.Unmarshal([]byte(reasonsJSON), &res.Reasons)
 					json.Unmarshal([]byte(actionsJSON), &res.Actions)
 					time.Sleep(2 * time.Millisecond)
-					func() {
-						defer func() { recover() }()
-						client.Send <- hub.Message{Type: "anomaly", Data: res}
-					}()
+					client.Send <- hub.Message{Type: "anomaly", Data: res}
 				}
 			}
 			rows.Close()

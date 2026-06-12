@@ -18,7 +18,7 @@ type NewsItem struct {
 	Summary string    `json:"summary"`
 }
 
-// GetNews returns the latest intelligence briefing news from the SQLite DB.
+// GetNews returns the latest intelligence briefing news from the database.
 func GetNews(c *gin.Context) {
 	query := `
 		SELECT id, title, link, pub_date, source, summary 
@@ -26,7 +26,7 @@ func GetNews(c *gin.Context) {
 		ORDER BY pub_date DESC 
 		LIMIT 100
 	`
-	rows, err := db.DB.Query(query)
+	rows, err := db.Query(query)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch news", "details": err.Error()})
 		return

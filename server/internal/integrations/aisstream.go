@@ -73,7 +73,7 @@ func StartAISStream(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *i
 		subMsg := AISStreamSubscription{
 			APIKey:             apiKey,
 			BoundingBoxes:      [][][2]float64{boundingBox},
-			// FilterMessageTypes: []string{"PositionReport"},
+			FilterMessageTypes: []string{"PositionReport"},
 		}
 
 		subJSON, _ := json.Marshal(subMsg)
@@ -97,7 +97,6 @@ func StartAISStream(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *i
 
 			var aisMsg AISMessage
 			if err := json.Unmarshal(message, &aisMsg); err != nil {
-				log.Printf("[AISStream] Unmarshal error: %v. Raw message: %s", err, string(message))
 				continue
 			}
 
@@ -171,7 +170,7 @@ func StartAISStream(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *i
 						hot_zone_distance_nm=excluded.hot_zone_distance_nm,
 						last_updated=CURRENT_TIMESTAMP;
 				`
-				db.DB.Exec(trackQuery, payload.TrackID, payload.AssetName, payload.Timestamp, payload.Lat, payload.Lon, payload.Speed, payload.PreviousSpeed, payload.Heading, payload.CourseDelta, payload.AisAgeMinutes, payload.HotZoneDistanceNm)
+				db.Exec(trackQuery, payload.TrackID, payload.AssetName, payload.Timestamp, payload.Lat, payload.Lon, payload.Speed, payload.PreviousSpeed, payload.Heading, payload.CourseDelta, payload.AisAgeMinutes, payload.HotZoneDistanceNm)
 
 				// Broadcast anomaly if score > 0
 				if assessment.FinalScore > 0 {
@@ -191,7 +190,7 @@ func StartAISStream(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *i
 							actions=excluded.actions,
 							last_updated=CURRENT_TIMESTAMP;
 					`
-					db.DB.Exec(anomalyQuery, assessment.TrackID, assessment.FinalScore, assessment.Severity, string(reasonsJSON), string(actionsJSON))
+					db.Exec(anomalyQuery, assessment.TrackID, assessment.FinalScore, assessment.Severity, string(reasonsJSON), string(actionsJSON))
 				}
 			}
 		}

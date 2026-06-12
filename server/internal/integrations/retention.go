@@ -8,7 +8,7 @@ import (
 	"Geospatial-harmuz-watch/server/internal/db"
 )
 
-// StartRetentionWorker runs a background goroutine to clean up old SQLite records based on settings
+// StartRetentionWorker runs a background goroutine to clean up old records based on settings
 func StartRetentionWorker() {
 	go func() {
 		for {
@@ -21,7 +21,7 @@ func StartRetentionWorker() {
 
 func runCleanup() {
 	var retentionDays string
-	err := db.DB.QueryRow("SELECT value FROM settings WHERE key = 'retention_days'").Scan(&retentionDays)
+	err := db.QueryRow("SELECT value FROM settings WHERE key = 'retention_days'").Scan(&retentionDays)
 	if err != nil {
 		retentionDays = "30"
 	}
@@ -35,11 +35,11 @@ func runCleanup() {
 		DELETE FROM anomalies 
 		WHERE track_id IN (
 			SELECT track_id FROM tracks 
-			WHERE last_updated < datetime('now', '-' || ? || ' days')
+			WHERE last_updated < NOW() - (? * INTERVAL '1 day')
 		)
 		AND track_id NOT IN (SELECT track_id FROM watchlist)
 	`
-	res, err := db.DB.Exec(deleteAnomaliesQuery, days)
+	res, err := db.Exec(deleteAnomaliesQuery, days)
 	if err == nil {
 		count, _ := res.RowsAffected()
 		if count > 0 {
@@ -52,10 +52,10 @@ func runCleanup() {
 	// Delete old tracks that are not watchlisted
 	deleteTracksQuery := `
 		DELETE FROM tracks 
-		WHERE last_updated < datetime('now', '-' || ? || ' days')
+		WHERE last_updated < NOW() - (? * INTERVAL '1 day')
 		AND track_id NOT IN (SELECT track_id FROM watchlist)
 	`
-	res, err = db.DB.Exec(deleteTracksQuery, days)
+	res, err = db.Exec(deleteTracksQuery, days)
 	if err == nil {
 		count, _ := res.RowsAffected()
 		if count > 0 {

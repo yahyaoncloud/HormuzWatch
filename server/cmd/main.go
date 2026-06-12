@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"Geospatial-harmuz-watch/server/internal/api"
@@ -31,7 +32,7 @@ func main() {
 	authDisabled := os.Getenv("AUTH_DISABLED")
 	isAuthDisabled := authDisabled == "true"
 
-	// Initialize SQLite Database
+	// Initialize PostgreSQL (Supabase)
 	if err := db.InitDB(); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
@@ -125,6 +126,7 @@ func main() {
 		router.POST("/analyze", handlers.Analyze)
 		router.GET("/integrations/identity-token-check", handlers.IdentityTokenCheck)
 		router.GET("/ws/stream", handlers.WebSocketStream)
+		router.GET("/stream/poll", handlers.StreamPoll)
 
 		// 30-second cache for heavy geospatial GET routes
 		cache30s := api.CacheMiddleware(30 * time.Second)
@@ -164,6 +166,7 @@ func main() {
 		router.POST("/analyze", authMiddleware, handlers.Analyze)
 		router.GET("/integrations/identity-token-check", authMiddleware, handlers.IdentityTokenCheck)
 		router.GET("/ws/stream", authMiddleware, handlers.WebSocketStream)
+		router.GET("/stream/poll", authMiddleware, handlers.StreamPoll)
 
 		// 30-second cache for heavy geospatial GET routes
 		cache30s := api.CacheMiddleware(30 * time.Second)
@@ -194,8 +197,28 @@ func main() {
 }
 
 func corsMiddleware() gin.HandlerFunc {
+	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+	origins := map[string]struct{}{}
+	if allowedOrigins == "" || allowedOrigins == "*" {
+		origins["*"] = struct{}{}
+	} else {
+		for _, origin := range strings.Split(allowedOrigins, ",") {
+			origin = strings.TrimSpace(origin)
+			if origin != "" {
+				origins[origin] = struct{}{}
+			}
+		}
+	}
+
 	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		origin := c.GetHeader("Origin")
+		if _, ok := origins["*"]; ok {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		} else if origin != "" {
+			if _, ok := origins[origin]; ok {
+				c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+			}
+		}
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")

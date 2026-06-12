@@ -66,7 +66,7 @@ func fetchFeeds(fp *gofeed.Parser, feeds []struct{url string; name string}) {
 				summary = summary[:497] + "..."
 			}
 
-			_, err := db.DB.Exec(query, id, item.Title, item.Link, *pubDate, f.name, summary)
+			_, err := db.Exec(query, id, item.Title, item.Link, *pubDate, f.name, summary)
 			if err != nil {
 				log.Printf("Failed to insert news item: %v", err)
 			}

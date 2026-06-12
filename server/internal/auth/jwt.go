@@ -172,7 +172,7 @@ func ValidateSessionClaims(claims jwt.MapClaims) (AuthenticatedUser, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	var user AuthenticatedUser
 	var revokedAt sql.NullString
-	err := db.DB.QueryRow(`
+	err := db.QueryRow(`
 		SELECT u.username, u.email, u.role, u.status, s.id, s.revoked_at
 		FROM sessions s
 		JOIN users u ON u.username = s.username
@@ -190,7 +190,7 @@ func ValidateSessionClaims(claims jwt.MapClaims) (AuthenticatedUser, error) {
 		return AuthenticatedUser{}, fmt.Errorf("user is not approved")
 	}
 
-	_, _ = db.DB.Exec("UPDATE sessions SET last_seen_at = ? WHERE id = ?;", now, sessionID)
+	_, _ = db.Exec("UPDATE sessions SET last_seen_at = ? WHERE id = ?;", now, sessionID)
 	return user, nil
 }
 

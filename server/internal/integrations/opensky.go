@@ -148,7 +148,7 @@ func StartOpenSky(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *int
 					hot_zone_distance_nm=excluded.hot_zone_distance_nm,
 					last_updated=CURRENT_TIMESTAMP;
 			`
-			db.DB.Exec(trackQuery, payload.TrackID, payload.AssetName, payload.Timestamp, payload.Lat, payload.Lon, payload.Speed, payload.PreviousSpeed, payload.Heading, payload.CourseDelta, payload.AisAgeMinutes, payload.HotZoneDistanceNm)
+			db.Exec(trackQuery, payload.TrackID, payload.AssetName, payload.Timestamp, payload.Lat, payload.Lon, payload.Speed, payload.PreviousSpeed, payload.Heading, payload.CourseDelta, payload.AisAgeMinutes, payload.HotZoneDistanceNm)
 
 			// Broadcast anomaly if score > 0
 			if assessment.FinalScore > 0 {
@@ -168,7 +168,7 @@ func StartOpenSky(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *int
 						actions=excluded.actions,
 						last_updated=CURRENT_TIMESTAMP;
 				`
-				db.DB.Exec(anomalyQuery, assessment.TrackID, assessment.FinalScore, assessment.Severity, string(reasonsJSON), string(actionsJSON))
+				db.Exec(anomalyQuery, assessment.TrackID, assessment.FinalScore, assessment.Severity, string(reasonsJSON), string(actionsJSON))
 			}
 		}
 

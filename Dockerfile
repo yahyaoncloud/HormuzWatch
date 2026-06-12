@@ -1,10 +1,35 @@
-FROM node:22-alpine AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
+# syntax=docker/dockerfile:1
 
-FROM nginx:1.29-alpine
-COPY --from=build /app/dist /usr/share/nginx/html
-EXPOSE 80
+# Root Dockerfile — same as server/Dockerfile for hosts that cannot pick a path.
+
+FROM golang:1.25-alpine AS builder
+
+RUN apk add --no-cache git
+
+WORKDIR /src/server
+
+COPY server/go.mod server/go.sum ./
+RUN go mod download
+
+COPY server/ ./
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /out/hormuz-server ./cmd
+
+FROM alpine:3.20
+
+RUN apk add --no-cache ca-certificates tzdata wget
+
+WORKDIR /app
+
+COPY --from=builder /out/hormuz-server ./hormuz-server
+COPY server/data ./data
+
+ENV GIN_MODE=release \
+    PORT=10000 \
+    AUTH_DISABLED=false
+
+EXPOSE 10000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider "http://127.0.0.1:${PORT:-10000}/health" || exit 1
+
+CMD ["./hormuz-server"]
