@@ -53,10 +53,10 @@ func fetchFeeds(fp *gofeed.Parser, feeds []struct{url string; name string}) {
 				pubDate = &now
 			}
 
-			// Insert or ignore into SQLite
+			// Insert or ignore into PostgreSQL
 			query := `
 			INSERT INTO news (id, title, link, pub_date, source, summary)
-			VALUES (?, ?, ?, ?, ?, ?)
+			VALUES ($1, $2, $3, $4, $5, $6)
 			ON CONFLICT(id) DO NOTHING;
 			`
 			

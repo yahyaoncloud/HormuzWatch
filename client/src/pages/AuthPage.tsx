@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import logo from "../assets/logo.png";
 import { api } from "../services/api";
+import { supabase } from "../services/supabase";
 import { useAuth } from "../context/AuthContext";
 import GlobeCanvas from "../components/GlobeCanvas";
 
@@ -88,12 +89,13 @@ export default function AuthPage({ defaultTab = "login" }: { defaultTab?: "login
     e.preventDefault();
     setError(""); setRegSuccess(""); setLoading(true);
     try {
-      const res = await api.login({ username, password });
-      const data = await res.json();
-      if (res.ok) {
-        login(data.token, data.user, { sessionId: data.sessionId, expiresAt: data.expiresAt });
-      } else {
-        setError(data.error || "Authentication failed");
+      const { data, error: supaError } = await supabase.auth.signInWithPassword({
+        email: username,
+        password: password
+      });
+      
+      if (supaError) {
+        setError(supaError.message || "Authentication failed");
       }
     } catch {
       setError("Network error. Please try again.");
@@ -109,13 +111,21 @@ export default function AuthPage({ defaultTab = "login" }: { defaultTab?: "login
     if (regPassword !== regConfirm) { setError("Passwords do not match"); setLoading(false); return; }
     if (regPassword.length < 6) { setError("Password must be at least 6 characters"); setLoading(false); return; }
     try {
-      const res = await api.register({ username: regUsername, email: regEmail, password: regPassword });
-      const data = await res.json();
-      if (res.ok) {
-        setRegSuccess("Registration submitted. Awaiting admin approval.");
-        setRegUsername(""); setRegEmail(""); setRegPassword(""); setRegConfirm("");
+      const { data, error: supaError } = await supabase.auth.signUp({
+        email: regEmail,
+        password: regPassword,
+        options: {
+          data: {
+            username: regUsername
+          }
+        }
+      });
+      
+      if (supaError) {
+        setError(supaError.message || "Registration failed");
       } else {
-        setError(data.error || "Registration failed");
+        setRegSuccess("Registration submitted. Please check your email for verification.");
+        setRegUsername(""); setRegEmail(""); setRegPassword(""); setRegConfirm("");
       }
     } catch {
       setError("Network error. Please try again.");
@@ -246,10 +256,10 @@ export default function AuthPage({ defaultTab = "login" }: { defaultTab?: "login
         {tab === "login" && (
           <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
             <div>
-              <label style={labelStyle}>Username</label>
+              <label style={labelStyle}>Email</label>
               <div style={{ position: "relative" }}>
                 <User size={14} color="#475569" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
-                <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required placeholder="Enter username" style={inputStyle} onFocus={onFocus} onBlur={onBlur} autoComplete="username" />
+                <input type="email" value={username} onChange={(e) => setUsername(e.target.value)} required placeholder="Enter email" style={inputStyle} onFocus={onFocus} onBlur={onBlur} autoComplete="username" />
               </div>
             </div>
             <div>

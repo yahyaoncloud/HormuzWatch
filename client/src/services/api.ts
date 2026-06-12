@@ -30,16 +30,23 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
     // Dispatch a custom event; AuthContext listens and clears state
     window.dispatchEvent(new CustomEvent("auth:unauthorized"));
   }
+  
+  if (response.status === 403) {
+    const errorData = await response.clone().json().catch(() => ({}));
+    if (errorData.error && errorData.error.includes("pending")) {
+      alert("Your account is pending admin approval. You cannot access this application yet.");
+      window.dispatchEvent(new CustomEvent("auth:unauthorized"));
+    }
+  }
 
   return response;
 }
 
 export const api = {
   // Auth & Session
-  login:    (data: unknown) => fetchWithAuth("/auth/login",    { method: "POST", body: JSON.stringify(data) }),
-  register: (data: unknown) => fetchWithAuth("/auth/register", { method: "POST", body: JSON.stringify(data) }),
-  logout:   ()              => fetchWithAuth("/auth/logout",   { method: "POST" }),
-  getSession: ()            => fetchWithAuth("/auth/session"),
+  // Supabase Auth handles login/register/session natively on the client
+  // logout:   ()              => fetchWithAuth("/auth/logout",   { method: "POST" }),
+
 
   // Admin User Management
   getUsers:          ()                     => fetchWithAuth("/auth/users"),

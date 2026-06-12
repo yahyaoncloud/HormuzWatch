@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Lock, User, LogIn, AlertCircle, Shield, Wifi } from "lucide-react";
 import logo from "../assets/logo.png";
 import { api } from "../services/api";
+import { supabase } from "../services/supabase";
 import GlobeCanvas from "../components/GlobeCanvas";
 
 // ── Shared form input style (matches existing design tokens) ─────────────────
@@ -44,13 +45,15 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const res = await api.login({ username, password });
-      const data = await res.json();
-      if (res.ok) {
-        login(data.token, data.user, { sessionId: data.sessionId, expiresAt: data.expiresAt });
-      } else {
-        setError(data.error || "Authentication failed");
+      const { data, error: supaError } = await supabase.auth.signInWithPassword({
+        email: username,
+        password: password
+      });
+
+      if (supaError) {
+        setError(supaError.message || "Authentication failed");
       }
+      // On success, AuthContext will detect the change and navigate automatically
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -176,15 +179,15 @@ export default function LoginPage() {
         {/* ── Form ────────────────────────────────────────────────────────── */}
         <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
           <div>
-            <label style={labelStyle}>Username</label>
+            <label style={labelStyle}>Email</label>
             <div style={{ position: "relative" }}>
               <User size={14} color="#475569" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
               <input
-                type="text"
+                type="email"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
-                placeholder="Enter username"
+                placeholder="Enter email"
                 style={inputStyle}
                 onFocus={focus}
                 onBlur={blur}
