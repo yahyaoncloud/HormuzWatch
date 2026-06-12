@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Lock, User, UserPlus, AlertCircle, CheckCircle2, Mail, Shield, Wifi } from "lucide-react";
 import logo from "../assets/logo.png";
-import { api } from "../services/api";
+import { supabase } from "../services/supabase";
 import GlobeCanvas from "../components/GlobeCanvas";
 
 const inputStyle: React.CSSProperties = {
@@ -59,13 +59,21 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      const res = await api.register({ username, email, password });
-      const data = await res.json();
-      if (res.ok) {
-        setSuccess("Registration successful. Awaiting operator approval...");
-        setTimeout(() => navigate("/login"), 2500);
+      const { error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username: username
+          }
+        }
+      });
+      
+      if (signUpError) {
+        setError(signUpError.message);
       } else {
-        setError(data.error || "Registration failed");
+        setSuccess("Registration successful. Please check your email for a verification link.");
+        setTimeout(() => navigate("/login"), 3500);
       }
     } catch {
       setError("Network error. Please try again.");
