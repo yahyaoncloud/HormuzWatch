@@ -12,6 +12,12 @@ shap==0.45.1
 fastapi==0.111.0
 uvicorn==0.30.1
 
+# Added for OpenTelemetry Observability
+opentelemetry-api==1.25.0
+opentelemetry-sdk==1.25.0
+opentelemetry-instrumentation-fastapi==0.46b0
+opentelemetry-exporter-otlp==1.25.0
+
 # ─── Dev / test only (not deployed) ───────────────────────────────
 # pytest==8.2.2
 # pandas==2.2.2     # Required by api/train.py — not deployed

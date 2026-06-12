@@ -21,6 +21,8 @@ type WatchlistItem struct {
 }
 
 func GetWatchlist(c *gin.Context) {
+	userID := c.GetString("user_id")
+
 	query := `
 		SELECT 
 			w.track_id,
@@ -35,9 +37,10 @@ func GetWatchlist(c *gin.Context) {
 		FROM watchlist w
 		LEFT JOIN tracks t ON w.track_id = t.track_id
 		LEFT JOIN anomalies a ON w.track_id = a.track_id
+		WHERE w.user_id = $1
 		ORDER BY w.added_at DESC
 	`
-	rows, err := db.Query(query)
+	rows, err := db.Query(query, userID)
 	if err != nil {
 		log.Printf("[Watchlist] Query error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
@@ -66,12 +69,14 @@ func AddToWatchlist(c *gin.Context) {
 		req.Notes = ""
 	}
 
+	userID := c.GetString("user_id")
+
 	query := `
-		INSERT INTO watchlist (track_id, notes, added_at)
-		VALUES (?, ?, CURRENT_TIMESTAMP)
-		ON CONFLICT(track_id) DO UPDATE SET notes=excluded.notes;
+		INSERT INTO watchlist (user_id, track_id, notes, added_at)
+		VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+		ON CONFLICT(user_id, track_id) DO UPDATE SET notes=excluded.notes;
 	`
-	_, err := db.Exec(query, trackID, req.Notes)
+	_, err := db.Exec(query, userID, trackID, req.Notes)
 	if err != nil {
 		log.Printf("[Watchlist] Insert error for %s: %v", trackID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add to watchlist"})
@@ -82,7 +87,8 @@ func AddToWatchlist(c *gin.Context) {
 
 func RemoveFromWatchlist(c *gin.Context) {
 	trackID := c.Param("id")
-	_, err := db.Exec("DELETE FROM watchlist WHERE track_id = ?", trackID)
+	userID := c.GetString("user_id")
+	_, err := db.Exec("DELETE FROM watchlist WHERE track_id = $1 AND user_id = $2", trackID, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove from watchlist"})
 		return

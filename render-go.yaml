@@ -1,0 +1,17 @@
+services:
+  # Go Backend (Web Service)
+  - type: web
+    name: hormuzwatch-server
+    env: go
+    buildCommand: go build -o api ./cmd/main.go
+    startCommand: ./api
+    rootDir: server
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: ML_INFERENCE_URL
+        sync: false # You will set this to the URL of the Python ML service after deploying it on Account B
+      - key: DATABASE_URL
+        sync: false # Set this to your Supabase connection string in the Render Dashboard
+      - key: SUPABASE_URL
+        sync: false # Set this in Render Dashboard

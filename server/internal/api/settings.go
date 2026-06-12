@@ -18,9 +18,9 @@ type SettingsData struct {
 	NewsEnabled            bool   `json:"news_enabled"`
 }
 
-func getSetting(key, fallback string) string {
+func getSetting(userID, key, fallback string) string {
 	var val string
-	err := db.QueryRow("SELECT value FROM settings WHERE key = ?", key).Scan(&val)
+	err := db.QueryRow("SELECT value FROM settings WHERE user_id = $1 AND key = $2", userID, key).Scan(&val)
 	if err != nil {
 		return fallback
 	}
@@ -28,16 +28,17 @@ func getSetting(key, fallback string) string {
 }
 
 func GetSettings(c *gin.Context) {
-	retDays, _ := strconv.Atoi(getSetting("retention_days", "30"))
-	autoThresh, _ := strconv.Atoi(getSetting("auto_watchlist_threshold", "75"))
+	userID := c.GetString("user_id")
+	retDays, _ := strconv.Atoi(getSetting(userID, "retention_days", "30"))
+	autoThresh, _ := strconv.Atoi(getSetting(userID, "auto_watchlist_threshold", "75"))
 
 	c.JSON(http.StatusOK, SettingsData{
 		RetentionDays:          retDays,
-		OpenSkyEnabled:         getSetting("opensky_enabled", "true") == "true",
-		AISStreamEnabled:       getSetting("aisstream_enabled", "true") == "true",
+		OpenSkyEnabled:         getSetting(userID, "opensky_enabled", "true") == "true",
+		AISStreamEnabled:       getSetting(userID, "aisstream_enabled", "true") == "true",
 		AutoWatchlistThreshold: autoThresh,
-		HeatmapEnabled:         getSetting("heatmap_enabled", "true") == "true",
-		NewsEnabled:            getSetting("news_enabled", "true") == "true",
+		HeatmapEnabled:         getSetting(userID, "heatmap_enabled", "true") == "true",
+		NewsEnabled:            getSetting(userID, "news_enabled", "true") == "true",
 	})
 }
 
@@ -57,8 +58,10 @@ func UpdateSettings(c *gin.Context) {
 		"news_enabled":            strconv.FormatBool(req.NewsEnabled),
 	}
 
+	userID := c.GetString("user_id")
+
 	for key, val := range updates {
-		_, err := db.Exec("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", key, val)
+		_, err := db.Exec("INSERT INTO settings (user_id, key, value) VALUES ($1, $2, $3) ON CONFLICT(user_id, key) DO UPDATE SET value=excluded.value", userID, key, val)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update setting: " + key})
 			return

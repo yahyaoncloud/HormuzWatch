@@ -1,8 +1,8 @@
 services:
   go-server:
     build:
-      context: .
-      dockerfile: server/Dockerfile
+      context: ./server
+      dockerfile: Dockerfile
     container_name: harmuz-server
     ports:
       - "8081:10000"

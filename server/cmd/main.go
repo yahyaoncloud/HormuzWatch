@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -14,10 +16,12 @@ import (
 	"Geospatial-harmuz-watch/server/internal/heatmap"
 	"Geospatial-harmuz-watch/server/internal/integrations"
 	"Geospatial-harmuz-watch/server/internal/intelligence"
+	"Geospatial-harmuz-watch/server/internal/telemetry"
 	"Geospatial-harmuz-watch/server/internal/websocket"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -33,6 +37,11 @@ func main() {
 
 	authDisabled := os.Getenv("AUTH_DISABLED")
 	isAuthDisabled := authDisabled == "true"
+	_ = isAuthDisabled
+
+	// Initialize OpenTelemetry
+	shutdown := telemetry.InitTracer()
+	defer shutdown(context.Background())
 
 	// Initialize PostgreSQL
 	if err := db.InitDB(); err != nil {
@@ -71,7 +80,33 @@ func main() {
 	integrations.StartRetentionWorker()
 
 	// Initialize Gin router
-	router := gin.Default()
+	router := gin.New()
+	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
+		path := param.Path
+		if strings.Contains(path, "token=") {
+			parts := strings.SplitN(path, "token=", 2)
+			if len(parts) == 2 {
+				endIdx := strings.Index(parts[1], "&")
+				if endIdx != -1 {
+					path = parts[0] + "token=[REDACTED]" + parts[1][endIdx:]
+				} else {
+					path = parts[0] + "token=[REDACTED]"
+				}
+			}
+		}
+
+		return fmt.Sprintf("[GIN] %v | %3d | %13v | %15s | %-7s %#v\n%s",
+			param.TimeStamp.Format("2006/01/02 - 15:04:05"),
+			param.StatusCode,
+			param.Latency,
+			param.ClientIP,
+			param.Method,
+			path,
+			param.ErrorMessage,
+		)
+	}))
+	router.Use(gin.Recovery())
+	router.Use(otelgin.Middleware("go-backend"))
 
 	// CORS middleware
 	router.Use(corsMiddleware())

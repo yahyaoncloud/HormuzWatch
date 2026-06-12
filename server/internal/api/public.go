@@ -106,7 +106,7 @@ func queryTopTraces() []TopTrace {
 			t.last_updated
 		FROM tracks t
 		LEFT JOIN anomalies a ON t.track_id = a.track_id
-		WHERE t.last_updated >= datetime('now', '-24 hours')
+		WHERE t.last_updated >= NOW() - INTERVAL '24 hours'
 		ORDER BY score DESC
 		LIMIT 10
 	`

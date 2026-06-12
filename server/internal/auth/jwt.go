@@ -152,6 +152,8 @@ func JWTMiddleware() gin.HandlerFunc {
 			sessionID, _ = claims["sid"].(string)
 		}
 
+		c.Set("user_id", sub)
+
 		authUser := AuthenticatedUser{
 			Username:  username,
 			Email:     email,

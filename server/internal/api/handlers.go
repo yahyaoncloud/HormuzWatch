@@ -62,7 +62,7 @@ func (h *Handlers) PostTelemetry(c *gin.Context) {
 	// Persist to SQLite
 	query := `
 		INSERT INTO tracks (track_id, asset_name, timestamp, lat, lon, speed, previous_speed, heading, course_delta, ais_age_minutes, hot_zone_distance_nm, last_updated)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
 		ON CONFLICT(track_id) DO UPDATE SET
 			asset_name=excluded.asset_name,
 			timestamp=excluded.timestamp,
@@ -137,7 +137,7 @@ func (h *Handlers) Analyze(c *gin.Context) {
 	actionsJSON, _ := json.Marshal(anomalyResult.Actions)
 	query := `
 		INSERT INTO anomalies (track_id, score, severity, reasons, actions, last_updated)
-		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
 		ON CONFLICT(track_id) DO UPDATE SET
 			score=excluded.score,
 			severity=excluded.severity,

@@ -33,14 +33,13 @@ To move HormuzWatch from 85% to 100% production-ready, the following phases must
 2. **WebSocket Stability:** Spin up 1,000 mock clients to test the memory consumption of the Go WebSocket Hub.
 3. **Postgres Tuning:** Evaluate query performance for spatial data. Ensure indexes are properly utilized on heavy read/writes.
 
-### Phase 2: Cloud Deployment Testing (Azure-Dep Branch)
-1. **Azure Quick Deploy/Destroy Strategy:** Perform a full end-to-end "destroy and deploy" using the Android application.
-2. **Idempotency Checks:** Ensure running the Ansible playbook twice does not break the system.
-3. **ML Service Deployment:** Deploy the ML inference service directly onto the AVM (Azure Virtual Machine) rather than a PaaS Azure ML endpoint to aggressively cut costs.
+### Phase 2: Cloud Deployment Testing
+1. **MVP Branch (Zero-Cost Validation):** Deploy the Go backend and Python ML inference service to Render utilizing dual free-tier accounts, while connecting the React frontend (via Vercel) to a managed Supabase PostgreSQL instance.
+2. **Production Branch (Azure Terraform/Ansible):** Maintain and execute the existing Infrastructure-as-Code to provision a fully isolated Azure Virtual Machine. This remains the official production route for enterprise-grade deployment.
 
 ### Phase 3: Documentation and Handoff
 1. Compile the interview prep guides.
-2. Freeze the architecture, ensuring both `mvp` and `azure-dep` branches are perfectly synced.
+2. Freeze the architecture, ensuring both `mvp` and production cloud deployments are documented and perfectly synced.
 
 ---
 

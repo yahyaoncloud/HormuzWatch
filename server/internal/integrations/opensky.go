@@ -1,6 +1,7 @@
 package integrations
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -121,7 +122,7 @@ func StartOpenSky(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *int
 				features.DistToRestrictedZone,
 				features.InRestrictedZone, features.NearHistoricalAttack)
 
-			mlScore, explanation := mlClient.Predict(features)
+			mlScore, explanation := mlClient.Predict(context.Background(), features)
 			geoScore := intelligence.GeoStore.ScoreForLocation(payload.Lat, payload.Lon)
 
 			assessment := intelligence.ComputeComposite(features, ruleScore, mlScore, geoScore, explanation)

@@ -41,6 +41,7 @@ func InitDB() error {
 		return fmt.Errorf("ping database: %w", err)
 	}
 
+	// Tables will be created if they do not exist.
 	schema := `
 	CREATE TABLE IF NOT EXISTS news (
 		id TEXT PRIMARY KEY,
@@ -76,17 +77,6 @@ func InitDB() error {
 		FOREIGN KEY(track_id) REFERENCES tracks(track_id)
 	);
 
-	CREATE TABLE IF NOT EXISTS settings (
-		key TEXT PRIMARY KEY,
-		value TEXT
-	);
-
-	CREATE TABLE IF NOT EXISTS watchlist (
-		track_id TEXT PRIMARY KEY,
-		notes TEXT,
-		added_at TIMESTAMPTZ DEFAULT NOW()
-	);
-
 	CREATE TABLE IF NOT EXISTS users (
 		id TEXT PRIMARY KEY,
 		username TEXT UNIQUE,
@@ -97,6 +87,22 @@ func InitDB() error {
 		created_at TIMESTAMPTZ DEFAULT NOW()
 	);
 
+	CREATE TABLE IF NOT EXISTS settings (
+		user_id TEXT,
+		key TEXT,
+		value TEXT,
+		PRIMARY KEY (user_id, key),
+		FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+	);
+
+	CREATE TABLE IF NOT EXISTS watchlist (
+		user_id TEXT,
+		track_id TEXT,
+		notes TEXT,
+		added_at TIMESTAMPTZ DEFAULT NOW(),
+		PRIMARY KEY (user_id, track_id),
+		FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+	);
 	CREATE TABLE IF NOT EXISTS sessions (
 		id TEXT PRIMARY KEY,
 		username TEXT NOT NULL,
@@ -106,6 +112,11 @@ func InitDB() error {
 		revoked_at TEXT,
 		FOREIGN KEY(username) REFERENCES users(username)
 	);
+
+	-- Phase 1: Database Tuning Indexes
+	CREATE INDEX IF NOT EXISTS idx_tracks_lat_lon ON tracks(lat, lon);
+	CREATE INDEX IF NOT EXISTS idx_tracks_timestamp ON tracks(last_updated);
+	CREATE INDEX IF NOT EXISTS idx_anomalies_score ON anomalies(score DESC);
 	`
 	if _, err := DB.Exec(schema); err != nil {
 		return fmt.Errorf("create schema: %w", err)

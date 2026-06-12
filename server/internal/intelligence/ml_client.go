@@ -9,6 +9,11 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"context"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 // MLClient communicates with the Python ML inference service.
@@ -73,10 +78,8 @@ type MLPredictResponse struct {
 	Explanation     *MLExplanation `json:"explanation,omitempty"`
 }
 
-// Predict sends a feature vector to the ML service and returns the anomaly score.
-// Returns 0.0 on error (graceful degradation — rule engine still operates).
 // Predict sends a feature vector to the ML service and returns the anomaly score and explanation.
-func (c *MLClient) Predict(features FeatureVector) (float64, *MLExplanation) {
+func (c *MLClient) Predict(ctx context.Context, features FeatureVector) (float64, *MLExplanation) {
 	reqBody := MLPredictRequest{
 		TrackID: features.TrackID,
 		Features: MLFeaturePayload{
@@ -97,11 +100,11 @@ func (c *MLClient) Predict(features FeatureVector) (float64, *MLExplanation) {
 		return 0.0, nil
 	}
 
-	resp, err := c.httpClient.Post(
-		fmt.Sprintf("%s/predict", c.baseURL),
-		"application/json",
-		bytes.NewReader(body),
-	)
+	req, _ := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/predict", c.baseURL), bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
+
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		// ML service unavailable — graceful degradation
 		return 0.0, nil
