@@ -1,0 +1,20 @@
+# Shared variables for all environments
+project_name: hormuzwatch
+app_dir: /opt/hormuzwatch
+config_dir: /etc/hormuzwatch
+docker_compose_file: "{{ app_dir }}/docker-compose.yml"
+
+# Docker images
+backend_image: "{{ acr_name }}.azurecr.io/backend:latest"
+ml_image: "{{ acr_name }}.azurecr.io/ml-service:latest"
+
+# Service ports
+backend_port: 8080
+ml_port: 8090
+
+# Backup settings
+backup_container: "backups"
+backup_retention_days: 14
+
+# Postgres tools
+pg_dump_format: "custom"  # .dump format for efficient restore

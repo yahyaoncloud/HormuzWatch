@@ -1,0 +1,74 @@
+---
+# Backup playbook — pg_dump → Azure Blob Storage
+- name: Backup HormuzWatch database
+  hosts: avm
+  become: true
+
+  vars:
+    backup_ts: "{{ ansible_date_time.date }}_{{ ansible_date_time.time | replace(':', '') }}"
+    backup_filename: "hormuzwatch_{{ env }}_{{ backup_ts }}.dump"
+    backup_path: "/tmp/{{ backup_filename }}"
+
+  tasks:
+    - name: Install postgresql-client
+      ansible.builtin.apt:
+        name: postgresql-client-16
+        state: present
+        update_cache: true
+
+    - name: Read DATABASE_URL from env file
+      ansible.builtin.slurp:
+        src: "{{ config_dir }}/.env"
+      register: env_file
+
+    - name: Parse DATABASE_URL
+      ansible.builtin.set_fact:
+        db_url: "{{ env_file['content'] | b64decode | regex_findall('DATABASE_URL=(.+)') | first }}"
+
+    - name: Run pg_dump
+      ansible.builtin.command:
+        cmd: "pg_dump --format=custom --no-acl --no-owner -d {{ db_url }} -f {{ backup_path }}"
+      environment:
+        PGSSLMODE: require
+      register: dump_result
+      failed_when: dump_result.rc != 0
+
+    - name: Compress backup
+      ansible.builtin.command:
+        cmd: "gzip {{ backup_path }}"
+
+    - name: Upload to Azure Blob Storage
+      ansible.builtin.command:
+        cmd: >
+          az storage blob upload
+          --account-name "{{ storage_account_name }}"
+          --container-name "{{ backup_container }}"
+          --name "{{ env }}/{{ backup_filename }}.gz"
+          --file "{{ backup_path }}.gz"
+          --auth-mode login
+          --overwrite
+      register: upload_result
+
+    - name: Clean up local backup
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ backup_path }}"
+        - "{{ backup_path }}.gz"
+
+    - name: Prune old backups (keep {{ backup_retention_days }} days)
+      ansible.builtin.command:
+        cmd: >
+          az storage blob list
+          --account-name "{{ storage_account_name }}"
+          --container-name "{{ backup_container }}"
+          --prefix "{{ env }}/"
+          --query "[?properties.lastModified < '{{ (ansible_date_time.epoch | int - backup_retention_days * 86400) | int | strftime('%Y-%m-%dT%H:%M:%S') }}'].name"
+          --output tsv
+      register: old_blobs
+      ignore_errors: true
+
+    - name: Backup complete
+      ansible.builtin.debug:
+        msg: "✅ Backup uploaded: {{ env }}/{{ backup_filename }}.gz"

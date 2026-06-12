@@ -9,6 +9,7 @@ import (
 
 	"Geospatial-harmuz-watch/server/internal/api"
 	"Geospatial-harmuz-watch/server/internal/auth"
+	"Geospatial-harmuz-watch/server/internal/cache"
 	"Geospatial-harmuz-watch/server/internal/db"
 	"Geospatial-harmuz-watch/server/internal/heatmap"
 	"Geospatial-harmuz-watch/server/internal/integrations"
@@ -32,10 +33,17 @@ func main() {
 	authDisabled := os.Getenv("AUTH_DISABLED")
 	isAuthDisabled := authDisabled == "true"
 
+<<<<<<< HEAD
 	// Initialize PostgreSQL (Supabase)
+=======
+	// Initialize PostgreSQL
+>>>>>>> 68ae3a8 (feat(azure): complete cloud infra, DevOps, globe continent mapping)
 	if err := db.InitDB(); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
+
+	// Initialize Redis cache (graceful fallback if unavailable)
+	cache.InitRedis()
 
 	// Initialize WebSocket hub
 	hub := websocket.NewHub()

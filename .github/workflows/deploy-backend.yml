@@ -1,25 +1,38 @@
-name: Deploy Backend & ML Service
+name: "Deploy Backend & ML Service"
 
 on:
   push:
     branches:
-      - main
+      - azure-dep  # → prod
+      - mvp        # → dev
     paths:
-      - 'server/**'
-      - 'ml-service/**'
-      - '.github/workflows/deploy-backend.yml'
+      - "server/**"
+      - "ml-service/**"
+      - ".github/workflows/deploy-backend.yml"
 
-env:
-  ACR_NAME: acr${{ secrets.PROJECT_NAME }}${{ secrets.ENV_NAME }}
-  RESOURCE_GROUP: rg-${{ secrets.PROJECT_NAME }}-${{ secrets.ENV_NAME }}
-  BACKEND_APP_NAME: ca-${{ secrets.PROJECT_NAME }}-${{ secrets.ENV_NAME }}-api
-  ML_APP_NAME: ca-${{ secrets.PROJECT_NAME }}-${{ secrets.ENV_NAME }}-ml
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "dev"
+        type: choice
+        options: [dev, prod]
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   build-and-deploy:
+    name: "Deploy — ${{ inputs.environment || (github.ref_name == 'azure-dep' && 'prod' || 'dev') }}"
     runs-on: ubuntu-latest
+
+    env:
+      ENV_NAME: ${{ inputs.environment || (github.ref_name == 'azure-dep' && 'prod' || 'dev') }}
+
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Azure Login
@@ -27,37 +40,116 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Log in to ACR
-        run: az acr login --name ${{ env.ACR_NAME }}
+      - name: Set resource names
+        id: names
+        run: |
+          PROJECT="hormuzwatch"
+          ENV="${{ env.ENV_NAME }}"
+          ACR_NAME="${PROJECT}${ENV}acr"
+          RG="rg-${PROJECT}-${ENV}"
+          BACKEND_APP="ca-${PROJECT}-${ENV}-api"
+          ML_APP="ca-${PROJECT}-${ENV}-ml"
+          echo "acr=$ACR_NAME" >> $GITHUB_OUTPUT
+          echo "rg=$RG" >> $GITHUB_OUTPUT
+          echo "backend_app=$BACKEND_APP" >> $GITHUB_OUTPUT
+          echo "ml_app=$ML_APP" >> $GITHUB_OUTPUT
+          echo "kv=kv-${PROJECT}-${ENV}" >> $GITHUB_OUTPUT
 
-      # Build & Push ML Service
+      - name: Log in to ACR
+        run: az acr login --name ${{ steps.names.outputs.acr }}
+
+      # ─── Fetch secrets from Key Vault ────────────────────────────────
+      - name: Fetch secrets
+        id: secrets
+        run: |
+          DB_URL=$(az keyvault secret show \
+            --vault-name ${{ steps.names.outputs.kv }} \
+            --name database-url \
+            --query value -o tsv)
+          REDIS_URL=$(az keyvault secret show \
+            --vault-name ${{ steps.names.outputs.kv }} \
+            --name redis-connection-string \
+            --query value -o tsv)
+          echo "::add-mask::$DB_URL"
+          echo "::add-mask::$REDIS_URL"
+          echo "db_url=$DB_URL" >> $GITHUB_OUTPUT
+          echo "redis_url=$REDIS_URL" >> $GITHUB_OUTPUT
+
+      # ─── Build & Push ML Service ──────────────────────────────────────
       - name: Build and push ML Service
         uses: docker/build-push-action@v5
         with:
           context: ./ml-service
           push: true
-          tags: ${{ env.ACR_NAME }}.azurecr.io/ml-service:${{ github.sha }},${{ env.ACR_NAME }}.azurecr.io/ml-service:latest
+          tags: |
+            ${{ steps.names.outputs.acr }}.azurecr.io/ml-service:${{ github.sha }}
+            ${{ steps.names.outputs.acr }}.azurecr.io/ml-service:latest
 
-      # Build & Push Go Backend
+      # ─── Build & Push Go Backend ──────────────────────────────────────
       - name: Build and push Go Backend
         uses: docker/build-push-action@v5
         with:
-          context: ./server
+          context: .
+          file: ./server/Dockerfile
           push: true
-          tags: ${{ env.ACR_NAME }}.azurecr.io/backend:${{ github.sha }},${{ env.ACR_NAME }}.azurecr.io/backend:latest
+          tags: |
+            ${{ steps.names.outputs.acr }}.azurecr.io/backend:${{ github.sha }}
+            ${{ steps.names.outputs.acr }}.azurecr.io/backend:latest
+          build-args: |
+            GIT_SHA=${{ github.sha }}
 
-      # Deploy ML Service to Container Apps
+      # ─── Trivy Security Scan ─────────────────────────────────────────
+      - name: Trivy vulnerability scan — backend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "${{ steps.names.outputs.acr }}.azurecr.io/backend:${{ github.sha }}"
+          format: "sarif"
+          output: "trivy-backend.sarif"
+          severity: "CRITICAL,HIGH"
+          exit-code: "0"  # Non-blocking; results visible in Security tab
+
+      # ─── Deploy ML Service ────────────────────────────────────────────
       - name: Deploy ML Service to ACA
         run: |
           az containerapp update \
-            --name ${{ env.ML_APP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ env.ACR_NAME }}.azurecr.io/ml-service:${{ github.sha }}
+            --name ${{ steps.names.outputs.ml_app }} \
+            --resource-group ${{ steps.names.outputs.rg }} \
+            --image ${{ steps.names.outputs.acr }}.azurecr.io/ml-service:${{ github.sha }}
 
-      # Deploy Go Backend to Container Apps
-      - name: Deploy Go Backend to ACA
+      # ─── Deploy Backend ───────────────────────────────────────────────
+      - name: Deploy Backend to ACA
         run: |
           az containerapp update \
-            --name ${{ env.BACKEND_APP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ env.ACR_NAME }}.azurecr.io/backend:${{ github.sha }}
+            --name ${{ steps.names.outputs.backend_app }} \
+            --resource-group ${{ steps.names.outputs.rg }} \
+            --image ${{ steps.names.outputs.acr }}.azurecr.io/backend:${{ github.sha }} \
+            --set-env-vars \
+              "DATABASE_URL=secretref:database-url" \
+              "REDIS_URL=secretref:redis-url" \
+              "ML_SERVICE_URL=https://$(az containerapp show \
+                --name ${{ steps.names.outputs.ml_app }} \
+                --resource-group ${{ steps.names.outputs.rg }} \
+                --query 'properties.configuration.ingress.fqdn' -o tsv)"
+
+      # ─── Update Application Gateway backend pool ──────────────────────
+      - name: Update App Gateway backend pool
+        run: |
+          BACKEND_FQDN=$(az containerapp show \
+            --name ${{ steps.names.outputs.backend_app }} \
+            --resource-group ${{ steps.names.outputs.rg }} \
+            --query 'properties.configuration.ingress.fqdn' -o tsv)
+          echo "Backend FQDN: $BACKEND_FQDN"
+          az network application-gateway address-pool update \
+            --resource-group ${{ steps.names.outputs.rg }} \
+            --gateway-name "agw-hormuzwatch-${{ env.ENV_NAME }}" \
+            --name "backend-pool-api" \
+            --servers "$BACKEND_FQDN" || true
+
+      - name: Deployment Summary
+        run: |
+          echo "### ✅ Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "| Resource | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ env.ENV_NAME }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Git SHA | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deployed By | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY

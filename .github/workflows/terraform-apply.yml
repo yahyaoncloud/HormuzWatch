@@ -1,0 +1,114 @@
+name: "Terraform Apply / Destroy"
+
+on:
+  push:
+    branches:
+      - azure-dep  # Production apply
+      - mvp        # Dev apply
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform-apply.yml"
+
+  # Button-click deploy or destroy
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Action to perform"
+        required: true
+        default: "apply"
+        type: choice
+        options:
+          - apply
+          - destroy
+      environment:
+        description: "Target environment"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - prod
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  ARM_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_CLIENT_SECRET:   ${{ secrets.AZURE_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+  TF_VERSION:          "1.8.5"
+
+jobs:
+  terraform:
+    name: "Terraform ${{ inputs.action || 'apply' }} — ${{ inputs.environment || (github.ref_name == 'azure-dep' && 'prod' || 'dev') }}"
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || (github.ref_name == 'azure-dep' && 'prod' || 'dev') }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Determine environment and action
+        id: config
+        run: |
+          ACTION="${{ inputs.action || 'apply' }}"
+          if [[ "${{ inputs.environment }}" != "" ]]; then
+            ENV="${{ inputs.environment }}"
+          elif [[ "${{ github.ref_name }}" == "azure-dep" ]]; then
+            ENV="prod"
+          else
+            ENV="dev"
+          fi
+          echo "action=$ACTION" >> $GITHUB_OUTPUT
+          echo "env=$ENV" >> $GITHUB_OUTPUT
+          echo "tfvars=environments/${ENV}/terraform.tfvars" >> $GITHUB_OUTPUT
+          echo "🎯 Action: $ACTION | Environment: $ENV"
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ secrets.TF_BACKEND_RG }}" \
+            -backend-config="storage_account_name=${{ secrets.TF_BACKEND_SA }}" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=hormuzwatch/${{ steps.config.outputs.env }}/terraform.tfstate"
+
+      - name: Terraform Apply
+        if: steps.config.outputs.action == 'apply'
+        working-directory: terraform
+        env:
+          TF_VAR_postgres_admin_password: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+        run: |
+          terraform apply \
+            -var-file="${{ steps.config.outputs.tfvars }}" \
+            -auto-approve \
+            -input=false
+
+      - name: Terraform Destroy
+        if: steps.config.outputs.action == 'destroy'
+        working-directory: terraform
+        env:
+          TF_VAR_postgres_admin_password: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+        run: |
+          echo "⚠️  DESTROY initiated for environment: ${{ steps.config.outputs.env }}"
+          terraform destroy \
+            -var-file="${{ steps.config.outputs.tfvars }}" \
+            -auto-approve \
+            -input=false
+
+      - name: Export Outputs
+        if: steps.config.outputs.action == 'apply'
+        working-directory: terraform
+        run: |
+          terraform output -json > /tmp/tf-outputs.json
+          echo "### Terraform Outputs" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          cat /tmp/tf-outputs.json >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

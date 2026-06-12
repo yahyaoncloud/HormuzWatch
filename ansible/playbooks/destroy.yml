@@ -1,0 +1,32 @@
+---
+# Destroy playbook — stop services and remove configs (does NOT destroy infra)
+- name: Destroy HormuzWatch application services
+  hosts: avm
+  become: true
+
+  tasks:
+    - name: Confirm destroy
+      ansible.builtin.pause:
+        prompt: "⚠️  This will stop all services on {{ inventory_hostname }}. Press ENTER to continue or Ctrl+C to abort."
+      when: not ansible_check_mode
+
+    - name: Stop and remove Docker containers
+      community.docker.docker_compose_v2:
+        project_src: "{{ app_dir }}"
+        state: absent
+        remove_volumes: false  # Keep data volumes
+      ignore_errors: true
+
+    - name: Remove application config dir
+      ansible.builtin.file:
+        path: "{{ config_dir }}"
+        state: absent
+
+    - name: Remove application dir
+      ansible.builtin.file:
+        path: "{{ app_dir }}"
+        state: absent
+
+    - name: Destroy complete
+      ansible.builtin.debug:
+        msg: "🗑️  Services stopped and configs removed from {{ inventory_hostname }}. Infra remains intact."

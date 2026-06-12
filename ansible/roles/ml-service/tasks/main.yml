@@ -1,0 +1,60 @@
+---
+# ML Service role — deploy FastAPI on AVM via Docker
+
+- name: Ensure app directory exists
+  ansible.builtin.file:
+    path: "{{ app_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Log in to Azure Container Registry
+  ansible.builtin.command:
+    cmd: "az acr login --name {{ acr_name }}"
+  changed_when: false
+
+- name: Pull ML service image
+  community.docker.docker_image:
+    name: "{{ ml_image }}"
+    source: pull
+
+- name: Write docker-compose.yml
+  ansible.builtin.copy:
+    dest: "{{ docker_compose_file }}"
+    mode: '0644'
+    content: |
+      version: '3.9'
+      services:
+        ml-service:
+          image: {{ ml_image }}
+          restart: unless-stopped
+          ports:
+            - "{{ ml_port }}:{{ ml_port }}"
+          env_file:
+            - {{ config_dir }}/.env
+          healthcheck:
+            test: ["CMD", "wget", "-qO-", "http://localhost:{{ ml_port }}/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 15s
+          logging:
+            driver: "json-file"
+            options:
+              max-size: "50m"
+              max-file: "3"
+
+- name: Start ML service
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_dir }}"
+    state: present
+    pull: always
+
+- name: Wait for ML service to be healthy
+  ansible.builtin.uri:
+    url: "http://localhost:{{ ml_port }}/health"
+    status_code: 200
+    timeout: 30
+  register: health
+  retries: 10
+  delay: 5
+  until: health.status == 200
