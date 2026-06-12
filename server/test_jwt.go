@@ -1,0 +1,16 @@
+package main
+
+import (
+	"fmt"
+	"Geospatial-harmuz-watch/server/internal/auth"
+)
+
+func main() {
+	token := "eyJhbGciOiJFUzI1NiIsImtpZCI6Ijk1YjE1OWU0LTA5NWEtNGU5Ni1hODdhLWE1ODk1ZGYxZTUwNSIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2RpcHV3dmxuYXVxa2pycWNmZXF3LnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiIyOGEzMmQ3Yi0zYmNjLTRlNDItYjQ4ZS1iNTkxOTEyYWU4YTUiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzgxMjY1NzY0LCJpYXQiOjE3ODEyNjIxNjQsImVtYWlsIjoieWtpbndvcmsxQGdtYWlsLmNvbSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnsiZW1haWwiOiJ5a2lud29yazFAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInBob25lX3ZlcmlmaWVkIjpmYWxzZSwic3ViIjoiMjhhMzJkN2ItM2JjYy00ZTQyLWI0OGUtYjU5MTkxMmFlOGE1IiwidXNlcm5hbWUiOiJZYWh5YSJ9LCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImFhbCI6ImFhbDEiLCJhbXIiOlt7Im1ldGhvZCI6InBhc3N3b3JkIiwidGltZXN0YW1wIjoxNzgxMjYyMTY0fV0sInNlc3Npb25faWQiOiIwMzhmMGJiNS02YTc0LTRiOTItYmE0Mi1iNTQ0MGNhYzUxY2EiLCJpc19hbm9ueW1vdXMiOmZhbHNlfQ.84e3WpfjBFrtc77J0va98Z1q9dTAtsWZ5yTbIWWIgmDLJgvr8fsTTYAAcdH4vXIHIx4CVhin8UGRJPgdidKFvw"
+	claims, err := auth.ValidateToken(token)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+	} else {
+		fmt.Printf("Claims: %+v\n", claims)
+	}
+}

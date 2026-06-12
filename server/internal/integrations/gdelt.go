@@ -22,8 +22,8 @@ type GDELTGeoJSON struct {
 }
 
 func StartGDELT() {
-	// GDELT 2.0 GEO API: Geospatial and conflict events in the Middle East
-	url := "https://api.gdeltproject.org/api/v2/geo/geo?query=Geospatial&format=GeoJSON"
+	// GDELT 1.0/2.0 GEO API: Geospatial and conflict events
+	url := "https://api.gdeltproject.org/api/v1/gkg_geojson?QUERY=conflict&OUTPUTFIELDS=name,geores,url,themes&MAXROWS=5000&TIMESPAN=60"
 
 	// Rate limit: Poll every 15 minutes
 	ticker := time.NewTicker(15 * time.Minute)
