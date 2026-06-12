@@ -1,0 +1,19 @@
+# HormuzWatch Deploy App — local configuration
+# Copy to local.properties (never commit this file)
+
+# GitHub Personal Access Token (needs: workflow, repo read)
+github.token=ghp_YOUR_GITHUB_PAT_HERE
+github.repo=yahyaoncloud/HormuzWatch
+
+# Grafana Loki base URL (same host as observability stack)
+# For local dev: use ngrok or tailscale to expose from your machine
+# For prod: use https://loki.your-domain.com
+loki.url=http://10.0.2.2:3100
+
+# Azure Log Analytics (for Azure cloud logs tab)
+azure.log.workspace=YOUR_LOG_ANALYTICS_WORKSPACE_ID
+azure.client.id=YOUR_AZURE_APP_CLIENT_ID
+azure.tenant.id=YOUR_AZURE_TENANT_ID
+
+# Restrict login to this Google account only
+google.allowed.account=ykinwork1@gmail.com
