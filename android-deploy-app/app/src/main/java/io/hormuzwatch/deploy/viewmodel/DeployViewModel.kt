@@ -51,7 +51,8 @@ class DeployViewModel : ViewModel() {
 
     private val token get() = "Bearer ${BuildConfig.GITHUB_TOKEN}"
     private val repo = BuildConfig.GITHUB_REPO
-    private val (owner, repoName) = repo.split("/").let { it[0] to it[1] }
+    private val owner = repo.split("/").getOrNull(0) ?: ""
+    private val repoName = repo.split("/").getOrNull(1) ?: ""
 
     fun deployInfra(env: String) = viewModelScope.launch {
         _state.value = DeployState.Running("🚀 Triggering deployment for $env...", 5)
