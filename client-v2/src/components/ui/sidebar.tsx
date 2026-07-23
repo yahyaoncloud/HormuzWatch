@@ -52,7 +52,7 @@ export function Sidebar({
       <div className="flex h-16 items-center justify-between border-b border-[var(--color-border)] px-4 shrink-0">
         <Link to="/" className="flex items-center gap-3 overflow-hidden">
           {LogoIcon ? (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary-600)] text-white shadow-sm">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary-600)] text-white ">
               <LogoIcon className="h-5 w-5" />
             </div>
           ) : (

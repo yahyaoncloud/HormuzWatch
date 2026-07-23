@@ -241,7 +241,7 @@ export default function AdminTracking() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Map & Playback Viewport Container */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 flex flex-col justify-between shadow-sm">
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 flex flex-col justify-between ">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
               <div className="flex items-center gap-2">
                 <Radio className="h-5 w-5 text-[var(--color-primary-600)]" />
@@ -293,7 +293,7 @@ export default function AdminTracking() {
           </div>
 
           {/* Trajectory Playback Control Console */}
-          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 space-y-3 shadow-sm">
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 space-y-3 ">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-[var(--color-primary-600)]" />
@@ -364,7 +364,7 @@ export default function AdminTracking() {
         <div className="space-y-4">
           {/* Target Inspector Card */}
           {currentSelected && (
-            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 space-y-4 shadow-sm">
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 space-y-4 ">
               <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
                 <div className="flex items-center gap-2">
                   {isCurrentAircraft ? <Plane className="h-5 w-5 text-emerald-400" /> : <Ship className="h-5 w-5 text-sky-400" />}
@@ -430,7 +430,7 @@ export default function AdminTracking() {
                 className={`w-full py-2 px-3 rounded-xl font-mono text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer border ${
                   isSelectedWatchlisted
                     ? "bg-red-500/15 text-red-400 border-red-500/40 hover:bg-red-500/25"
-                    : "bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] shadow-sm"
+                    : "bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] "
                 }`}
               >
                 {isSelectedWatchlisted ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -440,7 +440,7 @@ export default function AdminTracking() {
           )}
 
           {/* Target Roster Controls & List */}
-          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 space-y-3 shadow-sm">
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 space-y-3 ">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
               <h3 className="font-display text-sm font-bold text-[var(--color-fg)]">
                 Active Target Roster ({filteredTracks.length})

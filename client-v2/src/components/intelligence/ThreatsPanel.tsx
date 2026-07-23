@@ -1,4 +1,4 @@
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle, Eye, LocateFixed, X } from 'lucide-react';
 import { Link } from 'react-router';
 import { cn } from '@/utils/cn';
 
@@ -21,6 +21,7 @@ interface ThreatsPanelProps {
   highCount: number;
   selectedThreat: ThreatItem | null;
   setSelectedThreat: (threat: ThreatItem | null) => void;
+  onHoverThreat?: (threat: ThreatItem | null) => void;
 }
 
 export function ThreatsPanel({
@@ -29,6 +30,7 @@ export function ThreatsPanel({
   criticalCount,
   highCount,
   setSelectedThreat,
+  onHoverThreat,
 }: ThreatsPanelProps) {
   return (
     <aside className="hidden lg:block w-80 flex-shrink-0 p-4">
@@ -129,29 +131,40 @@ export function ThreatsPanel({
                   </span>
                 </div>
               </div>
-              {threat.score > 0 && (
-                <div className="mt-2 pt-2 border-t border-[var(--color-border)] flex items-center justify-between text-[11px]">
-                  <span className="font-data text-[var(--color-fg-muted)]">
-                    {threat.region}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-data text-[var(--color-fg-muted)]">
-                      {threat.time}
-                    </span>
-                    <span className="font-data font-semibold text-[var(--color-primary-600)]">
-                      {threat.score.toFixed(0)}/100
-                    </span>
+
+              <div className="mt-2.5 pt-2 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
+                <span className="font-data text-[10px] text-[var(--color-fg-muted)]">
+                  {threat.region} • {threat.time}
+                </span>
+                {threat.trackId && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onHoverThreat?.(threat);
+                      }}
+                      className="px-2 py-1 rounded bg-[var(--color-bg-elevated)] hover:bg-[var(--color-primary-600)] hover:text-white border border-[var(--color-border)] text-[10px] font-semibold text-[var(--color-fg-muted)] flex items-center gap-1 transition-all"
+                      title="Focus on Map"
+                    >
+                      <LocateFixed className="h-3 w-3" />
+                      Locate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedThreat(threat);
+                      }}
+                      className="px-2 py-1 rounded bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] text-white text-[10px] font-semibold flex items-center gap-1 transition-all"
+                      title="View Intel Details"
+                    >
+                      <Eye className="h-3 w-3" />
+                      Intel
+                    </button>
                   </div>
-                </div>
-              )}
-              {threat.score === 0 && (
-                <div className="mt-2 pt-2 border-t border-[var(--color-border)] flex items-center justify-between text-[11px]">
-                  <span className="font-data text-[var(--color-fg-muted)]">
-                    {threat.region}
-                  </span>
-                  <span className="font-data text-[var(--color-fg-muted)]">{threat.time}</span>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -191,7 +204,7 @@ export function ThreatDetailModal({
       aria-label="Threat Intelligence Detail"
     >
       <div
-        className="glass-card rounded-2xl border border-[var(--color-border)] max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-xl animate-dropdown-enter"
+        className="glass-card rounded-2xl border border-[var(--color-border)] max-w-lg w-full max-h-[85vh] overflow-y-auto  animate-dropdown-enter"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

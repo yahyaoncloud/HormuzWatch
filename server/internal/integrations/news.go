@@ -85,9 +85,60 @@ func fetchFeeds(fp *gofeed.Parser, feeds []struct{ url string; name string }) {
 				VALUES (?, ?, ?, ?, ?, ?, 'en', 'Maritime Security', 65.0, 'Middle East', NULL, NULL)
 				ON CONFLICT(id) DO NOTHING;
 			`, id, f.name, item.Title, item.Link, summary, *pubDate)
+
+			// Process and save directly to events table in database
+			processAndSaveArticleToEvents(id, item.Title, summary, item.Link, *pubDate, f.name)
 		}
 	}
 	log.Println("[news] Completed fetching live intelligence feeds.")
+}
+
+func processAndSaveArticleToEvents(id, title, summary, link string, pubDate time.Time, sourceName string) {
+	text := strings.ToLower(title + " " + summary)
+
+	lat, lon := 26.1, 55.9
+	region := "Strait of Hormuz"
+	if strings.Contains(text, "red sea") || strings.Contains(text, "houthi") || strings.Contains(text, "yemen") || strings.Contains(text, "bab") || strings.Contains(text, "hudaydah") {
+		lat, lon = 14.5, 42.6
+		region = "Red Sea"
+	} else if strings.Contains(text, "oman") || strings.Contains(text, "muscat") || strings.Contains(text, "jask") || strings.Contains(text, "fujairah") {
+		lat, lon = 24.5, 58.3
+		region = "Gulf of Oman"
+	} else if strings.Contains(text, "persian gulf") || strings.Contains(text, "aramco") || strings.Contains(text, "dammam") || strings.Contains(text, "kuwait") || strings.Contains(text, "qatar") || strings.Contains(text, "bahrain") {
+		lat, lon = 27.2, 51.2
+		region = "Persian Gulf"
+	} else if strings.Contains(text, "aden") || strings.Contains(text, "arabian sea") || strings.Contains(text, "socotra") {
+		lat, lon = 13.5, 50.5
+		region = "Arabian Sea"
+	}
+
+	conflictType := "maritime"
+	severity := "medium"
+	if strings.Contains(text, "missile") || strings.Contains(text, "strike") || strings.Contains(text, "drone") || strings.Contains(text, "uav") || strings.Contains(text, "attack") || strings.Contains(text, "seized") || strings.Contains(text, "explosion") {
+		severity = "critical"
+		if strings.Contains(text, "drone") || strings.Contains(text, "uav") || strings.Contains(text, "air") {
+			conflictType = "air"
+		} else {
+			conflictType = "naval"
+		}
+	} else if strings.Contains(text, "cyber") || strings.Contains(text, "jamming") || strings.Contains(text, "spoofing") || strings.Contains(text, "hack") {
+		severity = "high"
+		conflictType = "cyber"
+	} else if strings.Contains(text, "pirate") || strings.Contains(text, "board") || strings.Contains(text, "skiff") {
+		severity = "high"
+		conflictType = "piracy"
+	}
+
+	_, _ = db.Exec(`
+		INSERT INTO events (id, title, description, event_type, severity, lat, lon, country, start_time, source_article_ids)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT (id) DO UPDATE SET
+			title = EXCLUDED.title,
+			description = EXCLUDED.description,
+			severity = EXCLUDED.severity,
+			lat = EXCLUDED.lat,
+			lon = EXCLUDED.lon;
+	`, id, title, summary, conflictType, severity, lat, lon, region, pubDate, "[\""+id+"\"]")
 }
 
 func generateID(link string) string {

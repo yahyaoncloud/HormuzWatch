@@ -372,7 +372,7 @@ export default function HormuzIntelligence() {
           <div className="lg:col-span-2 space-y-6">
             <RegionalEditorialMap
               region={mapParamToRegionKey(data.region)}
-              className="aspect-[16/9] rounded-xl overflow-hidden glass-card shadow-lg"
+              className="aspect-[16/9] rounded-xl overflow-hidden glass-card "
               height="450px"
               showLayerControls={true}
               showMetricsRibbon={false}

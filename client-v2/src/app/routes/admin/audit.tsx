@@ -20,64 +20,12 @@ interface AuditLogEntry {
   ip: string;
 }
 
-const MOCK_AUDIT_LOGS: AuditLogEntry[] = [
-  {
-    id: "aud_9012",
-    timestamp: "2026-07-23 04:30:12",
-    actor: "ykinwork1@gmail.com",
-    action: "USER_APPROVED",
-    target: "analyst_ops_01",
-    severity: "info",
-    details: "Approved registration request for analyst_ops_01",
-    ip: "127.0.0.1",
-  },
-  {
-    id: "aud_9011",
-    timestamp: "2026-07-23 04:12:45",
-    actor: "ykinwork1@gmail.com",
-    action: "SETTINGS_UPDATED",
-    target: "anomaly_threshold",
-    severity: "warning",
-    details: "Changed AIS anomaly threshold sensitivity from 75 to 82",
-    ip: "127.0.0.1",
-  },
-  {
-    id: "aud_9010",
-    timestamp: "2026-07-23 03:55:00",
-    actor: "system_cron",
-    action: "SNAPSHOT_CREATED",
-    target: "gdrive/backup_20260723.zip",
-    severity: "info",
-    details: "Automated daily dataset snapshot created successfully (2.4 GB)",
-    ip: "10.0.0.4",
-  },
-  {
-    id: "aud_9009",
-    timestamp: "2026-07-23 02:18:30",
-    actor: "ykinwork1@gmail.com",
-    action: "THREAT_STATUS_CHANGE",
-    target: "threat_mep_044",
-    severity: "info",
-    details: "Updated threat level of incident MEP-044 to HIGH",
-    ip: "127.0.0.1",
-  },
-  {
-    id: "aud_9008",
-    timestamp: "2026-07-23 01:05:12",
-    actor: "guest_attempt",
-    action: "LOGIN_FAILED",
-    target: "admin_portal",
-    severity: "danger",
-    details: "Invalid password attempt for administrative portal",
-    ip: "198.51.100.42",
-  },
-];
-
 export default function AdminAudit() {
+  const [logs] = useState<AuditLogEntry[]>([]);
   const [filterSeverity, setFilterSeverity] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredLogs = MOCK_AUDIT_LOGS.filter((log) => {
+  const filteredLogs = logs.filter((log) => {
     const matchesSeverity = filterSeverity === "all" || log.severity === filterSeverity;
     const matchesQuery =
       log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||

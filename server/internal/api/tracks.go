@@ -75,22 +75,33 @@ func queryActiveTracks(filter string) []ActiveTrack {
 	} else if filter == "vessel" {
 		filterClause = "AND t.track_id NOT LIKE 'FLIGHT-%' AND t.track_id NOT LIKE 'ADS-%' AND t.track_id NOT LIKE 'ICAO-%'"
 	}
-	limitClause := "LIMIT 100"
+	limitClause := "LIMIT 3500"
 	if filter == "" {
-		limitClause = "LIMIT 200"
+		limitClause = "LIMIT 3500"
 	}
 
 	query := baseQuery + `
 		FROM tracks t
 		LEFT JOIN anomalies a ON t.track_id = a.track_id
-		WHERE t.last_updated >= NOW() - INTERVAL '2 hours'
+		WHERE t.last_updated >= NOW() - INTERVAL '24 hours'
 		` + filterClause + `
-		ORDER BY score DESC
+		ORDER BY t.last_updated DESC
 		` + limitClause
 
 	rows, err := db.DB.Query(query)
-	if err != nil {
-		return nil
+	if err != nil || rows == nil {
+		// Fallback query without tight interval if error or empty
+		fallbackQuery := baseQuery + `
+			FROM tracks t
+			LEFT JOIN anomalies a ON t.track_id = a.track_id
+			WHERE 1=1
+			` + filterClause + `
+			ORDER BY t.last_updated DESC
+			` + limitClause
+		rows, err = db.DB.Query(fallbackQuery)
+		if err != nil {
+			return []ActiveTrack{}
+		}
 	}
 	defer rows.Close()
 

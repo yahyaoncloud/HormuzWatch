@@ -141,7 +141,7 @@ func (c *OpenRouterClient) Translate(ctx context.Context, text, sourceLang strin
 
 	langName := langName(sourceLang)
 	userMessage := fmt.Sprintf("Translate this %s text to English:\n\n%s", langName, text)
-	return c.chat(ctx, translateSystemPrompt, userMessage, 2000)
+	return c.chat(ctx, translateSystemPrompt, userMessage, 500)
 }
 
 func langName(code string) string {

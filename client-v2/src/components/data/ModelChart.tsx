@@ -613,7 +613,7 @@ export function ModelDashboard({
             className={cn(
               'px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5',
               mode === 'static'
-                ? 'bg-[var(--color-bg-card)] text-[var(--color-fg)] shadow-sm font-semibold'
+                ? 'bg-[var(--color-bg-card)] text-[var(--color-fg)]  font-semibold'
                 : 'text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]'
             )}
           >
@@ -624,7 +624,7 @@ export function ModelDashboard({
             className={cn(
               'px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5',
               mode === 'realtime'
-                ? 'bg-[var(--color-primary-600)] text-white shadow-sm font-semibold'
+                ? 'bg-[var(--color-primary-600)] text-white  font-semibold'
                 : 'text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]'
             )}
           >
@@ -642,7 +642,7 @@ export function ModelDashboard({
             className={cn(
               'shrink-0 rounded-lg px-4 py-2 font-ui text-sm font-medium transition-all',
               activeTab === tab.id
-                ? 'bg-[var(--color-bg-card)] text-[var(--color-fg)] shadow-sm'
+                ? 'bg-[var(--color-bg-card)] text-[var(--color-fg)] '
                 : 'text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:bg-[var(--color-bg-card)]/50'
             )}
           >

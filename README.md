@@ -175,7 +175,7 @@ HormuzWatch/
 | Document | Content |
 |----------|---------|
 | [server/DESIGN.md](server/DESIGN.md) | Low-level design — pipeline, scoring, state machine, data model |
-| [DEVOPS.md](DEVOPS.md) | Operations — Cloudflare Tunnel, CI/CD, monitoring, runbooks |
+| [docs/DEVOPS.md](docs/DEVOPS.md) | Operations — Cloudflare Tunnel, CI/CD, monitoring, runbooks |
 | [docs/LINUX_DEPLOYMENT.md](docs/LINUX_DEPLOYMENT.md) | Linux deployment — systemd, ROCm GPU, firewall, verification |
 | [docs/MIGRATION_WINDOWS_TO_LINUX.md](docs/MIGRATION_WINDOWS_TO_LINUX.md) | Windows → Linux migration guide |
 | [client-v2/PIPELINE_FRONTEND_GUIDE.md](client-v2/PIPELINE_FRONTEND_GUIDE.md) | Frontend API utilization guide |

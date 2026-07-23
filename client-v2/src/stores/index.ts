@@ -608,89 +608,68 @@ const defaultSettings = {
 };
 
 export const useSettingsStore = create<SettingsState>()(
-  subscribeWithSelector(
-    immer((set, get) => ({
-      ...defaultSettings,
+  persist(
+    subscribeWithSelector(
+      immer((set) => ({
+        ...defaultSettings,
 
-      setTheme: (theme) =>
-        set((state) => {
-          state.theme = theme;
-          get().save();
-        }),
-      setUnits: (units) =>
-        set((state) => {
-          state.units = units;
-          get().save();
-        }),
-      setMapStyle: (style) =>
-        set((state) => {
-          state.mapStyle = style;
-          get().save();
-        }),
-      setLanguage: (lang) =>
-        set((state) => {
-          state.language = lang;
-          get().save();
-        }),
-      setTimezone: (tz) =>
-        set((state) => {
-          state.timezone = tz;
-          get().save();
-        }),
-      setNotifications: (notifications) =>
-        set((state) => {
-          Object.assign(state.notifications, notifications);
-          get().save();
-        }),
-      setDataRetention: (days) =>
-        set((state) => {
-          state.dataRetention = days;
-          get().save();
-        }),
-      setAutoRefresh: (enabled) =>
-        set((state) => {
-          state.autoRefresh = enabled;
-          get().save();
-        }),
-      setRefreshInterval: (interval) =>
-        set((state) => {
-          state.refreshInterval = interval;
-          get().save();
-        }),
-
-      load: () => {
-        try {
-          const stored = localStorage.getItem('hw_settings');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            set((state) => {
-              Object.assign(state, parsed);
-            });
+        setTheme: (theme) => {
+          set((state) => {
+            state.theme = theme;
+          });
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('hw_theme', theme);
+              const isDark =
+                theme === 'dark' ||
+                (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+              document.documentElement.classList.toggle('dark', isDark);
+            } catch {}
           }
-        } catch {
-          // Ignore parse errors
-        }
-      },
+        },
+        setUnits: (units) =>
+          set((state) => {
+            state.units = units;
+          }),
+        setMapStyle: (style) =>
+          set((state) => {
+            state.mapStyle = style;
+          }),
+        setLanguage: (lang) =>
+          set((state) => {
+            state.language = lang;
+          }),
+        setTimezone: (tz) =>
+          set((state) => {
+            state.timezone = tz;
+          }),
+        setNotifications: (notifications) =>
+          set((state) => {
+            Object.assign(state.notifications, notifications);
+          }),
+        setDataRetention: (days) =>
+          set((state) => {
+            state.dataRetention = days;
+          }),
+        setAutoRefresh: (enabled) =>
+          set((state) => {
+            state.autoRefresh = enabled;
+          }),
+        setRefreshInterval: (interval) =>
+          set((state) => {
+            state.refreshInterval = interval;
+          }),
 
-      save: () => {
-        try {
-          const { load, save, reset, ...settings } = get();
-          localStorage.setItem('hw_settings', JSON.stringify(settings));
-        } catch {
-          // Ignore storage errors
-        }
-      },
-
-      reset: () =>
-        set((state) => {
-          Object.assign(state, defaultSettings);
-          get().save();
-        }),
-    }))
+        load: () => {},
+        save: () => {},
+        reset: () =>
+          set((state) => {
+            Object.assign(state, defaultSettings);
+          }),
+      }))
+    ),
+    {
+      name: 'hw_settings',
+    }
   )
 );
-
-// Initialize settings on load
-if (typeof window !== 'undefined') {
-  useSettingsStore.getState().load();
-}

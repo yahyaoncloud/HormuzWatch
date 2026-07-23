@@ -1,0 +1,244 @@
+/**
+ * HormuzWatch Tactical Icon System — Color Token System
+ * ======================================================
+ * All SVG icons use these CSS custom properties via currentColor and
+ * explicit var() references. Never hardcode colors in SVG paths.
+ *
+ * Usage:
+ *   Set --icon-color on a parent element to theme an icon.
+ *   Set --icon-stroke to override stroke only.
+ *   Set --icon-fill to override fill only.
+ */
+
+/* ── Leaflet Tile Container Background (Eliminate White Zoom Flash) ── */
+.leaflet-container {
+  background: var(--color-bg, #fafafa) !important;
+}
+
+.dark .leaflet-container,
+html.dark .leaflet-container,
+body.dark .leaflet-container,
+[data-theme="dark"] .leaflet-container {
+  background: #09090b !important;
+}
+
+.leaflet-tile {
+  background-color: transparent !important;
+}
+
+:root {
+  /* ── Severity Scale ─────────────────────────────────────── */
+  --severity-normal:    #38bdf8;   /* sky-400  — nominal/tracking */
+  --severity-info:      #818cf8;   /* indigo-400 */
+  --severity-low:       #4ade80;   /* green-400 */
+  --severity-medium:    #facc15;   /* yellow-400 */
+  --severity-elevated:  #fb923c;   /* orange-400 */
+  --severity-high:      #f97316;   /* orange-500 */
+  --severity-critical:  #ef4444;   /* red-500 */
+  --severity-emergency: #fca5a5;   /* red-300 pulsing */
+
+  /* ── Tactical Affiliation (NATO APP-6 inspired) ─────────── */
+  --affil-friend:    #38bdf8;   /* blue  */
+  --affil-hostile:   #ef4444;   /* red   */
+  --affil-neutral:   #4ade80;   /* green */
+  --affil-unknown:   #facc15;   /* yellow */
+
+  /* ── Contact Type Colors ────────────────────────────────── */
+  --contact-aircraft: #38bdf8;  /* sky blue  */
+  --contact-vessel:   #a78bfa;  /* violet    */
+  --contact-infra:    #94a3b8;  /* slate     */
+  --contact-conflict: #ef4444;  /* red       */
+  --contact-cluster:  #8a6739;  /* copper    */
+
+  /* ── Overlay / Status Ring Colors ──────────────────────── */
+  --overlay-selected:   #f59e0b;   /* amber   */
+  --overlay-focused:    #38bdf8;   /* sky     */
+  --overlay-hovered:    #e2e8f0;   /* slate   */
+  --overlay-emergency:  #ef4444;   /* red     */
+  --overlay-sos:        #fbbf24;   /* amber   */
+  --overlay-lost:       #6b7280;   /* gray    */
+  --overlay-jammed:     #7c3aed;   /* violet  */
+  --overlay-warning:    #f97316;   /* orange  */
+  --overlay-anomaly:    #ec4899;   /* pink    */
+  --overlay-piracy:     #dc2626;   /* red-600 */
+
+  /* ── Background Fills (dark mode tactical) ──────────────── */
+  --icon-bg-dark:   rgba(8, 13, 24, 0.90);
+  --icon-bg-light:  rgba(255, 255, 255, 0.92);
+  --icon-bg-glass:  rgba(15, 23, 42, 0.75);
+
+  /* ── Stroke Widths ──────────────────────────────────────── */
+  --stroke-fine:     1;
+  --stroke-standard: 1.5;
+  --stroke-bold:     2;
+  --stroke-selected: 2.5;
+
+  /* ── Icon Sizes ─────────────────────────────────────────── */
+  --icon-size-xs:  16px;
+  --icon-size-sm:  20px;
+  --icon-size-md:  24px;
+  --icon-size-lg:  32px;
+  --icon-size-xl:  48px;
+
+  /* ── Animation Durations ────────────────────────────────── */
+  --anim-pulse:    2s;
+  --anim-blink:    0.8s;
+  --anim-rotate:   3s;
+  --anim-breathe:  4s;
+
+  /* ── Generic icon vars (override per usage) ─────────────── */
+  --icon-color:    currentColor;
+  --icon-stroke:   currentColor;
+  --icon-fill:     none;
+  --icon-opacity:  1;
+}
+
+/* ── Severity utility classes ─────────────────────────────── */
+.icon-severity-normal    { color: var(--severity-normal);    }
+.icon-severity-info      { color: var(--severity-info);      }
+.icon-severity-low       { color: var(--severity-low);       }
+.icon-severity-medium    { color: var(--severity-medium);    }
+.icon-severity-elevated  { color: var(--severity-elevated);  }
+.icon-severity-high      { color: var(--severity-high);      }
+.icon-severity-critical  { color: var(--severity-critical);  }
+.icon-severity-emergency { color: var(--severity-emergency); }
+
+/* ── Affiliation utility classes ──────────────────────────── */
+.icon-friend    { color: var(--affil-friend);   }
+.icon-hostile   { color: var(--affil-hostile);  }
+.icon-neutral   { color: var(--affil-neutral);  }
+.icon-unknown   { color: var(--affil-unknown);  }
+
+/* ── Leaflet DivIcon reset ────────────────────────────────── */
+.tact-icon {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+/* ── Theme-Aware Tactical Selection Popup Cards ─────────────── */
+:root {
+  --popup-bg: #ffffff;
+  --popup-fg: #0f172a;
+  --popup-fg-muted: #475569;
+  --popup-fg-subtle: #64748b;
+  --popup-border: #e2e8f0;
+  --popup-border-strong: #cbd5e1;
+  --popup-pill-bg: #f8fafc;
+}
+
+.dark, html.dark, body.dark, [data-theme="dark"] {
+  --popup-bg: #0f172a;
+  --popup-fg: #f8fafc;
+  --popup-fg-muted: #94a3b8;
+  --popup-fg-subtle: #64748b;
+  --popup-border: rgba(255, 255, 255, 0.12);
+  --popup-border-strong: rgba(255, 255, 255, 0.2);
+  --popup-pill-bg: rgba(255, 255, 255, 0.05);
+}
+
+.leaflet-popup {
+  margin-bottom: 24px !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: var(--popup-bg) !important;
+  color: var(--popup-fg) !important;
+  border: 1px solid var(--popup-border-strong) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 20px 35px -8px rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: blur(16px) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  font-family: var(--font-ui, 'Inter', system-ui, sans-serif) !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  width: 320px !important;
+  line-height: 1.4 !important;
+  color: var(--popup-fg) !important;
+  font-family: var(--font-ui, 'Inter', system-ui, sans-serif) !important;
+}
+
+.leaflet-popup-tip-container {
+  width: 20px !important;
+  height: 10px !important;
+}
+
+.leaflet-popup-tip {
+  background: var(--popup-bg) !important;
+  border: 1px solid var(--popup-border-strong) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3) !important;
+}
+
+.leaflet-popup-close-button {
+  color: var(--popup-fg-muted) !important;
+  top: 10px !important;
+  right: 12px !important;
+  width: 22px !important;
+  height: 22px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 14px !important;
+  border-radius: 50% !important;
+  background: var(--popup-pill-bg) !important;
+  border: 1px solid var(--popup-border) !important;
+  transition: all 0.2s ease !important;
+  z-index: 10 !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: #ffffff !important;
+  background: var(--severity-critical, #ef4444) !important;
+  border-color: var(--severity-critical, #ef4444) !important;
+}
+
+/* ── Tactical Map Scale Overlay Card ────────────────────────── */
+.leaflet-control-scale-line {
+  background: var(--popup-bg, #0f172a) !important;
+  color: var(--popup-fg, #f8fafc) !important;
+  border: 1px solid var(--popup-border-strong, rgba(255, 255, 255, 0.2)) !important;
+  border-top: none !important;
+  border-radius: 0 0 4px 4px !important;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  padding: 3px 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+/* ── CSS-only animations ──────────────────────────────────── */
+@keyframes tact-pulse {
+  0%, 100% { opacity: 1;    transform: scale(1);    }
+  50%       { opacity: 0.5; transform: scale(1.15); }
+}
+
+@keyframes tact-ring-expand {
+  0%   { transform: scale(0.8); opacity: 0.9; }
+  100% { transform: scale(2.0); opacity: 0;   }
+}
+
+@keyframes tact-blink {
+  0%, 49%  { opacity: 1; }
+  50%, 100%{ opacity: 0; }
+}
+
+@keyframes tact-rotate {
+  from { transform: rotate(0deg);   }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes tact-breathe {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1.00; }
+}
+
+.tact-anim-pulse    { animation: tact-pulse   var(--anim-pulse)   ease-in-out infinite; }
+.tact-anim-blink    { animation: tact-blink   var(--anim-blink)   step-end   infinite; }
+.tact-anim-rotate   { animation: tact-rotate  var(--anim-rotate)  linear     infinite; }
+.tact-anim-breathe  { animation: tact-breathe var(--anim-breathe) ease-in-out infinite; }
+.tact-anim-ring     { animation: tact-ring-expand 1.5s ease-out infinite; }

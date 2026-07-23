@@ -8,7 +8,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet.markercluster/dist/leaflet.markercluster.js';
 import 'leaflet.heat';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, Eye, EyeOff, LocateFixed } from 'lucide-react';
+import { ZoomIn, ZoomOut } from 'lucide-react';
 import * as apiMethods from '@/lib/api';
 import { getConflictFeed } from '@/lib/api';
 import { useWebSocket } from '@/providers';
@@ -33,6 +33,16 @@ export const LOCKED_BOUNDS: L.LatLngBoundsExpression = [
 const LOCKED_MIN_ZOOM = 6;
 const LOCKED_MAX_ZOOM = 13;
 
+function parseCoord(val: any): number | null {
+  if (val === undefined || val === null) return null;
+  if (typeof val === 'number' && !isNaN(val)) return val;
+  if (typeof val === 'string') {
+    const num = parseFloat(val);
+    if (!isNaN(num)) return num;
+  }
+  return null;
+}
+
 function classifyObject(id: string | undefined): 'asset' | 'aircraft' {
   if (!id) return 'asset';
   if (id.startsWith('FLIGHT-') || id.startsWith('ADS-') || id.startsWith('ICAO-')) {
@@ -47,68 +57,20 @@ function getRegionNameByCoords(_lat: number, lon: number): string {
   return 'Gulf of Oman';
 }
 
-function getSeverityColor(severity: string): string {
-  switch (severity?.toLowerCase()) {
-    case 'critical':
-      return '#ef4444';
-    case 'high':
-      return '#b87333';
-    case 'medium':
-      return '#d97706';
-    default:
-      return '#22c55e';
-  }
-}
-
-function makeVesselIcon(severity: string, heading: number, selected: boolean) {
-  const color = getSeverityColor(severity);
-  const size = selected ? 36 : 28;
-  const half = size / 2;
-  const strokeW = selected ? 2.5 : 2;
-  const glow = selected ? `brightness(1.2)` : '';
-
-  const html = `
-    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="filter: ${glow};">
-      <g transform="translate(${half}, ${half}) rotate(${heading})">
-        <circle cx="0" cy="0" r="${half - 2}" fill="rgba(8,13,24,0.85)" stroke="${color}" stroke-width="${strokeW}"/>
-        <path d="M0 -${half * 0.65} L${half * 0.5} ${half * 0.4} L0 ${half * 0.15} L-${half * 0.5} ${half * 0.4} Z" fill="${color}" opacity="0.9"/>
-      </g>
-    </svg>`;
-
-  return L.divIcon({
-    html,
-    className: 'track-div-icon',
-    iconSize: [size, size],
-    iconAnchor: [half, half],
-  });
-}
-
-function makeAircraftIcon(_severity: string, heading: number, selected: boolean) {
-  const size = selected ? 36 : 28;
-  const half = size / 2;
-  const strokeW = selected ? 2.5 : 2;
-  const glow = selected ? `brightness(1.2)` : '';
-
-  const html = `
-    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="filter: ${glow};">
-      <g transform="translate(${half}, ${half}) rotate(${heading})">
-        <circle cx="0" cy="0" r="${half - 2}" fill="rgba(8,13,24,0.85)" stroke="#38bdf8" stroke-width="${strokeW}"/>
-        <path d="M0 -${half * 0.7} L${half * 0.45} -${half * 0.05} L${half * 0.2} ${half * 0.55} L0 ${half * 0.35} L-${half * 0.2} ${half * 0.55} L-${half * 0.45} -${half * 0.05} Z" fill="#38bdf8" opacity="0.9"/>
-      </g>
-    </svg>`;
-
-  return L.divIcon({
-    html,
-    className: 'track-div-icon',
-    iconSize: [size, size],
-    iconAnchor: [half, half],
-  });
-}
+import { createTacticalLeafletIcon } from '@/icons';
 
 function makeIcon(id: string, severity: string, heading: number, selected: boolean) {
   const type = classifyObject(id);
-  if (type === 'aircraft') return makeAircraftIcon(severity, heading, selected);
-  return makeVesselIcon(severity, heading, selected);
+  const category = type === 'aircraft' ? 'aircraft' : 'maritime';
+  const iconId = type === 'aircraft' ? 'aircraft-commercial' : 'vessel-cargo';
+
+  return createTacticalLeafletIcon({
+    iconId,
+    category,
+    severity: severity as any,
+    heading,
+    selected,
+  });
 }
 
 const WATCH_ZONES = [
@@ -244,6 +206,11 @@ export interface LeafletMapProps {
   className?: string;
   heatmap?: boolean;
   onHeatmapChange?: (v: boolean) => void;
+  showConflicts?: boolean;
+  onShowConflictsChange?: (v: boolean) => void;
+  showMetrics?: boolean;
+  onShowMetricsChange?: (v: boolean) => void;
+  recenterTrigger?: number;
   locked?: boolean;
   minZoom?: number;
   maxZoom?: number;
@@ -257,7 +224,12 @@ export interface LeafletMapProps {
 export default function LeafletMapInner({
   className,
   heatmap,
-  onHeatmapChange,
+  onHeatmapChange: _onHeatmapChange,
+  showConflicts: showConflictsProp,
+  onShowConflictsChange: _onShowConflictsChange,
+  showMetrics: _showMetrics,
+  onShowMetricsChange: _onShowMetricsChange,
+  recenterTrigger,
   locked = false,
   minZoom: minZoomProp,
   maxZoom: maxZoomProp,
@@ -309,10 +281,45 @@ export default function LeafletMapInner({
     onHighlightReady?.(highlightZone);
   }, [highlightZone, onHighlightReady]);
 
-  const [internalHeatmap, setInternalHeatmap] = useState(false);
+  const [internalHeatmap] = useState(false);
+  const storeTheme = useSettingsStore((s) => s.theme);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const darkClass = document.documentElement.classList.contains('dark');
+    return darkClass || storeTheme === 'dark' || (storeTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const checkDark = () => {
+      const darkClass = document.documentElement.classList.contains('dark');
+      const isSystemDark = storeTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setIsDarkMode(darkClass || storeTheme === 'dark' || isSystemDark);
+    };
+    checkDark();
+
+    const observer = new MutationObserver(checkDark);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    mediaQuery.addEventListener('change', checkDark);
+
+    return () => {
+      observer.disconnect();
+      mediaQuery.removeEventListener('change', checkDark);
+    };
+  }, [storeTheme]);
+
+  useEffect(() => {
+    if (!map) return;
+    const scaleControl = L.control.scale({ position: 'bottomleft', metric: true, imperial: true }).addTo(map);
+    return () => {
+      scaleControl.remove();
+    };
+  }, [map]);
+
   const showHeatmap = heatmap ?? internalHeatmap;
-  const setShowHeatmap = onHeatmapChange ?? setInternalHeatmap;
-  const [showConflicts, setShowConflicts] = useState(true);
+  const showConflicts = showConflictsProp ?? true;
   const [searchParams, setSearchParams] = useSearchParams();
   const [tracks, setTracks] = useState<any[]>([]);
   const { subscribe } = useWebSocket();
@@ -324,6 +331,47 @@ export default function LeafletMapInner({
     staleTime: 120000,
   });
 
+  const { data: initialTracesData } = useQuery({
+    queryKey: ['active-traces-map'],
+    queryFn: async () => {
+      try {
+        const res = await apiMethods.getTopTraces();
+        if (res?.traces && res.traces.length > 0) return res.traces;
+      } catch {
+        // ignore fallback
+      }
+      return [];
+    },
+    refetchInterval: 15000,
+  });
+
+  useEffect(() => {
+    if (initialTracesData && initialTracesData.length > 0) {
+      setTracks((prev) => {
+        const trackMap = new Map(prev.map((t) => [t.id, t]));
+        for (const t of initialTracesData) {
+          const id = String(t.trackId || (t as any).id || (t as any).mmsi || '');
+          if (!id) continue;
+          const lat = parseCoord(t.lat) ?? parseCoord((t as any).latitude) ?? parseCoord((t as any).lat_deg);
+          const lon = parseCoord(t.lon) ?? parseCoord((t as any).longitude) ?? parseCoord((t as any).lon_deg);
+          if (lat === null || lon === null) continue;
+          const existing = trackMap.get(id) || {};
+          const severity = t.severity || existing.severity || 'low';
+          trackMap.set(id, {
+            ...existing,
+            ...t,
+            severity,
+            id,
+            lat,
+            lon,
+            assetName: t.assetName || (t as any).vessel_name || id,
+          });
+        }
+        return Array.from(trackMap.values());
+      });
+    }
+  }, [initialTracesData]);
+
   useEffect(() => {
     const unsubTelemetry = subscribe('telemetry', (payload: any) => {
       if (!payload) return;
@@ -331,10 +379,22 @@ export default function LeafletMapInner({
       setTracks((prev) => {
         const trackMap = new Map(prev.map((t) => [t.id, t]));
         for (const t of arr) {
-          const id = t.id || t.trackId;
+          const id = String(t.id || t.trackId || t.mmsi || '');
           if (!id) continue;
+          const lat = parseCoord(t.lat) ?? parseCoord(t.latitude) ?? parseCoord(t.lat_deg);
+          const lon = parseCoord(t.lon) ?? parseCoord(t.longitude) ?? parseCoord(t.lon_deg);
+          if (lat === null || lon === null) continue;
           const existing = trackMap.get(id) || {};
-          trackMap.set(id, { severity: 'low', ...existing, ...t, id });
+          const severity = t.severity || existing.severity || 'low';
+          trackMap.set(id, {
+            ...existing,
+            ...t,
+            severity,
+            id,
+            lat,
+            lon,
+            assetName: t.assetName || t.vessel_name || id,
+          });
         }
         return Array.from(trackMap.values());
       });
@@ -346,10 +406,22 @@ export default function LeafletMapInner({
       setTracks((prev) => {
         const trackMap = new Map(prev.map((t) => [t.id, t]));
         for (const a of arr) {
-          const id = a.id || a.trackId;
+          const id = String(a.id || a.trackId || a.mmsi || '');
           if (!id) continue;
+          const lat = parseCoord(a.lat) ?? parseCoord(a.latitude) ?? parseCoord(a.lat_deg);
+          const lon = parseCoord(a.lon) ?? parseCoord(a.longitude) ?? parseCoord(a.lon_deg);
+          if (lat === null || lon === null) continue;
           const existing = trackMap.get(id) || {};
-          trackMap.set(id, { severity: 'low', ...existing, ...a, id });
+          const severity = a.severity || existing.severity || 'low';
+          trackMap.set(id, {
+            ...existing,
+            ...a,
+            severity,
+            id,
+            lat,
+            lon,
+            assetName: a.assetName || a.vessel_name || id,
+          });
         }
         return Array.from(trackMap.values());
       });
@@ -528,14 +600,23 @@ export default function LeafletMapInner({
 
     const fetchHeatmap = async (isFirstFetch = false) => {
       try {
-        const res = await apiMethods.getHeatmap('vessel');
-        if (res.type === 'heatmap' && Array.isArray(res.data)) {
-          const newPoints = res.data.map((cell: any) => [
+        const res = await apiMethods.getHeatmap('all');
+        let newPoints: [number, number, number][] = [];
+        if (res?.type === 'heatmap' && Array.isArray(res.data) && res.data.length > 0) {
+          newPoints = res.data.map((cell: any) => [
             cell[0],
             cell[1],
-            Math.min(1, cell[2] / 50),
+            Math.min(1, (cell[2] || 1) / 30),
           ]);
+        } else if (tracks && tracks.length > 0) {
+          newPoints = tracks.map((t) => [
+            t.lat,
+            t.lon,
+            Math.min(1, ((t.score || 20) + 10) / 100),
+          ]);
+        }
 
+        if (newPoints.length > 0) {
           if (!map.hasLayer(heatRef.current)) {
             map.addLayer(heatRef.current);
             heatRef.current.setLatLngs(newPoints);
@@ -573,37 +654,44 @@ export default function LeafletMapInner({
     clusterRef.current.clearLayers();
 
     const filteredTracks = tracks.filter((track) => {
+      const lat = parseCoord(track.lat) ?? parseCoord(track.latitude);
+      const lon = parseCoord(track.lon) ?? parseCoord(track.longitude);
+      if (lat === null || lon === null) return false;
+
       if (severityFilter && severityFilter !== 'all' && track.severity !== severityFilter) {
         return false;
       }
       if (regionFilter && regionFilter !== 'all') {
-        const regionName = getRegionNameByCoords(track.lat, track.lon);
+        const regionName = getRegionNameByCoords(lat, lon);
         if (regionFilter === 'hormuz' && regionName !== 'Strait of Hormuz') return false;
         if (regionFilter === 'pgulf' && regionName !== 'Persian Gulf') return false;
         if (regionFilter === 'goman' && regionName !== 'Gulf of Oman') return false;
         if (regionFilter === 'redsea' && !regionName.includes('Red Sea')) return false;
       }
-      if (timeline && timeline !== 'all') {
+      if (timeline && timeline !== 'all' && track.timestamp) {
         const trackTime = new Date(track.timestamp).getTime();
-        const diffHours = (Date.now() - trackTime) / (1000 * 60 * 60);
-        if (timeline === '1hr' && diffHours > 1) return false;
-        if (timeline === '3hr' && diffHours > 3) return false;
-        if (timeline === '6hr' && diffHours > 6) return false;
-        if (timeline === '12hr' && diffHours > 12) return false;
-        if (timeline === '24hr' && diffHours > 24) return false;
+        if (!isNaN(trackTime)) {
+          const diffHours = (Date.now() - trackTime) / (1000 * 60 * 60);
+          if (timeline === '1hr' && diffHours > 1) return false;
+          if (timeline === '3hr' && diffHours > 3) return false;
+          if (timeline === '6hr' && diffHours > 6) return false;
+          if (timeline === '12hr' && diffHours > 12) return false;
+          if (timeline === '24hr' && diffHours > 24) return false;
+        }
       }
       return true;
     });
 
     filteredTracks.forEach((track) => {
-      if (typeof track.lat !== 'number' || typeof track.lon !== 'number') return;
-      const selected = track.id === selectedTrackId;
-      const marker = L.marker([track.lat, track.lon], {
+      const lat = parseCoord(track.lat) ?? parseCoord(track.latitude);
+      const lon = parseCoord(track.lon) ?? parseCoord(track.longitude);
+      if (lat === null || lon === null) return;
+      const selected = String(track.id) === String(selectedTrackId);
+      const marker = L.marker([lat, lon], {
         icon: makeIcon(track.id, track.severity, track.heading || 0, selected),
       });
 
       const isAircraft = classifyObject(track.id) === 'aircraft';
-      const typeLabel = isAircraft ? '✈ Flight Notation (ADS-B)' : '🚢 AIS Vessel Track';
       const severityColor: Record<string, string> = {
         critical: '#b91c1c',
         high: '#b45309',
@@ -611,47 +699,100 @@ export default function LeafletMapInner({
         low: '#15803d',
       };
       const color = severityColor[track.severity || 'low'] || 'var(--color-primary-600)';
-      const severityBadge = `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;text-transform:uppercase;color:#fff;background:${color}">${track.severity || 'NOMINAL'}</span>`;
 
       const altVal = (track as any).altitude;
       const squawkVal = (track as any).squawk;
       const onGroundVal = (track as any).onGround;
 
-      const altitudeRow =
+      const altPill =
         isAircraft && altVal !== undefined && altVal !== null
-          ? `<div><strong>Altitude:</strong> ${Number(altVal).toLocaleString()} ft</div>`
+          ? `<div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
+              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">ALTITUDE</div>
+              <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${Number(altVal).toLocaleString()} ft</div>
+            </div>`
           : '';
-      const squawkRow = isAircraft && squawkVal ? `<div><strong>Squawk Code:</strong> ${squawkVal}</div>` : '';
-      const onGroundRow =
+      const squawkPill =
+        isAircraft && squawkVal
+          ? `<div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
+              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">SQUAWK</div>
+              <div style="font-size:11px;font-weight:700;color:var(--color-primary-400, #38bdf8);font-family:var(--font-mono, monospace);margin-top:1px">${squawkVal}</div>
+            </div>`
+          : '';
+      const onGroundPill =
         isAircraft && onGroundVal !== undefined
-          ? `<div><strong>Flight Status:</strong> ${onGroundVal ? 'On Ground' : 'Airborne'}</div>`
+          ? `<div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
+              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">STATUS</div>
+              <div style="font-size:11px;font-weight:700;color:${onGroundVal ? 'var(--color-warning, #facc15)' : 'var(--color-success, #22c55e)'};font-family:var(--font-mono, monospace);margin-top:1px">${onGroundVal ? 'ON GROUND' : 'AIRBORNE'}</div>
+            </div>`
           : '';
-      const aisAgeRow =
+      const aisAgePill =
         !isAircraft && track.aisAgeMinutes !== undefined
-          ? `<div><strong>AIS Age:</strong> ${track.aisAgeMinutes} min</div>`
+          ? `<div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
+              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">AIS AGE</div>
+              <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${track.aisAgeMinutes} min</div>
+            </div>`
           : '';
 
       marker.bindPopup(
-        `<div style="font-family:'Inter',system-ui,sans-serif;max-width:320px;line-height:1.5">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
-            <span style="font-size:14px;font-weight:700;color:#18181b">${track.assetName || track.name || track.id}</span>
-            ${severityBadge}
+        `<div style="font-family:var(--font-ui, 'Inter', system-ui, sans-serif);color:var(--color-fg);padding:14px;border-radius:14px">
+          <!-- Header -->
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0">
+              <div style="width:34px;height:34px;border-radius:8px;background:${color}18;border:1px solid ${color}40;display:flex;align-items:center;justify-content:center;font-size:16px;color:${color};flex-shrink:0">
+                ${isAircraft ? '✈' : '🚢'}
+              </div>
+              <div style="min-width:0">
+                <h4 style="margin:0;font-size:13px;font-weight:700;color:var(--color-fg);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${track.assetName || track.name || track.id}</h4>
+                <div style="display:flex;align-items:center;gap:5px;margin-top:3px">
+                  <span style="width:6px;height:6px;border-radius:50%;background:#22c55e" class="tact-anim-pulse"></span>
+                  <span style="font-size:10px;font-weight:600;color:var(--color-fg-muted);text-transform:uppercase;letter-spacing:0.04em;font-family:var(--font-mono, monospace)">${isAircraft ? 'ADS-B AIR' : 'AIS MARITIME'}</span>
+                </div>
+              </div>
+            </div>
+            <span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#fff;background:${color};border:1px solid ${color}80;box-shadow:0 0 8px ${color}40;flex-shrink:0">
+              ${track.severity || 'NOMINAL'}
+            </span>
           </div>
-          <div style="font-size:11px;font-weight:600;color:var(--color-primary-600);margin-bottom:8px">${typeLabel}</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;color:#52525b;margin-bottom:8px">
-            <div><strong>Track ID:</strong> ${track.id}</div>
-            <div><strong>Speed:</strong> ${(track.speed || 0).toFixed(1)} kn</div>
-            <div><strong>Heading:</strong> ${(track.heading || 0).toFixed(0)}°</div>
-            <div><strong>Region:</strong> ${getRegionNameByCoords(track.lat, track.lon)}</div>
-            ${altitudeRow}
-            ${squawkRow}
-            ${onGroundRow}
-            ${aisAgeRow}
-            <div><strong>Latitude:</strong> ${track.lat.toFixed(4)}°N</div>
-            <div><strong>Longitude:</strong> ${track.lon.toFixed(4)}°E</div>
+
+          <!-- Telemetry Grid -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
+            <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
+              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">TRACK ID</div>
+              <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${track.id}</div>
+            </div>
+            <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
+              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">SPEED</div>
+              <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${(track.speed || 0).toFixed(1)} kn</div>
+            </div>
+            <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
+              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">HEADING</div>
+              <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${(track.heading || 0).toFixed(0)}°</div>
+            </div>
+            <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
+              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">REGION</div>
+              <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${getRegionNameByCoords(track.lat, track.lon)}</div>
+            </div>
+            ${altPill}
+            ${squawkPill}
+            ${onGroundPill}
+            ${aisAgePill}
+            <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
+              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">LATITUDE</div>
+              <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${track.lat.toFixed(4)}°N</div>
+            </div>
+            <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
+              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">LONGITUDE</div>
+              <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${track.lon.toFixed(4)}°E</div>
+            </div>
           </div>
-          <div style="font-size:10px;color:#a1a1aa;border-top:1px solid #e4e4e7;padding-top:6px">
-            Last Updated: ${new Date(track.timestamp || Date.now()).toLocaleString()}
+
+          <!-- Footer -->
+          <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--color-border);padding-top:8px;font-size:10px;color:var(--color-fg-subtle)">
+            <span style="display:flex;align-items:center;gap:4px">
+              <span style="width:5px;height:5px;border-radius:50%;background:#22c55e"></span>
+              REALTIME FEED
+            </span>
+            <span style="font-family:var(--font-mono, monospace);color:var(--color-fg-muted)">${new Date(track.timestamp || Date.now()).toLocaleTimeString()}</span>
           </div>
         </div>`,
         { maxWidth: 340, className: 'track-popup' }
@@ -666,7 +807,7 @@ export default function LeafletMapInner({
 
       if (selected && lastFlownTrackIdRef.current !== selectedTrackId) {
         lastFlownTrackIdRef.current = selectedTrackId;
-        map.flyTo([track.lat, track.lon], 11, { duration: 1.5, animate: true });
+        map.flyTo([lat, lon], 11, { duration: 1.5, animate: true });
         marker.openPopup();
       }
     });
@@ -685,20 +826,21 @@ export default function LeafletMapInner({
 
     if (showConflicts && conflictData?.conflicts) {
       const severityColor: Record<string, string> = {
-        critical: '#b91c1c',
-        high: '#b45309',
-        medium: '#d97706',
-        low: '#15803d',
+        critical: '#ef4444',
+        high: '#f97316',
+        medium: '#f59e0b',
+        low: '#10b981',
       };
       const conflictSVG = (color: string) => `
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="10" fill="${color}" fill-opacity="0.2" stroke="${color}" stroke-width="2"/>
-          <circle cx="12" cy="12" r="4" fill="${color}"/>
-          <line x1="12" y1="2" x2="12" y2="6" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
-          <line x1="12" y1="18" x2="12" y2="22" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
-          <line x1="2" y1="12" x2="6" y2="12" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
-          <line x1="18" y1="12" x2="22" y2="12" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
-        </svg>`;
+        <div style="position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+          <div style="position: absolute; inset: 0; border-radius: 9999px; background-color: ${color}; opacity: 0.35; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+          <div style="position: absolute; inset: 4px; border-radius: 9999px; border: 1.5px dashed ${color}; opacity: 0.6; animation: spin 8s linear infinite;"></div>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" style="position: relative; z-index: 10; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+            <path d="M12 2L1 21H23L12 2Z" fill="${color}" fill-opacity="0.3" stroke="${color}" stroke-width="2.2" stroke-linejoin="round"/>
+            <line x1="12" y1="9" x2="12" y2="14" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="12" cy="17.5" r="1.3" fill="${color}"/>
+          </svg>
+        </div>`;
 
       const filteredConflicts = conflictData.conflicts.filter((c: ConflictEvent) => {
         if (severityFilter && severityFilter !== 'all' && c.severity !== severityFilter) {
@@ -729,33 +871,48 @@ export default function LeafletMapInner({
         const icon = L.divIcon({
           html: conflictSVG(color),
           className: '',
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
+          iconSize: [40, 40],
+          iconAnchor: [20, 20],
         });
         const marker = L.marker([c.lat, c.lon], { icon });
 
-        const severityBadge = `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;text-transform:uppercase;color:#fff;background:${color}">${c.severity}</span>`;
         const verifiedIcon = c.verified ? '✓ Verified' : '⚠ Unverified';
         const verifiedColor = c.verified ? '#15803d' : '#b45309';
 
         marker.bindPopup(
-          `<div style="font-family:'Inter',system-ui,sans-serif;max-width:320px;line-height:1.5">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-              <span style="font-size:14px;font-weight:700;color:#18181b">${c.title}</span>
-              ${severityBadge}
+          `<div style="font-family:var(--font-ui, 'Inter', system-ui, sans-serif);color:var(--color-fg);padding:14px;border-radius:14px">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
+              <div style="min-width:0">
+                <h4 style="margin:0;font-size:14px;font-weight:700;color:var(--color-fg);line-height:1.2">${c.title}</h4>
+                <div style="font-size:10px;font-weight:600;color:${verifiedColor};margin-top:2px;font-family:var(--font-mono, monospace)">${verifiedIcon}</div>
+              </div>
+              <span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;color:#fff;background:${color};flex-shrink:0">
+                ${c.severity}
+              </span>
             </div>
-            <p style="font-size:12px;color:#52525b;margin:0 0 8px 0">${c.description}</p>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;color:#71717a;margin-bottom:8px">
-              <div><strong>Region:</strong> ${c.region}</div>
-              <div><strong>Type:</strong> ${c.conflictType}</div>
-              <div><strong>Assets:</strong> ${c.affectedAssets || 'N/A'}</div>
-              <div><strong>Casualties:</strong> ${c.casualties || 'None'}</div>
+            <p style="font-size:12px;color:var(--color-fg-muted);margin:0 0 10px 0;line-height:1.4">${c.description}</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
+              <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
+                <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase">REGION</div>
+                <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${c.region}</div>
+              </div>
+              <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
+                <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase">TYPE</div>
+                <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${c.conflictType}</div>
+              </div>
+              <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
+                <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase">ASSETS</div>
+                <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${c.affectedAssets || 'N/A'}</div>
+              </div>
+              <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
+                <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase">CASUALTIES</div>
+                <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${c.casualties || 'None'}</div>
+              </div>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#a1a1aa;border-top:1px solid #e4e4e7;padding-top:6px">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--color-fg-subtle);border-top:1px solid var(--color-border);padding-top:8px">
               <span>Source: ${c.source} (${c.sourceType})</span>
-              <span style="color:${verifiedColor}">${verifiedIcon}</span>
+              <span style="font-family:var(--font-mono, monospace)">${new Date(c.timestamp).toLocaleTimeString()}</span>
             </div>
-            <div style="font-size:10px;color:#a1a1aa;margin-top:2px">${new Date(c.timestamp).toLocaleString()}</div>
           </div>`,
           { maxWidth: 340, className: 'conflict-popup' }
         );
@@ -789,10 +946,12 @@ export default function LeafletMapInner({
     };
   }, [map, setSearchParams]);
 
-  const handleRecenter = () => {
-    setSearchParams(new URLSearchParams());
-    map?.flyTo(CENTER, ZOOM, { duration: 1.5, animate: true });
-  };
+  useEffect(() => {
+    if (recenterTrigger && map) {
+      setSearchParams(new URLSearchParams());
+      map.flyTo(CENTER, ZOOM, { duration: 1.5, animate: true });
+    }
+  }, [recenterTrigger, map, setSearchParams]);
 
   return (
     <div
@@ -803,78 +962,54 @@ export default function LeafletMapInner({
         style={{
           position: 'absolute',
           top: '12px',
-          left: '50%',
-          transform: 'translateX(-50%)',
+          right: '12px',
           zIndex: 500,
           display: 'flex',
-          gap: '8px',
+          gap: '2px',
+          background: 'var(--color-bg-elevated)',
+          border: '1px solid var(--color-border)',
+          borderRadius: '8px',
+          padding: '2px',
+          backdropFilter: 'blur(10px)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
         }}
       >
         <button
-          onClick={() => setShowHeatmap(!showHeatmap)}
+          type="button"
+          onClick={() => map?.zoomIn()}
+          title="Zoom In"
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
-            padding: '6px 14px',
-            background: showHeatmap ? 'var(--color-primary-600)' : 'var(--color-bg-elevated)',
-            border: showHeatmap
-              ? '1px solid var(--color-primary-700)'
-              : '1px solid var(--color-border)',
-            borderRadius: '7px',
-            color: showHeatmap ? '#ffffff' : 'var(--color-fg-muted)',
-            fontSize: '0.75rem',
-            fontWeight: 600,
+            justifyContent: 'center',
+            padding: '6px 10px',
+            background: 'transparent',
+            border: 'none',
+            borderRadius: '5px',
+            color: 'var(--color-fg)',
             cursor: 'pointer',
-            backdropFilter: 'blur(10px)',
           }}
         >
-          {showHeatmap ? <Eye size={13} /> : <EyeOff size={13} />}
-          {showHeatmap ? 'Hide Heatmap' : 'Show Heatmap'}
+          <ZoomIn size={14} />
         </button>
-
+        <div style={{ width: '1px', background: 'var(--color-border)', margin: '4px 0' }} />
         <button
-          onClick={() => setShowConflicts(!showConflicts)}
+          type="button"
+          onClick={() => map?.zoomOut()}
+          title="Zoom Out"
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
-            padding: '6px 14px',
-            background: showConflicts ? 'var(--color-danger)' : 'var(--color-bg-elevated)',
-            border: showConflicts
-              ? '1px solid var(--color-danger)'
-              : '1px solid var(--color-border)',
-            borderRadius: '7px',
-            color: showConflicts ? '#ffffff' : 'var(--color-fg-muted)',
-            fontSize: '0.75rem',
-            fontWeight: 600,
+            justifyContent: 'center',
+            padding: '6px 10px',
+            background: 'transparent',
+            border: 'none',
+            borderRadius: '5px',
+            color: 'var(--color-fg)',
             cursor: 'pointer',
-            backdropFilter: 'blur(10px)',
           }}
         >
-          <AlertTriangle size={13} />
-          {showConflicts ? `${conflictData?.count ?? 0} Conflicts` : 'Show Conflicts'}
-        </button>
-
-        <button
-          onClick={handleRecenter}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '6px 14px',
-            background: 'var(--color-bg-elevated)',
-            border: '1px solid var(--color-border)',
-            borderRadius: '7px',
-            color: 'var(--color-fg-muted)',
-            fontSize: '0.75rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            backdropFilter: 'blur(10px)',
-          }}
-        >
-          <LocateFixed size={13} />
-          Recenter View
+          <ZoomOut size={14} />
         </button>
       </div>
 
@@ -888,21 +1023,17 @@ export default function LeafletMapInner({
         zoomControl={false}
         ref={setMap as any}
       >
-        {(() => {
-          const theme = useSettingsStore.getState().theme;
-          const isDark = theme === 'dark' || (theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-          const tileUrl = isDark
-            ? 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png'
-            : 'https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png';
-          return (
-            <TileLayer
-              attribution="&copy; OpenStreetMap contributors &copy; CARTO"
-              url={tileUrl}
-              subdomains="abcd"
-              maxZoom={maxZoom}
-            />
-          );
-        })()}
+        <TileLayer
+          key={isDarkMode ? 'dark-tiles' : 'light-tiles'}
+          attribution="&copy; OpenStreetMap contributors &copy; CARTO"
+          url={
+            isDarkMode
+              ? 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png'
+              : 'https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png'
+          }
+          subdomains="abcd"
+          maxZoom={maxZoom}
+        />
       </MapContainer>
     </div>
   );

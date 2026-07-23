@@ -28,8 +28,6 @@ func StartWorkers(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *int
 	// 5. Start FIRMS integration
 	go StartFIRMS(h)
 
-	// 6. Start Telemetry Resilience Simulator (ensures active tracks when external APIs pause)
-	go StartTelemetrySimulator(pipeline)
 
 	// Periodic stale track purge
 	go func() {

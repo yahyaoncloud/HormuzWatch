@@ -301,6 +301,8 @@ func InitDB() error {
 	_, _ = DB.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS supabase_uid TEXT`)
 	_, _ = DB.Exec(`ALTER TABLE tracks ADD COLUMN IF NOT EXISTS object_type TEXT NOT NULL DEFAULT 'vessel'`)
 	_, _ = DB.Exec(`ALTER TABLE tracks ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'webapp'`)
+	_, _ = DB.Exec(`ALTER TABLE articles ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION`)
+	_, _ = DB.Exec(`ALTER TABLE articles ADD COLUMN IF NOT EXISTS lon DOUBLE PRECISION`)
 	_, _ = DB.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_supabase_uid ON users(supabase_uid) WHERE supabase_uid IS NOT NULL`)
 
 	defaultSettings := map[string]string{
@@ -343,8 +345,44 @@ func InitDB() error {
 		)
 	}
 
+	seedInitialEventsIfEmpty()
+
 	log.Println("PostgreSQL database initialized successfully.")
 	return nil
+}
+
+func seedInitialEventsIfEmpty() {
+	var count int
+	_ = DB.QueryRow("SELECT COUNT(*) FROM events").Scan(&count)
+	if count > 0 {
+		return
+	}
+
+	log.Println("[db] Seeding initial OSINT intelligence events into PostgreSQL database...")
+	initialEvents := []struct {
+		id, title, desc, eventType, severity, country string
+		lat, lon                                       float64
+	}{
+		{"evt-001", "Houthi Anti-Ship Missile Strike near Al Hudaydah", "Anti-ship ballistic missile reported impacting 500m off container ship beam.", "naval", "critical", "Red Sea", 14.2, 42.5},
+		{"evt-002", "IRGC-N Fast Attack Craft Transit Shadowing", "Three IRGC fast boats shadowed commercial tanker in Strait TSS.", "naval", "high", "Strait of Hormuz", 26.5, 56.3},
+		{"evt-003", "Shahed Reconnaissance UAV Swarm Sighting", "Flight pattern of 15+ UAVs detected near Qeshm Island airspace.", "air", "high", "Strait of Hormuz", 26.9, 56.1},
+		{"evt-004", "FALCON Subsea Cable Tension Anomaly", "Seismic telemetry registered cable tension variation off Muscat landing.", "cyber", "medium", "Gulf of Oman", 23.6, 58.5},
+		{"evt-005", "EU NAVFOR Pirate Skiff Interdiction", "Naval frigate intercepted armed skiff 80nm off Socotra Island.", "piracy", "medium", "Arabian Sea", 13.8, 53.2},
+		{"evt-006", "King Abdulaziz Port Cargo Management Outage", "Cyber incident caused temporary container tracking delay at Dammam.", "cyber", "high", "Persian Gulf", 26.5, 50.1},
+		{"evt-007", "IRGC Detention of Sanctioned Tanker", "Panama-flagged tanker detained near Abu Musa Island by IRGC-N.", "naval", "high", "Strait of Hormuz", 26.0, 55.3},
+		{"evt-008", "Northern Persian Gulf AIS Spoofing Cluster", "12 tankers broadcasting duplicate MMSI tags during STS crude transfer.", "cyber", "medium", "Persian Gulf", 28.3, 50.8},
+		{"evt-009", "US Navy & IRGC Radio Demarche in Strait", "USS Carney shadowed during northbound transit through Hormuz TSS.", "diplomacy", "medium", "Strait of Hormuz", 26.2, 56.8},
+		{"evt-010", "Red Sea USV Explosive Detonation", "Explosive USV engaged by bulk carrier security team in Red Sea TSS.", "naval", "critical", "Red Sea", 15.5, 41.8},
+	}
+
+	for _, e := range initialEvents {
+		_, _ = DB.Exec(`
+			INSERT INTO events (id, title, description, event_type, severity, lat, lon, country, start_time)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW() - INTERVAL '6 hours')
+			ON CONFLICT (id) DO NOTHING
+		`, e.id, e.title, e.desc, e.eventType, e.severity, e.lat, e.lon, e.country)
+	}
+	log.Println("[db] Successfully seeded initial PostgreSQL intelligence events.")
 }
 
 // Close releases both database handles during graceful shutdown. Keeping the

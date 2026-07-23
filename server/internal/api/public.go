@@ -131,7 +131,7 @@ func PublicTopTracesStream(c *gin.Context) {
 	}
 }
 
-// queryTopTraces fetches the top 10 tracks joined with anomaly data, ordered by score desc.
+// queryTopTraces fetches up to 3500 tracks joined with anomaly data, ordered by score desc.
 func queryTopTraces() []TopTrace {
 	query := `
 		SELECT 
@@ -143,9 +143,8 @@ func queryTopTraces() []TopTrace {
 			t.last_updated
 		FROM tracks t
 		LEFT JOIN anomalies a ON t.track_id = a.track_id
-		WHERE t.last_updated >= NOW() - INTERVAL '24 hours'
 		ORDER BY score DESC
-		LIMIT 10
+		LIMIT 3500
 	`
 	rows, err := db.DB.Query(query)
 	if err != nil {

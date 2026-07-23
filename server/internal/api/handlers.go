@@ -12,6 +12,7 @@ import (
 	"Geospatial-harmuz-watch/server/internal/domain/telemetry"
 	"Geospatial-harmuz-watch/server/internal/geo"
 	"Geospatial-harmuz-watch/server/internal/heatmap"
+	"Geospatial-harmuz-watch/server/internal/version"
 	"Geospatial-harmuz-watch/server/internal/websocket/hub"
 
 	"github.com/gin-gonic/gin"
@@ -182,7 +183,9 @@ func (h *Handlers) Health(c *gin.Context) {
 				"healthy": h.hub != nil,
 			},
 		},
-		"version": "2.0.0",
+		"version":    "2.0.0",
+		"build_time": version.BuildTime,
+		"git_commit": version.GitCommit,
 	})
 }
 

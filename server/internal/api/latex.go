@@ -378,10 +378,10 @@ func generateReportLaTeX(report *DetailedReport, anomalies []TopTrace, metrics *
 		shHeight = (float64(shCount) / float64(maxReg)) * 4.0
 		goHeight = (float64(goCount) / float64(maxReg)) * 4.0
 	} else {
-		// Default mock heights for fallback if DB is empty
-		pgHeight = 2.5
-		shHeight = 4.0
-		goHeight = 1.5
+		// Zero heights when DB has no recorded tracks
+		pgHeight = 0.0
+		shHeight = 0.0
+		goHeight = 0.0
 	}
 
 	// Calculate TikZ bar heights for severities

@@ -24,6 +24,7 @@ import (
 	"Geospatial-harmuz-watch/server/internal/intelligence/source"
 	"Geospatial-harmuz-watch/server/internal/observability"
 	"Geospatial-harmuz-watch/server/internal/scheduler"
+	"Geospatial-harmuz-watch/server/internal/version"
 	"Geospatial-harmuz-watch/server/internal/websocket"
 	"Geospatial-harmuz-watch/server/internal/worker"
 
@@ -86,7 +87,17 @@ func durationMinutesEnv(key string) time.Duration {
 	return time.Duration(minutes) * time.Minute
 }
 
+var (
+	// Injected at build time via ldflags.
+	Version   = "dev"
+	BuildTime = "unknown"
+	GitCommit = "unknown"
+)
+
 func main() {
+	// Initialize version from build-time ldflags
+	version.Init(Version, BuildTime, GitCommit)
+	log.Printf("[init] HormuzWatch server v%s (built %s, commit %s)", Version, BuildTime, GitCommit)
 	// Attempt to load .env file from multiple locations
 	loadEnvFile()
 

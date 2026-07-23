@@ -1,6 +1,5 @@
 import {
   Activity,
-  AlertTriangle,
   ChevronsDownUp,
   ChevronsUpDown,
   Compass,
@@ -9,6 +8,7 @@ import {
   Layers,
   Plane,
   Ship,
+  ShieldAlert,
 } from 'lucide-react';
 import type { NewsItem, PublicMetricsResponse } from '@/lib/api';
 
@@ -41,9 +41,9 @@ export function IntelligenceConsole({
 }: IntelligenceConsoleProps) {
   return (
     <aside className="hidden lg:block w-72 flex-shrink-0 p-4">
-      <div className="glass-card rounded-xl border border-[var(--color-border)]/50 flex flex-col max-h-[calc(100vh-8rem)]">
+      <div className="glass-card rounded-xl border border-[var(--color-border)]/50 flex flex-col max-h-[calc(100vh-8rem)] ">
         {/* Header */}
-        <div className="shrink-0 px-4 pt-4 pb-2 border-b border-[var(--color-border)] flex items-center justify-between">
+        <div className="shrink-0 px-4 pt-4 pb-3 border-b border-[var(--color-border)] flex items-center justify-between">
           <h3 className="font-display text-sm font-semibold text-[var(--color-fg)] flex items-center gap-2">
             <Compass className="h-4 w-4 text-[var(--color-primary-600)]" />
             Intelligence Console
@@ -69,13 +69,13 @@ export function IntelligenceConsole({
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2 text-sm font-ui text-[var(--color-fg-muted)]">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-3 text-sm font-ui text-[var(--color-fg-muted)]">
           {/* Watch Zones */}
           <details className="group cursor-pointer" open={sidebarExpanded}>
-            <summary className="font-medium text-[var(--color-fg)] flex items-center justify-between list-none">
-              <span className="flex items-center gap-1.5">
+            <summary className="font-medium text-[var(--color-fg)] flex items-center justify-between list-none pb-1">
+              <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--color-fg-muted)]">
                 <Compass className="h-3.5 w-3.5 text-[var(--color-primary-600)]" />
-                Watch Zones
+                Strategic Watch Zones
               </span>
               <svg
                 className="w-4 h-4 text-[var(--color-fg-muted)] group-open:rotate-180 transition-transform shrink-0"
@@ -94,11 +94,13 @@ export function IntelligenceConsole({
             </summary>
             <div className="mt-2 space-y-1">
               {[
-                { id: 'AREA-HORMUZ', name: 'Strait of Hormuz', color: '#ef4444' },
-                { id: 'AREA-PGULF', name: 'Persian Gulf (North)', color: '#b87333' },
-                { id: 'AREA-GOMAN', name: 'Gulf of Oman', color: '#38bdf8' },
-                { id: 'AREA-RS-SOUTH', name: 'Red Sea — Bab-el-Mandeb', color: '#dc2626' },
-                { id: 'AREA-RS-NORTH', name: 'Red Sea (North)', color: '#7c3aed' },
+                { id: 'AREA-HORMUZ', name: 'Strait of Hormuz', color: '#FF0055' },
+                { id: 'AREA-PGULF', name: 'Persian Gulf (North)', color: '#FF9900' },
+                { id: 'AREA-GOMAN', name: 'Gulf of Oman & Fujairah', color: '#00E5FF' },
+                { id: 'AREA-RS-SOUTH', name: 'Red Sea — Bab-el-Mandeb', color: '#DC2626' },
+                { id: 'AREA-RS-NORTH', name: 'Red Sea (North & Suez)', color: '#8B5CF6' },
+                { id: 'AREA-RASTANURA', name: 'Ras Tanura Energy Hub', color: '#F59E0B' },
+                { id: 'AREA-JEBELALI', name: 'Jebel Ali Port Corridor', color: '#10B981' },
               ].map((z) => (
                 <button
                   key={z.id}
@@ -106,30 +108,32 @@ export function IntelligenceConsole({
                   onClick={() => highlightZone(z.id)}
                   onMouseEnter={() => highlightZone(z.id)}
                   onMouseLeave={() => highlightZone(null)}
-                  className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 cursor-pointer text-left transition-all hover:bg-[var(--color-bg-elevated)] group/item"
-                  title={`Click to zoom & highlight ${z.name}`}
+                  className="w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 cursor-pointer text-left transition-all hover:bg-[var(--color-bg-elevated)] group/item border border-transparent hover:border-[var(--color-border)]"
+                  title={`Click to focus & highlight ${z.name}`}
                 >
-                  <span
-                    className="w-2 h-2 rounded-full shrink-0 transition-transform group-hover/item:scale-125"
-                    style={{ backgroundColor: z.color }}
-                  />
-                  <span className="font-medium text-xs text-[var(--color-fg)] hover:text-[var(--color-primary-600)] transition-colors">
-                    {z.name}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0  transition-transform group-hover/item:scale-125"
+                      style={{ backgroundColor: z.color, boxShadow: `0 0 6px ${z.color}` }}
+                    />
+                    <span className="font-medium text-xs text-[var(--color-fg)] group-hover/item:text-[var(--color-primary-600)] transition-colors truncate">
+                      {z.name}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-data text-[var(--color-fg-subtle)] opacity-0 group-hover/item:opacity-100 transition-opacity">
+                    FOCUS
                   </span>
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-[var(--color-fg-subtle)] mt-1.5">
-              Click any zone title to focus and highlight on the map.
-            </p>
           </details>
 
-          {/* Vessel Markers */}
+          {/* Vessel Markers UI */}
           <details className="group cursor-pointer" open={sidebarExpanded}>
-            <summary className="font-medium text-[var(--color-fg)] flex items-center justify-between list-none">
-              <span className="flex items-center gap-1.5">
-                <Ship className="h-3.5 w-3.5 text-[var(--color-primary-600)]" />
-                Vessel Markers
+            <summary className="font-medium text-[var(--color-fg)] flex items-center justify-between list-none pb-1">
+              <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--color-fg-muted)]">
+                <Ship className="h-3.5 w-3.5 text-[#00E5FF]" />
+                Vessel Markers (AIS)
               </span>
               <svg
                 className="w-4 h-4 text-[var(--color-fg-muted)] group-open:rotate-180 transition-transform shrink-0"
@@ -146,40 +150,70 @@ export function IntelligenceConsole({
                 />
               </svg>
             </summary>
-            <div className="mt-2 space-y-1.5 pl-1">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full border-2 border-[#22c55e] flex items-center justify-center">
-                  <span className="text-[10px] font-bold text-[#22c55e]">▲</span>
+            <div className="mt-2 space-y-2 p-2 rounded-lg bg-[var(--color-bg-elevated)]/60 border border-[var(--color-border)]/60">
+              {/* Nominal Vessel */}
+              <div className="flex items-center gap-2.5">
+                <div className="w-6 h-6 rounded-md bg-[#091322] border border-[#00E676] flex items-center justify-center shrink-0 shadow-[0_0_6px_rgba(0,230,118,0.3)]">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M7 1 L11 11 L7 8 L3 11 Z" fill="#00E676" opacity="0.95" />
+                  </svg>
                 </div>
-                <span className="text-xs">Low risk — normal transit pattern</span>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-[var(--color-fg)]">Nominal Transit</div>
+                  <div className="text-[10px] text-[var(--color-fg-muted)]">Commercial standard course</div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full border-2 border-[#d97706] flex items-center justify-center">
-                  <span className="text-[10px] font-bold text-[#d97706]">▲</span>
+
+              {/* Medium Anomaly */}
+              <div className="flex items-center gap-2.5">
+                <div className="w-6 h-6 rounded-md bg-[#091322] border border-[#FFC800] flex items-center justify-center shrink-0 shadow-[0_0_6px_rgba(255,200,0,0.3)]">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M7 1 L11 11 L7 8 L3 11 Z" fill="#FFC800" opacity="0.95" />
+                  </svg>
                 </div>
-                <span className="text-xs">Medium risk — behavioral deviation</span>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-[#FFC800]">Medium Posture</div>
+                  <div className="text-[10px] text-[var(--color-fg-muted)]">Course or speed variance</div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full border-2 border-[#b87333] flex items-center justify-center">
-                  <span className="text-[10px] font-bold text-[#b87333]">▲</span>
+
+              {/* High Anomaly */}
+              <div className="flex items-center gap-2.5">
+                <div className="w-6 h-6 rounded-md bg-[#091322] border border-[#FF9900] flex items-center justify-center shrink-0 shadow-[0_0_8px_rgba(255,153,0,0.4)]">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M7 1 L11 11 L7 8 L3 11 Z" fill="#FF9900" opacity="0.95" />
+                  </svg>
                 </div>
-                <span className="text-xs">High risk — significant anomaly</span>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-[#FF9900]">High Anomaly</div>
+                  <div className="text-[10px] text-[var(--color-fg-muted)]">AIS gap / dark activity</div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full border-2 border-[#ef4444] flex items-center justify-center">
-                  <span className="text-[10px] font-bold text-[#ef4444]">▲</span>
+
+              {/* Critical Threat */}
+              <div className="flex items-center gap-2.5">
+                <div className="relative w-6 h-6 rounded-md bg-[#1a0812] border border-[#FF0055] flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(255,0,85,0.5)]">
+                  <div className="absolute inset-0 rounded-md border border-[#FF0055] animate-ping opacity-30" />
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <circle cx="7" cy="7" r="5" stroke="#FF0055" strokeWidth="1" />
+                    <line x1="7" y1="1" x2="7" y2="13" stroke="#FF0055" strokeWidth="1" />
+                    <line x1="1" y1="7" x2="13" y2="7" stroke="#FF0055" strokeWidth="1" />
+                  </svg>
                 </div>
-                <span className="text-xs">Critical — immediate attention warranted</span>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-[#FF0055]">Critical Target</div>
+                  <div className="text-[10px] text-[var(--color-fg-muted)]">Immediate tactical alert</div>
+                </div>
               </div>
             </div>
           </details>
 
-          {/* Aircraft Markers */}
+          {/* Aircraft Markers UI */}
           <details className="group cursor-pointer" open={sidebarExpanded}>
-            <summary className="font-medium text-[var(--color-fg)] flex items-center justify-between list-none">
-              <span className="flex items-center gap-1.5">
-                <Plane className="h-3.5 w-3.5 text-[var(--color-primary-600)]" />
-                Aircraft Markers
+            <summary className="font-medium text-[var(--color-fg)] flex items-center justify-between list-none pb-1">
+              <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--color-fg-muted)]">
+                <Plane className="h-3.5 w-3.5 text-[#00E5FF]" />
+                Aircraft Markers (ADS-B)
               </span>
               <svg
                 className="w-4 h-4 text-[var(--color-fg-muted)] group-open:rotate-180 transition-transform shrink-0"
@@ -196,20 +230,63 @@ export function IntelligenceConsole({
                 />
               </svg>
             </summary>
-            <div className="mt-2 flex items-center gap-2 pl-1">
-              <div className="w-6 h-6 rounded-full border-2 border-[#38bdf8] flex items-center justify-center">
-                <span className="text-[10px] font-bold text-[#38bdf8]">◆</span>
+            <div className="mt-2 space-y-2 p-2 rounded-lg bg-[var(--color-bg-elevated)]/60 border border-[var(--color-border)]/60">
+              <div className="flex items-center gap-2.5">
+                <div className="w-6 h-6 rounded-md bg-[#040e1e] border border-[#00E5FF] flex items-center justify-center shrink-0 shadow-[0_0_8px_rgba(0,229,255,0.4)]">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M7 1 L10 5 L7 13 L4 5 Z" fill="#00E5FF" opacity="0.9" />
+                    <line x1="2" y1="6" x2="12" y2="6" stroke="#00E5FF" strokeWidth="1.5" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-[#00E5FF]">Airborne Flight Track</div>
+                  <div className="text-[10px] text-[var(--color-fg-muted)]">Altitude FL & Squawk code</div>
+                </div>
               </div>
-              <span className="text-xs">ADS-B tracked aircraft (diamond icon)</span>
             </div>
           </details>
 
-          {/* Heatmap Layer */}
+          {/* Conflict & Anomaly Radar Reticle */}
           <details className="group cursor-pointer" open={sidebarExpanded}>
-            <summary className="font-medium text-[var(--color-fg)] flex items-center justify-between list-none">
-              <span className="flex items-center gap-1.5">
+            <summary className="font-medium text-[var(--color-fg)] flex items-center justify-between list-none pb-1">
+              <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--color-fg-muted)]">
+                <ShieldAlert className="h-3.5 w-3.5 text-[#FF0055]" />
+                Radar Conflict Reticles
+              </span>
+              <svg
+                className="w-4 h-4 text-[var(--color-fg-muted)] group-open:rotate-180 transition-transform shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </summary>
+            <div className="mt-2 space-y-2 p-2 rounded-lg bg-[var(--color-bg-elevated)]/60 border border-[var(--color-border)]/60">
+              <div className="flex items-center gap-2.5">
+                <div className="w-6 h-6 rounded-md bg-[#1a0812] border border-[#FF0055] flex items-center justify-center shrink-0 shadow-[0_0_8px_rgba(255,0,85,0.4)]">
+                  <span className="text-xs font-bold text-[#FF0055]">⊕</span>
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-[#FF0055]">Verified Incident / Advisory</div>
+                  <div className="text-[10px] text-[var(--color-fg-muted)]">UKMTO / OSINT / Naval Alerts</div>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          {/* Heatmap Layer Info */}
+          <details className="group cursor-pointer" open={sidebarExpanded}>
+            <summary className="font-medium text-[var(--color-fg)] flex items-center justify-between list-none pb-1">
+              <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--color-fg-muted)]">
                 <Layers className="h-3.5 w-3.5 text-[var(--color-primary-600)]" />
-                Heatmap Layer
+                Heatmap Density Scale
               </span>
               <svg
                 className="w-4 h-4 text-[var(--color-fg-muted)] group-open:rotate-180 transition-transform shrink-0"
@@ -226,20 +303,21 @@ export function IntelligenceConsole({
                 />
               </svg>
             </summary>
-            <p className="mt-2 text-xs leading-relaxed">
-              Toggle via Settings (gear icon) to show maritime traffic density. Colors:{' '}
-              <span className="font-data text-[var(--color-info)]">blue</span> (low) →{' '}
-              <span className="font-data text-[var(--color-warning)]">amber</span> →{' '}
-              <span className="font-data text-[var(--color-danger)]">red</span> (high concentration).
-            </p>
+            <div className="mt-2 p-2 rounded-lg bg-[var(--color-bg-elevated)]/60 border border-[var(--color-border)]/60 space-y-1.5">
+              <div className="h-2 w-full rounded-full bg-gradient-to-r from-[#070b14] via-[#0284c7] via-[#00E5FF] via-[#FF9900] to-[#FF0055]" />
+              <div className="flex justify-between text-[10px] text-[var(--color-fg-subtle)] font-data">
+                <span>LOW DENSITY</span>
+                <span>CHOKEPOINT HIGH</span>
+              </div>
+            </div>
           </details>
 
           {/* Data Sources */}
           <details className="group cursor-pointer" open={sidebarExpanded}>
-            <summary className="font-medium text-[var(--color-fg)] flex items-center justify-between list-none">
-              <span className="flex items-center gap-1.5">
+            <summary className="font-medium text-[var(--color-fg)] flex items-center justify-between list-none pb-1">
+              <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--color-fg-muted)]">
                 <Database className="h-3.5 w-3.5 text-[var(--color-primary-600)]" />
-                Data Sources
+                Live Feed Integrations
               </span>
               <svg
                 className="w-4 h-4 text-[var(--color-fg-muted)] group-open:rotate-180 transition-transform shrink-0"
@@ -256,20 +334,18 @@ export function IntelligenceConsole({
                 />
               </svg>
             </summary>
-            <ul className="mt-2 space-y-1 pl-4 list-disc text-xs">
-              <li>AIS (MarineTraffic / Spire) — vessel positions</li>
-              <li>ADS-B (OpenSky / ADSB Exchange) — aircraft positions</li>
-              <li>GDELT — geopolitical event monitoring</li>
-              <li>NASA FIRMS — fire/thermal anomalies</li>
-              <li>Open-Meteo — weather & sea state</li>
-              <li>RSS Feeds (USNI, DefenseNews, Al Jazeera)</li>
+            <ul className="mt-2 space-y-1 pl-4 list-disc text-xs text-[var(--color-fg-muted)]">
+              <li>AISStream WebSocket — Live Gulf transponders</li>
+              <li>OpenSky Network API — ADS-B flight state vectors</li>
+              <li>GDELT & USNI — Geopolitical intelligence</li>
+              <li>Open-Meteo — Sea state & marine weather</li>
             </ul>
           </details>
 
-          {/* Live Intelligence News Feeds */}
+          {/* Live Intelligence News Advisories */}
           <details className="group cursor-pointer" open={sidebarExpanded}>
-            <summary className="font-medium text-[var(--color-fg)] flex items-center justify-between list-none">
-              <span className="flex items-center gap-1.5">
+            <summary className="font-medium text-[var(--color-fg)] flex items-center justify-between list-none pb-1">
+              <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--color-fg-muted)]">
                 <FileText className="h-3.5 w-3.5 text-[var(--color-primary-600)]" />
                 Live News & Advisories
               </span>
@@ -291,7 +367,7 @@ export function IntelligenceConsole({
             <div className="mt-2 space-y-2 max-h-72 overflow-y-auto pr-1">
               {newsItems.length === 0 ? (
                 <p className="text-xs text-[var(--color-fg-muted)] italic">
-                  Loading news feeds...
+                  Loading intelligence feeds...
                 </p>
               ) : (
                 newsItems.slice(0, 10).map((item) => (
@@ -328,12 +404,12 @@ export function IntelligenceConsole({
             </div>
           </details>
 
-          {/* Live Telemetry */}
+          {/* Live Telemetry Summary */}
           <details className="group cursor-pointer" open={sidebarExpanded}>
-            <summary className="font-medium text-[var(--color-fg)] flex items-center justify-between list-none">
-              <span className="flex items-center gap-1.5">
-                <Activity className="h-3.5 w-3.5 text-[var(--color-success)]" />
-                Live Telemetry
+            <summary className="font-medium text-[var(--color-fg)] flex items-center justify-between list-none pb-1">
+              <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--color-fg-muted)]">
+                <Activity className="h-3.5 w-3.5 text-[#00E676]" />
+                Live Telemetry Summary
               </span>
               <svg
                 className="w-4 h-4 text-[var(--color-fg-muted)] group-open:rotate-180 transition-transform shrink-0"
@@ -351,73 +427,27 @@ export function IntelligenceConsole({
               </svg>
             </summary>
             <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-[var(--color-bg-elevated)] rounded-md p-2 text-center">
-                <div className="font-data text-lg font-bold text-[var(--color-fg)]">
+              <div className="bg-[var(--color-bg-elevated)] border border-[var(--color-border)]/60 rounded-md p-2 text-center">
+                <div className="font-data text-lg font-bold text-[#00E676]">
                   {metrics?.maritimeCount ?? '—'}
                 </div>
-                <div className="text-[var(--color-fg-muted)]">Vessels</div>
+                <div className="text-[10px] text-[var(--color-fg-muted)]">Vessels</div>
               </div>
-              <div className="bg-[var(--color-bg-elevated)] rounded-md p-2 text-center">
-                <div className="font-data text-lg font-bold text-[var(--color-fg)]">
+              <div className="bg-[var(--color-bg-elevated)] border border-[var(--color-border)]/60 rounded-md p-2 text-center">
+                <div className="font-data text-lg font-bold text-[#00E5FF]">
                   {metrics?.aviationCount ?? '—'}
                 </div>
-                <div className="text-[var(--color-fg-muted)]">Aircraft</div>
+                <div className="text-[10px] text-[var(--color-fg-muted)]">Aircraft</div>
               </div>
-              <div className="bg-[var(--color-bg-elevated)] rounded-md p-2 text-center col-span-2">
-                <div className="font-data text-lg font-bold text-[var(--color-danger)]">
+              <div className="bg-[var(--color-bg-elevated)] border border-[var(--color-border)]/60 rounded-md p-2 text-center col-span-2">
+                <div className="font-data text-lg font-bold text-[#FF0055]">
                   {metrics
                     ? metrics.criticalCount + metrics.highCount + metrics.mediumCount
                     : '—'}
                 </div>
-                <div className="text-[var(--color-fg-muted)]">Active Anomalies</div>
+                <div className="text-[10px] text-[var(--color-fg-muted)]">Active Anomaly Tracks</div>
               </div>
             </div>
-          </details>
-
-          {/* Conflict Intelligence */}
-          <details className="group cursor-pointer" open>
-            <summary className="font-medium text-[var(--color-fg)] flex items-center justify-between list-none">
-              <span className="flex items-center gap-1.5">
-                <AlertTriangle className="h-3.5 w-3.5 text-[var(--color-danger)]" />
-                Conflict Intelligence
-              </span>
-              <svg
-                className="w-4 h-4 text-[var(--color-fg-muted)] group-open:rotate-180 transition-transform shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </summary>
-            <div className="mt-2 space-y-1.5 pl-1">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-[#b91c1c]" />
-                <span className="text-xs">Critical — active engagement</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-[#b45309]" />
-                <span className="text-xs">High — imminent threat</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-[#d97706]" />
-                <span className="text-xs">Medium — elevated posture</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-[#15803d]" />
-                <span className="text-xs">Low — routine activity</span>
-              </div>
-            </div>
-            <p className="text-[10px] text-[var(--color-fg-subtle)] mt-2 leading-relaxed">
-              Crosshair (⊕) markers sourced from OSINT, UKMTO, IMB, EU NAVFOR, and coalition
-              naval advisories. Updated every 15 minutes.
-            </p>
           </details>
         </div>
       </div>

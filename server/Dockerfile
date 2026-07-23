@@ -1,33 +1,55 @@
 # syntax=docker/dockerfile:1
+# HormuzWatch Go Backend v2.0.0
+# Multi-stage build: Go 1.23 → minimal Alpine runtime
+# Build:  docker build -f server/Dockerfile -t hormuzwatch-server:2.0.0 .
+# Run:    docker run -p 10020:10020 --env-file .env hormuzwatch-server:2.0.0
 
-FROM golang:1.25-alpine AS builder
+ARG GO_VERSION=1.23
+ARG ALPINE_VERSION=3.20
 
-RUN apk add --no-cache git
+FROM golang:${GO_VERSION}-alpine AS builder
 
-WORKDIR /src/server
+RUN apk add --no-cache git ca-certificates
+
+WORKDIR /src
 
 COPY server/go.mod server/go.sum ./
-RUN go mod download
+RUN go mod download && go mod verify
 
 COPY server/ ./
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /out/hormuz-server ./cmd
 
-FROM alpine:3.20
+ARG VERSION=2.0.0
+ARG BUILD_TIME
+ARG GIT_COMMIT
 
-RUN apk add --no-cache ca-certificates tzdata wget
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -trimpath \
+    -ldflags="-w -s \
+      -X main.Version=${VERSION} \
+      -X main.BuildTime=${BUILD_TIME} \
+      -X main.GitCommit=${GIT_COMMIT}" \
+    -o /out/hormuz-server ./cmd/
+
+FROM alpine:${ALPINE_VERSION}
+
+RUN apk add --no-cache ca-certificates tzdata curl
+
+RUN addgroup -S hormuz && adduser -S hormuz -G hormuz
+USER hormuz
 
 WORKDIR /app
 
-COPY --from=builder /out/hormuz-server ./hormuz-server
-COPY server/data ./data
+COPY --from=builder /out/hormuz-server .
+COPY server/data/ ./data/
+COPY server/templates/ ./templates/
 
 ENV GIN_MODE=release \
-    PORT=10000 \
-    AUTH_DISABLED=true
+    PORT=10020 \
+    AUTH_DISABLED=false
 
-EXPOSE 10000
+EXPOSE 10020
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider "http://127.0.0.1:${PORT:-10000}/health" || exit 1
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -sf http://localhost:${PORT}/health || exit 1
 
 CMD ["./hormuz-server"]

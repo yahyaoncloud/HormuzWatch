@@ -68,7 +68,7 @@ export default function AdminAnalytics() {
 
       {/* Visual Analytics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Threat Distribution Chart Mock */}
+        {/* Regional Threat Density Distribution */}
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6 space-y-4">
           <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
             <h3 className="font-display text-base font-bold text-[var(--color-fg)]">Regional Threat Density</h3>

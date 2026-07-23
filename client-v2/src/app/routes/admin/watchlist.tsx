@@ -19,38 +19,8 @@ interface WatchlistItem {
   riskLevel: "Critical" | "High" | "Medium";
 }
 
-const MOCK_WATCHLIST: WatchlistItem[] = [
-  {
-    id: "IMO 9283741",
-    name: "AL-MUTANABBI",
-    type: "Vessel",
-    reason: "Frequent AIS transponder outages near territorial waters",
-    addedBy: "ykinwork1@gmail.com",
-    addedAt: "2026-07-20",
-    riskLevel: "Critical",
-  },
-  {
-    id: "ICAO 73019F",
-    name: "IRAF-801",
-    type: "Aircraft",
-    reason: "Unannounced altitude fluctuations along international corridor",
-    addedBy: "ykinwork1@gmail.com",
-    addedAt: "2026-07-21",
-    riskLevel: "Critical",
-  },
-  {
-    id: "IMO 9812739",
-    name: "PERSIAN GULF STAR",
-    type: "Vessel",
-    reason: "Sanctioned flag state registry transition",
-    addedBy: "ykinwork1@gmail.com",
-    addedAt: "2026-07-18",
-    riskLevel: "High",
-  },
-];
-
 export default function AdminWatchlist() {
-  const [watchlist, setWatchlist] = useState<WatchlistItem[]>(MOCK_WATCHLIST);
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newItem, setNewItem] = useState({ id: "", name: "", type: "Vessel" as "Vessel" | "Aircraft", reason: "", riskLevel: "High" as "Critical" | "High" | "Medium" });
 

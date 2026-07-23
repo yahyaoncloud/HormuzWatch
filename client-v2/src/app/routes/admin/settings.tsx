@@ -189,7 +189,7 @@ export default function AdminSettings() {
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-primary-600)] text-white text-xs font-semibold rounded-xl hover:bg-[var(--color-primary-700)] transition-all shadow-md hover:shadow-lg disabled:opacity-50 shrink-0 cursor-pointer"
+          className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-primary-600)] text-white text-xs font-semibold rounded-xl hover:bg-[var(--color-primary-700)] transition-all  hover: disabled:opacity-50 shrink-0 cursor-pointer"
         >
           <Save className="h-4 w-4" />
           {saving ? "Saving Changes..." : "Save System Config"}
@@ -204,7 +204,7 @@ export default function AdminSettings() {
       )}
 
       {/* Multi-Provider LLM Section */}
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 space-y-6 shadow-sm">
+      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 space-y-6 ">
         <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary-600)]/15 text-[var(--color-primary-600)] border border-[var(--color-primary-600)]/30">
@@ -569,7 +569,7 @@ export default function AdminSettings() {
       {/* Grid: Data Sources & Retention */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Data Sources */}
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 space-y-4 shadow-sm">
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 space-y-4 ">
           <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-3">
             <Radio className="h-4 w-4 text-[var(--color-primary-600)]" />
             <h3 className="font-display text-sm font-bold text-[var(--color-fg)]">Surveillance Data Ingestion</h3>
@@ -628,7 +628,7 @@ export default function AdminSettings() {
         </div>
 
         {/* Retention & Thresholds */}
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 space-y-4 shadow-sm">
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 space-y-4 ">
           <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-3">
             <Database className="h-4 w-4 text-[var(--color-primary-600)]" />
             <h3 className="font-display text-sm font-bold text-[var(--color-fg)]">Database Retention & Thresholds</h3>

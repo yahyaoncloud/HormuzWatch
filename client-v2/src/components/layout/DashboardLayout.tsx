@@ -48,7 +48,7 @@ export function DashboardLayout() {
         {/* Sidebar Header */}
         <div className="flex h-16 items-center justify-between border-b border-[var(--color-border)] px-4">
           <Link to="/" className="flex items-center gap-3 overflow-hidden">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shadow-md shadow-[var(--color-primary)]/20">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white  shadow-[var(--color-primary)]/20">
               <Zap className="h-5 w-5" />
             </div>
             {!collapsed && (
@@ -84,7 +84,7 @@ export function DashboardLayout() {
                   cn(
                     'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
                     isActive
-                      ? 'bg-[var(--color-primary)] text-white shadow-md shadow-[var(--color-primary)]/20 font-semibold'
+                      ? 'bg-[var(--color-primary)] text-white  shadow-[var(--color-primary)]/20 font-semibold'
                       : 'text-[var(--color-fg-muted)] hover:bg-[var(--color-bg)] hover:text-[var(--color-fg)]'
                   )
                 }

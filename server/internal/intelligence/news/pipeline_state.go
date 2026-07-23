@@ -31,18 +31,18 @@ const (
 
 // ValidTransitions maps each state to the allowed next states.
 var ValidTransitions = map[ArticleState][]ArticleState{
-	StateQueued:        {StateFetching, StateSkipped},
+	StateQueued:        {StateFetching, StateProcessing, StateSkipped},
 	StateFetching:      {StateFetched, StateFetchFailed},
 	StateFetched:       {StateProcessing, StateDuplicate, StateSkipped},
 	StateProcessing:    {StateScored, StateProcessFailed},
 	StateScored:        {StateGeocoded},
 	StateGeocoded:      {StateStored, StateProcessFailed},
 	StateStored:        {StateDone},
-	StateDone:          {},            // terminal
-	StateFetchFailed:   {StateQueued}, // retry
-	StateProcessFailed: {StateQueued}, // retry
-	StateDuplicate:     {},            // terminal
-	StateSkipped:       {},            // terminal
+	StateDone:          {},                        // terminal
+	StateFetchFailed:   {StateQueued},             // retry
+	StateProcessFailed: {StateQueued, StateProcessing}, // retry
+	StateDuplicate:     {},                        // terminal
+	StateSkipped:       {},                        // terminal
 }
 
 // TerminalStates are states from which no further progress is expected.

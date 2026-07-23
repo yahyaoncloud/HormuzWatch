@@ -1,111 +1,160 @@
-# HormuzWatch — Unified Docker Compose
-# Starts all containers: client (React/NGINX), server (Go), and the
-# unified ml-service (merged ml-service + ml-inference) on a shared
-# bridge network.
+# HormuzWatch v2.0.0 — Production Docker Compose
+#
+# Services:
+#   server  — Go backend (REST + WebSocket + gRPC client)
+#   ml      — Python ML inference (IsolationForest + LOF ensemble)
+#   client  — React SPA (Nginx, production build)
 #
 # Usage:
-#   docker compose up -d --build        # full stack (client + server + ml)
-#   docker compose up -d server ml      # backend + ml only (no client)
-#   docker compose up ml                # ml service only
-#   docker compose logs -f ml          # follow the ml service logs
+#   docker compose up -d --build              # full stack
+#   docker compose up -d server ml            # backend only
+#   docker compose --profile full up -d       # with client
+#   docker compose logs -f server             # tail server logs
+#   docker compose ps                         # service status
 #
 # Access:
-#   Client  → http://localhost:3000
-#   Server  → http://localhost:8081/health
-#   ML gRPC → localhost:8090 (used by the Go backend)
-#   ML HTTP → ml-service:8000 inside the Compose network (admin/diagnostic API)
+#   Server API  → http://localhost:10020/health
+#   ML Health   → http://localhost:8090/health
+#   Client      → http://localhost:3000
+
+version: "3.9"
 
 services:
-  # ── React SPA served by NGINX ──────────────────────────────────────────────
-  client:
-    build:
-      context: .
-      dockerfile: client/Dockerfile
-      args:
-        VITE_SUPABASE_URL: ${SUPABASE_URL}
-        VITE_SUPABASE_ANON_KEY: ${SUPABASE_ANON_ROLE}
-    container_name: harmuz-client
-    ports:
-      - "3000:3000"
-    depends_on:
-      go-server:
-        condition: service_started
-    networks:
-      - harmuz-network
-    restart: unless-stopped
-    profiles: ["full"]
-
-  # ── Go API / WebSocket backend ─────────────────────────────────────────────
-  go-server:
+  # ═══════════════════════════════════════════════════════════
+  #  Go Backend — REST API + WebSocket + News Pipeline
+  # ═══════════════════════════════════════════════════════════
+  server:
     build:
       context: .
       dockerfile: server/Dockerfile
-    container_name: harmuz-server
+      args:
+        VERSION: "${VERSION:-2.0.0}"
+        BUILD_TIME: "${BUILD_TIME:-unknown}"
+        GIT_COMMIT: "${GIT_COMMIT:-unknown}"
+    image: hormuzwatch-server:${VERSION:-2.0.0}
+    container_name: hormuzwatch-server
     ports:
-      - "8081:8080"
+      - "${PORT:-10020}:10020"
     environment:
-      - PORT=8080
-      - GIN_MODE=release
-      - AUTH_DISABLED=false
-      # ── Database (Supabase PostgreSQL) ──
+      - PORT=10020
+      - GIN_MODE=${GIN_MODE:-release}
+      # Database (Supabase PostgreSQL)
       - DATABASE_URL=${DATABASE_URL}
-      # ── Auth ──
-      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
-      - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET:-}
-      - SUPABASE_URL=${SUPABASE_URL:-}
-      - SUPABASE_ANON_ROLE=${SUPABASE_ANON_ROLE:-}
-      # ── ML service (unified) ──
-      - ML_SERVICE_ADDR=ml-service:8090
+      # Auth
+      - JWT_SECRET=${JWT_SECRET}
+      - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - AUTH_DISABLED=${AUTH_DISABLED:-false}
+      # ML service bridge
+      - ML_SERVICE_ADDR=ml:8091
       - ML_SERVICE_TLS=off
-      # The HTTP endpoint remains available for diagnostics and offline tooling.
-      - ML_SERVICE_URL=http://ml-service:8000
-      # The current Train RPC intentionally does not fit models in-process.
-      - ML_AUTO_TRAIN_ENABLED=false
-      # ── CORS ──
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
-      # ── External data sources (optional) ──
+      - ML_SERVICE_URL=http://ml:8090
+      # External data sources
       - AISSTREAM_API_KEY=${AISSTREAM_API_KEY:-}
       - OPENSKY_USERNAME=${OPENSKY_USERNAME:-}
       - OPENSKY_PASSWORD=${OPENSKY_PASSWORD:-}
       - FIRMS_MAP_KEY=${FIRMS_MAP_KEY:-}
       - METRICS_API_KEY=${METRICS_API_KEY:-}
+      # LLM (OpenRouter)
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      # Observability
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     depends_on:
-      ml-service:
+      ml:
         condition: service_healthy
     networks:
-      - harmuz-network
+      - hormuzwatch
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:10020/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
-  # ── Unified Python ML Service (IsolationForest + LOF ensemble + SHAP) ──────
-  ml-service:
+  # ═══════════════════════════════════════════════════════════
+  #  Python ML Service — Anomaly Detection Ensemble
+  # ═══════════════════════════════════════════════════════════
+  ml:
     build:
       context: ./ml-service
       dockerfile: Dockerfile
-    container_name: harmuz-ml
+      args:
+        VERSION: "${VERSION:-2.0.0}"
+    image: hormuzwatch-ml:${VERSION:-2.0.0}
+    container_name: hormuzwatch-ml
     ports:
-      - "8090:8090"
+      - "${ML_PORT:-8090}:8090"    # FastAPI health/train/predict
+      - "${GRPC_PORT:-8091}:8091"  # gRPC inference
     environment:
-      - GRPC_PORT=8090
-      - HTTP_PORT=8000
-      # Optional: point at a host-mounted models dir
-      # - MODELS_DIR=/app/models
+      - ML_PORT=8090
+      - GRPC_PORT=8091
+      - MODELS_DIR=/app/models
+      - APP_VERSION=${VERSION:-2.0.0}
     volumes:
-      # Persist trained ensemble artifacts across container restarts
       - ml-models:/app/models
     networks:
-      - harmuz-network
+      - hormuzwatch
     restart: unless-stopped
     healthcheck:
-      # The serving port is gRPC; a TCP connection confirms that the process is listening.
-      test: ["CMD", "python", "-c", "import socket; s = socket.create_connection(('127.0.0.1', 8090), 2); s.close()"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD", "curl", "-sf", "http://localhost:8090/health"]
+      interval: 15s
+      timeout: 5s
       start_period: 15s
       retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ═══════════════════════════════════════════════════════════
+  #  React Frontend — Production Nginx SPA
+  # ═══════════════════════════════════════════════════════════
+  client:
+    build:
+      context: ./client-v2
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: "${VITE_API_BASE_URL:-http://localhost:10020}"
+        VITE_SUPABASE_URL: "${SUPABASE_URL}"
+        VITE_SUPABASE_ANON_KEY: "${SUPABASE_ANON_KEY}"
+        VITE_APP_VERSION: "${VERSION:-2.0.0}"
+    image: hormuzwatch-client:${VERSION:-2.0.0}
+    container_name: hormuzwatch-client
+    ports:
+      - "3000:3000"
+    depends_on:
+      server:
+        condition: service_started
+    networks:
+      - hormuzwatch
+    profiles:
+      - full
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/"]
+      interval: 15s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
 networks:
-  harmuz-network:
+  hormuzwatch:
     driver: bridge
+    name: hormuzwatch-network
 
 volumes:
   ml-models:
+    name: hormuzwatch-ml-models

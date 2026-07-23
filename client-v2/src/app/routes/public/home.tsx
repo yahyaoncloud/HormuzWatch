@@ -1,14 +1,25 @@
 import { useQuery } from '@tanstack/react-query';
 import {
+  Activity,
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
+  Cpu,
+  Eye,
+  EyeOff,
   FileText,
+  Globe,
   Info,
   Loader2,
+  LocateFixed,
+  Plane,
+  Radio,
+  Rss,
+  Ship,
   X,
 } from 'lucide-react';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { useLoaderData } from 'react-router';
+import { useLoaderData, useSearchParams } from 'react-router';
 import { LiveStatStrip, type MetricKey } from '@/components/data/LiveStatStrip';
 import {
   IntelligenceConsole,
@@ -59,6 +70,8 @@ export async function clientLoader() {
   };
 }
 
+export const loader = clientLoader;
+
 export function HomePage() {
   const loaderData = useLoaderData<typeof clientLoader>();
 
@@ -89,7 +102,10 @@ export function HomePage() {
   const liveTraces = tracesData?.traces ?? [];
   const newsItems = newsData?.news ?? [];
 
-  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('hw-show-heatmap') === '1';
+  });
   const [reduceMotion, setReduceMotion] = useState(
     () => typeof window !== 'undefined' && window.localStorage.getItem('hw-reduce-motion') === '1'
   );
@@ -127,10 +143,45 @@ export function HomePage() {
   const highlightZoneRef = useRef<((id: string | null) => void) | null>(null);
   const [selectedThreat, setSelectedThreat] = useState<ThreatItem | null>(null);
 
+  const [_searchParams, setSearchParams] = useSearchParams();
+
   // Timeline & filter state
-  const [timeline, setTimeline] = useState<'1hr' | '3hr' | '6hr' | '12hr' | '24hr' | 'all'>('all');
-  const [severityFilter, setSeverityFilter] = useState<string>('all');
-  const [regionFilter, setRegionFilter] = useState<string>('all');
+  const [timeline, setTimeline] = useState<'1hr' | '3hr' | '6hr' | '12hr' | '24hr' | 'all'>(() => {
+    if (typeof window === 'undefined') return 'all';
+    return (localStorage.getItem('hw-timeline-filter') as any) || 'all';
+  });
+  const [severityFilter, setSeverityFilter] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'all';
+    return localStorage.getItem('hw-severity-filter') || 'all';
+  });
+  const [regionFilter, setRegionFilter] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'all';
+    return localStorage.getItem('hw-region-filter') || 'all';
+  });
+
+  // Map layer toggle states
+  const [showConflicts, setShowConflicts] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const saved = localStorage.getItem('hw-show-conflicts');
+    return saved === null ? true : saved === '1';
+  });
+  const [showMetrics, setShowMetrics] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const saved = localStorage.getItem('hw-show-metrics');
+    return saved === null ? true : saved === '1';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('hw-show-heatmap', showHeatmap ? '1' : '0');
+      localStorage.setItem('hw-show-conflicts', showConflicts ? '1' : '0');
+      localStorage.setItem('hw-show-metrics', showMetrics ? '1' : '0');
+      localStorage.setItem('hw-timeline-filter', timeline);
+      localStorage.setItem('hw-severity-filter', severityFilter);
+      localStorage.setItem('hw-region-filter', regionFilter);
+    } catch {}
+  }, [showHeatmap, showConflicts, showMetrics, timeline, severityFilter, regionFilter]);
+  const [recenterTrigger, setRecenterTrigger] = useState(0);
 
   // Report generation state
   const [reportGenerating, setReportGenerating] = useState(false);
@@ -241,6 +292,22 @@ export function HomePage() {
   const criticalCount = topThreats.filter((t) => t.severity === 'critical').length;
   const highCount = topThreats.filter((t) => t.severity === 'high').length;
   const totalThreats = topThreats.length;
+
+  const vesselCount = metrics?.maritimeCount && metrics.maritimeCount > 0
+    ? metrics.maritimeCount
+    : liveTraces.filter((t) => {
+        const type = (t as any).objectType;
+        if (type) return type === 'vessel';
+        return !String(t.trackId).startsWith('FLIGHT') && !String(t.trackId).startsWith('ADS-B') && !String(t.trackId).startsWith('ICAO-');
+      }).length;
+
+  const aircraftCount = metrics?.aviationCount && metrics.aviationCount > 0
+    ? metrics.aviationCount
+    : liveTraces.filter((t) => {
+        const type = (t as any).objectType;
+        if (type) return type === 'aircraft';
+        return String(t.trackId).startsWith('FLIGHT') || String(t.trackId).startsWith('ADS-B') || String(t.trackId).startsWith('ICAO-') || (t as any).altitude !== undefined;
+      }).length;
 
   useEffect(() => {
     document.documentElement.classList.toggle('reduce-motion', reduceMotion);
@@ -366,16 +433,57 @@ export function HomePage() {
               type="button"
               onClick={() => setShowHeatmap(!showHeatmap)}
               className={cn(
-                'ml-auto px-3 py-1.5 rounded-lg font-ui text-xs font-medium transition-colors border',
+                'px-3 py-1.5 rounded-lg font-ui text-xs font-semibold transition-all border flex items-center gap-1.5',
                 showHeatmap
-                  ? 'bg-[var(--color-info)]/10 text-[var(--color-info)] border-[var(--color-info)]/30'
+                  ? 'bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)] '
                   : 'bg-[var(--color-bg)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:border-[var(--color-primary-400)]'
               )}
             >
+              {showHeatmap ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
               {showHeatmap ? 'Heatmap On' : 'Heatmap'}
             </button>
 
-            <div className="w-px h-5 bg-[var(--color-border)] hidden sm:block mx-2" />
+            {/* Conflicts Toggle */}
+            <button
+              type="button"
+              onClick={() => setShowConflicts(!showConflicts)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg font-ui text-xs font-semibold transition-all border flex items-center gap-1.5',
+                showConflicts
+                  ? 'bg-rose-600 text-white border-rose-600 '
+                  : 'bg-[var(--color-bg)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:border-[var(--color-primary-400)]'
+              )}
+            >
+              <AlertTriangle className="h-3.5 w-3.5" />
+              {showConflicts ? 'Conflicts On' : 'Conflicts'}
+            </button>
+
+            {/* Metrics HUD Toggle */}
+            <button
+              type="button"
+              onClick={() => setShowMetrics(!showMetrics)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg font-ui text-xs font-semibold transition-all border flex items-center gap-1.5',
+                showMetrics
+                  ? 'bg-emerald-600 text-white border-emerald-600 '
+                  : 'bg-[var(--color-bg)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:border-[var(--color-primary-400)]'
+              )}
+            >
+              <Activity className="h-3.5 w-3.5" />
+              {showMetrics ? 'Metrics On' : 'Metrics'}
+            </button>
+
+            {/* Recenter Map Button */}
+            <button
+              type="button"
+              onClick={() => setRecenterTrigger((prev) => prev + 1)}
+              className="px-3 py-1.5 rounded-lg font-ui text-xs font-semibold transition-all border bg-[var(--color-bg)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:border-[var(--color-primary-400)] hover:text-[var(--color-fg)] flex items-center gap-1.5"
+            >
+              <LocateFixed className="h-3.5 w-3.5" />
+              Recenter
+            </button>
+
+            <div className="w-px h-5 bg-[var(--color-border)] hidden sm:block mx-1" />
 
             {/* Generate Report Button */}
             <button
@@ -402,11 +510,56 @@ export function HomePage() {
                 </>
               )}
             </button>
+
+            {/* Live Pipeline Processing Status HUD Strip */}
+            <div className="w-full pt-2 mt-1 border-t border-[var(--color-border)]/50 flex items-center justify-between gap-2 text-[11px] font-mono overflow-x-auto flex-nowrap">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-fg)]">
+                  <Ship className="h-3.5 w-3.5 text-emerald-400" />
+                  <span className="text-[var(--color-fg-subtle)] font-medium">AIS STREAM:</span>
+                  <span className="font-bold text-emerald-400">{vesselCount > 0 ? `${vesselCount} VESSELS` : 'RECEIVING'}</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                </div>
+
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-fg)]">
+                  <Plane className="h-3.5 w-3.5 text-sky-400" />
+                  <span className="text-[var(--color-fg-subtle)] font-medium">ADS-B AIR:</span>
+                  <span className="font-bold text-sky-400">{aircraftCount > 0 ? `${aircraftCount} TRACKING` : 'STREAMING'}</span>
+                  <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>
+                </div>
+
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-fg)]">
+                  <Rss className="h-3.5 w-3.5 text-indigo-400" />
+                  <span className="text-[var(--color-fg-subtle)] font-medium">NEWS PIPELINE:</span>
+                  <span className="font-bold text-indigo-400">{newsItems.length > 0 ? `${newsItems.length} ARTICLES` : 'SCRAPING'}</span>
+                  <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                </div>
+
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-fg)]">
+                  <Cpu className="h-3.5 w-3.5 text-amber-400" />
+                  <span className="text-[var(--color-fg-subtle)] font-medium">ANOMALY ML ENGINE:</span>
+                  <span className="font-bold text-amber-400">{metrics?.totalTracks !== undefined ? `${metrics.totalTracks} TRACKS` : 'ONLINE'}</span>
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                </div>
+
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-fg)]">
+                  <Radio className="h-3.5 w-3.5 text-purple-400" />
+                  <span className="text-[var(--color-fg-subtle)] font-medium">FIRMS / GDELT:</span>
+                  <span className="font-bold text-purple-400">INGESTION OK</span>
+                  <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 text-[10px] text-[var(--color-fg-muted)] pl-2 border-l border-[var(--color-border)] shrink-0">
+                <Globe className="h-3 w-3 text-[var(--color-primary-400)] animate-spin-slow" />
+                <span>MIDDLE EAST SECTOR (8.0°N–32.0°N, 32.0°E–76.0°E)</span>
+              </div>
+            </div>
           </div>
 
           {/* Map Container */}
-          <div className="flex-1 min-h-0 px-1.5 pb-3">
-            <div className="relative h-full w-full overflow-hidden rounded-2xl border border-[var(--color-border)]">
+          <div className="flex-1 px-1.5">
+            <div className="relative h-[90%] w-full overflow-hidden rounded-2xl border border-[var(--color-border)]">
               <Suspense
                 fallback={
                   <div className="flex h-full w-full items-center justify-center bg-[var(--color-bg-elevated)] text-[var(--color-fg-muted)] font-ui text-sm">
@@ -419,6 +572,11 @@ export function HomePage() {
                   className="z-0"
                   heatmap={showHeatmap}
                   onHeatmapChange={setShowHeatmap}
+                  showConflicts={showConflicts}
+                  onShowConflictsChange={setShowConflicts}
+                  showMetrics={showMetrics}
+                  onShowMetricsChange={setShowMetrics}
+                  recenterTrigger={recenterTrigger}
                   onHighlightReady={(fn) => {
                     highlightZoneRef.current = fn;
                   }}
@@ -439,6 +597,11 @@ export function HomePage() {
           highCount={highCount}
           selectedThreat={selectedThreat}
           setSelectedThreat={setSelectedThreat}
+          onHoverThreat={(t) => {
+            if (t?.trackId) {
+              setSearchParams({ trackId: t.trackId });
+            }
+          }}
         />
       </div>
 
@@ -449,7 +612,7 @@ export function HomePage() {
       />
 
       {/* Floating metrics panel */}
-      <div className="absolute bottom-5 left-5 right-5 z-20 flex justify-center pointer-events-none sm:bottom-8 sm:left-8 sm:right-8 lg:left-[calc(18rem+1.5rem)] lg:right-[calc(20rem+1.5rem)]">
+      <div className="absolute bottom-5 left-5 right-5 z-20 flex justify-center pointer-events-none md:bottom-18 md:left-8 md:right-8 lg:left-[calc(18rem+1.5rem)] lg:right-[calc(20rem+1.5rem)]">
         <div className="w-full max-w-5xl glass-card rounded-xl pointer-events-auto">
           <LiveStatStrip
             metrics={metrics}
@@ -484,7 +647,7 @@ export function HomePage() {
           <div
             key={t.id}
             className={cn(
-              'pointer-events-auto flex items-start gap-3 rounded-xl border p-4 shadow-xl backdrop-blur-md transition-all duration-300 transform translate-y-0 opacity-100 bg-[var(--color-bg-card)]/90',
+              'pointer-events-auto flex items-start gap-3 rounded-xl border p-4  backdrop-blur-md transition-all duration-300 transform translate-y-0 opacity-100 bg-[var(--color-bg-card)]/90',
               t.type === 'success' && 'border-green-500/30 text-green-500',
               t.type === 'error' && 'border-red-500/30 text-red-500',
               t.type === 'info' &&

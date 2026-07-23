@@ -36,8 +36,8 @@ type newsRow struct {
 func GetBriefing(c *gin.Context) {
 	apiKey := os.Getenv("OPENROUTER_API_KEY")
 	if apiKey == "" || apiKey == "your_openrouter_api_key" {
-		log.Println("[Briefing] OPENROUTER_API_KEY is not configured. Returning fallback briefing.")
-		c.JSON(http.StatusOK, getFallbackBriefing())
+		log.Println("[Briefing] OPENROUTER_API_KEY is not configured. Returning database-driven briefing.")
+		c.JSON(http.StatusOK, getDatabaseDrivenBriefing())
 		return
 	}
 
@@ -54,8 +54,8 @@ func GetBriefing(c *gin.Context) {
 
 	briefing, err := callOpenRouter(ctx, apiKey, prompt)
 	if err != nil {
-		log.Printf("[Briefing] OpenRouter API call failed: %v. Returning fallback.", err)
-		c.JSON(http.StatusOK, getFallbackBriefing())
+		log.Printf("[Briefing] OpenRouter API call failed: %v. Returning database-driven briefing.", err)
+		c.JSON(http.StatusOK, getDatabaseDrivenBriefing())
 		return
 	}
 
@@ -220,21 +220,48 @@ func buildBriefingPrompt(anomalies []TopTrace, news []newsRow) string {
 	return builder.String()
 }
 
-func getFallbackBriefing() *BriefingResponse {
+func getDatabaseDrivenBriefing() *BriefingResponse {
+	anomalies := queryTopTraces()
+	news := queryRecentNews()
+
+	summary := "Live telemetry baseline active across Middle East monitored sector."
+	if len(anomalies) > 0 {
+		summary = fmt.Sprintf("System actively tracking %d high-priority maritime and aviation telemetry targets across the Strait of Hormuz, Red Sea, and Persian Gulf.", len(anomalies))
+	}
+
+	var threatAnalysis []string
+	if len(anomalies) > 0 {
+		for i, a := range anomalies {
+			if i >= 4 {
+				break
+			}
+			threatAnalysis = append(threatAnalysis, fmt.Sprintf("Asset %s (%s): Anomaly score %.0f/100 (%s severity). %s", a.AssetName, a.TrackID, a.Score, a.Severity, a.Reasons))
+		}
+	}
+	if len(news) > 0 {
+		for i, n := range news {
+			if i >= 3 {
+				break
+			}
+			threatAnalysis = append(threatAnalysis, fmt.Sprintf("OSINT Report: %s - %s", n.Title, n.Summary))
+		}
+	}
+	if len(threatAnalysis) == 0 {
+		threatAnalysis = []string{"Live vessel and flight positions continuously monitored across chokepoints."}
+	}
+
+	recommendations := []string{
+		"Maintain continuous automated AIS/ADS-B watch across primary maritime corridors.",
+		"Monitor real-time anomaly telemetry for sudden course or speed deviations.",
+		"Verify unexpected transponder dropouts with naval information fusion centers.",
+	}
+
 	return &BriefingResponse{
-		ExecutiveSummary: "Geopolitical risk indicators show elevated traffic density in the Strait of Hormuz. Normal operational baseline is maintained across chokepoints with no critical security interdictions reported in the last 24 hours.",
-		ThreatAnalysis: []string{
-			"AIS transponder signal gaps detected on multiple merchant vessels transiting the Northern Basin.",
-			"GDELT events index shows moderate activity near Farsi Island, typical of current routine naval patrols.",
-			"No coordinate match anomalies reported within exclusion zones.",
-		},
-		TacticalRecommendations: []string{
-			"Maintain standard surveillance posture across primary chokepoints and restricted watch zones.",
-			"Coordinate with local maritime information centers to verify any unexpected AIS dropouts.",
-			"Ensure search and rescue teams remain on standby for high-density shipping lanes.",
-		},
-		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
-		Source:      "fallback",
+		ExecutiveSummary:        summary,
+		ThreatAnalysis:          threatAnalysis,
+		TacticalRecommendations: recommendations,
+		GeneratedAt:             time.Now().UTC().Format(time.RFC3339),
+		Source:                  "database",
 	}
 }
 

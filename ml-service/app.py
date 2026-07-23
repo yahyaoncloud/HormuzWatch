@@ -335,6 +335,7 @@ async def health():
     )
     return {
         "status": "healthy",
+        "version": os.getenv("APP_VERSION", "dev"),
         "uptime_seconds": round(_time.time() - START_TIME, 1),
         "legacy_model_loaded": legacy_model.model is not None,
         "legacy_model_version": legacy_model.version,

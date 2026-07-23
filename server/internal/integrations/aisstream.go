@@ -34,12 +34,45 @@ func StartAISStream(p *intelligence.Pipeline) {
 
 	url := "wss://stream.aisstream.io/v0/stream"
 
-	// Middle East Bounding Box: 22°N to 30°N, 48°E to 60°E
-	// Format: [[minLat, minLon], [maxLat, maxLon]]
-	boundingBox := [][2]float64{
-		{22.0, 48.0}, // Bottom left
-		{30.0, 60.0}, // Top right
-	}
+	// Bounding Box for AISStream Subscription: Regional Middle East / Arabian Peninsula / Gulf
+	// Latitude: 10.0°N to 35.0°N, Longitude: 32.0°E to 75.0°E
+	boundingBoxes := [][][2]float64{
+	// Persian Gulf
+	{
+		{24.0, 47.0},
+		{31.0, 57.8},
+	},
+
+	// Strait of Hormuz
+	{
+		{25.2, 55.2},
+		{27.4, 58.8},
+	},
+
+	// Gulf of Oman
+	{
+		{22.0, 56.0},
+		{27.0, 61.8},
+	},
+
+	// Arabian Sea
+	{
+		{8.0, 56.0},
+		{25.0, 76.0},
+	},
+
+	// Gulf of Aden & Bab el-Mandeb
+	{
+		{10.5, 42.0},
+		{16.8, 53.0},
+	},
+
+	// Red Sea & Suez
+	{
+		{12.0, 32.0},
+		{31.8, 44.0},
+	},
+}
 
 	// Optional TLS bypass for development when stream.aisstream.io presents a
 	// certificate that fails system validation (e.g. clock skew / expired cert
@@ -73,10 +106,14 @@ func StartAISStream(p *intelligence.Pipeline) {
 		backoff.Reset()
 
 		subMsg := AISStreamSubscription{
-			APIKey:             apiKey,
-			BoundingBoxes:      [][][2]float64{boundingBox},
-			FilterMessageTypes: []string{"PositionReport"},
-		}
+	    APIKey: apiKey,
+    	BoundingBoxes: boundingBoxes,
+    	FilterMessageTypes: []string{
+        "PositionReport",
+        "StandardClassBPositionReport",
+        "ExtendedClassBPositionReport",
+    },
+}
 
 		subJSON, _ := json.Marshal(subMsg)
 		log.Printf("[AISStream] Sending subscription: %s", string(subJSON))
@@ -99,51 +136,75 @@ func StartAISStream(p *intelligence.Pipeline) {
 				break
 			}
 
-			// Decode using the official aisstream.io message models.
+			// Decode using official aisstream.io message models
 			var aisMsg aisStream.AisStreamMessage
 			if err := json.Unmarshal(message, &aisMsg); err != nil {
 				continue
 			}
 
-			if aisMsg.MessageType != aisStream.POSITION_REPORT || aisMsg.Message.PositionReport == nil {
+			var lat, lon, speed, heading float64
+			var userID int64
+
+			if aisMsg.Message.PositionReport != nil {
+				pr := aisMsg.Message.PositionReport
+				lat = pr.Latitude
+				lon = pr.Longitude
+				speed = pr.Sog
+				heading = pr.Cog
+				userID = int64(pr.UserID)
+			} else if aisMsg.Message.StandardClassBPositionReport != nil {
+				pr := aisMsg.Message.StandardClassBPositionReport
+				lat = pr.Latitude
+				lon = pr.Longitude
+				speed = pr.Sog
+				heading = pr.Cog
+				userID = int64(pr.UserID)
+			} else if aisMsg.Message.ExtendedClassBPositionReport != nil {
+				pr := aisMsg.Message.ExtendedClassBPositionReport
+				lat = pr.Latitude
+				lon = pr.Longitude
+				speed = pr.Sog
+				heading = pr.Cog
+				userID = int64(pr.UserID)
+			} else {
 				continue
 			}
-			pr := aisMsg.Message.PositionReport
 
-			// Skip invalid / sentinel positions.
-			if pr.Latitude < -90 || pr.Latitude > 90 || pr.Longitude < -180 || pr.Longitude > 180 {
+			// Filter positions strictly to expanded Middle East / Arabian Peninsula / Gulf / Red Sea sector (8.0°N to 32.0°N, 32.0°E to 76.0°E)
+			if lat < 8.0 || lat > 32.0 || lon < 32.0 || lon > 76.0 {
 				continue
 			}
 
-			mmsi := fmt.Sprintf("%d", pr.UserID)
+			mmsi := fmt.Sprintf("%d", userID)
 
 			shipName := "Unknown Vessel"
 			if v, ok := aisMsg.MetaData["ShipName"]; ok {
 				if s, ok := v.(string); ok && s != "" {
 					shipName = s
 				}
-			}
-
-			timeUTC := ""
-			if v, ok := aisMsg.MetaData["time_utc"]; ok {
-				if s, ok := v.(string); ok {
-					timeUTC = s
+			} else if v, ok := aisMsg.MetaData["ship_name"]; ok {
+				if s, ok := v.(string); ok && s != "" {
+					shipName = s
 				}
 			}
 
-			speed := pr.Sog
-			heading := pr.Cog
+			timeUTC := time.Now().UTC().Format(time.RFC3339)
+			if v, ok := aisMsg.MetaData["time_utc"]; ok {
+				if s, ok := v.(string); ok && s != "" {
+					timeUTC = s
+				}
+			}
 
 			payload := api.TelemetryPayload{
 				TrackID:           mmsi,
 				AssetName:         shipName,
 				Timestamp:         timeUTC,
-				Lat:               pr.Latitude,
-				Lon:               pr.Longitude,
+				Lat:               lat,
+				Lon:               lon,
 				Speed:             speed,
 				Heading:           heading,
-				AisAgeMinutes:     0, // Will be updated by TSM
-				HotZoneDistanceNm: 0, // Will be handled by Features
+				AisAgeMinutes:     0,
+				HotZoneDistanceNm: 0,
 				ObjectType:        telemetry.DomainVessel,
 				Source:            telemetry.SourceAISStream,
 			}
