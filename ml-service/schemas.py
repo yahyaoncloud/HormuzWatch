@@ -34,6 +34,8 @@ class PredictResponse(BaseModel):
     inference_time_ms: float
     explanation: Optional[Explanation] = None
 
+    model_config = {"protected_namespaces": ()}
+
 class TrainRequest(BaseModel):
     data: List[Dict[str, float]]  # List of feature dictionaries
     contamination: float = Field(default=0.05, ge=0.01, le=0.5)
@@ -43,3 +45,5 @@ class TrainResponse(BaseModel):
     model_version: str
     n_samples: int
     contamination: float
+
+    model_config = {"protected_namespaces": ()}

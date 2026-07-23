@@ -1,24 +1,82 @@
+# HormuzWatch — Unified Docker Compose
+# Starts all containers: client (React/NGINX), server (Go), and the
+# unified ml-service (merged ml-service + ml-inference) on a shared
+# bridge network.
+#
+# Usage:
+#   docker compose up -d --build        # full stack (client + server + ml)
+#   docker compose up -d server ml      # backend + ml only (no client)
+#   docker compose up ml                # ml service only
+#   docker compose logs -f ml          # follow the ml service logs
+#
+# Access:
+#   Client  → http://localhost:3000
+#   Server  → http://localhost:8081/health
+#   ML gRPC → localhost:8090 (used by the Go backend)
+#   ML HTTP → ml-service:8000 inside the Compose network (admin/diagnostic API)
+
 services:
+  # ── React SPA served by NGINX ──────────────────────────────────────────────
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${SUPABASE_ANON_ROLE}
+    container_name: harmuz-client
+    ports:
+      - "3000:3000"
+    depends_on:
+      go-server:
+        condition: service_started
+    networks:
+      - harmuz-network
+    restart: unless-stopped
+    profiles: ["full"]
+
+  # ── Go API / WebSocket backend ─────────────────────────────────────────────
   go-server:
     build:
       context: .
       dockerfile: server/Dockerfile
     container_name: harmuz-server
     ports:
-      - "8081:10000"
+      - "8081:8080"
     environment:
-      - PORT=10000
+      - PORT=8080
+      - GIN_MODE=release
       - AUTH_DISABLED=false
+      # ── Database (Supabase PostgreSQL) ──
       - DATABASE_URL=${DATABASE_URL}
+      # ── Auth ──
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
-      - ML_SERVICE_URL=http://ml-service:8090
+      - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET:-}
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_ANON_ROLE=${SUPABASE_ANON_ROLE:-}
+      # ── ML service (unified) ──
+      - ML_SERVICE_ADDR=ml-service:8090
+      - ML_SERVICE_TLS=off
+      # The HTTP endpoint remains available for diagnostics and offline tooling.
+      - ML_SERVICE_URL=http://ml-service:8000
+      # The current Train RPC intentionally does not fit models in-process.
+      - ML_AUTO_TRAIN_ENABLED=false
+      # ── CORS ──
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
+      # ── External data sources (optional) ──
+      - AISSTREAM_API_KEY=${AISSTREAM_API_KEY:-}
+      - OPENSKY_USERNAME=${OPENSKY_USERNAME:-}
+      - OPENSKY_PASSWORD=${OPENSKY_PASSWORD:-}
+      - FIRMS_MAP_KEY=${FIRMS_MAP_KEY:-}
+      - METRICS_API_KEY=${METRICS_API_KEY:-}
     depends_on:
       ml-service:
         condition: service_healthy
     networks:
       - harmuz-network
+    restart: unless-stopped
 
+  # ── Unified Python ML Service (IsolationForest + LOF ensemble + SHAP) ──────
   ml-service:
     build:
       context: ./ml-service
@@ -27,10 +85,27 @@ services:
     ports:
       - "8090:8090"
     environment:
-      - PORT=8090
+      - GRPC_PORT=8090
+      - HTTP_PORT=8000
+      # Optional: point at a host-mounted models dir
+      # - MODELS_DIR=/app/models
+    volumes:
+      # Persist trained ensemble artifacts across container restarts
+      - ml-models:/app/models
     networks:
       - harmuz-network
+    restart: unless-stopped
+    healthcheck:
+      # The serving port is gRPC; a TCP connection confirms that the process is listening.
+      test: ["CMD", "python", "-c", "import socket; s = socket.create_connection(('127.0.0.1', 8090), 2); s.close()"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
 
 networks:
   harmuz-network:
     driver: bridge
+
+volumes:
+  ml-models:

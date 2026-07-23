@@ -1,19 +1,19 @@
-output "resource_group_name" {
-  value = azurerm_resource_group.main.name
+output "vm_public_ip" {
+  description = "The public IP address of the Virtual Machine"
+  value       = azurerm_public_ip.main.ip_address
 }
 
-output "static_web_app_default_host_name" {
-  value = module.app.static_web_app_default_host_name
+output "vm_ssh_command" {
+  description = "Command to SSH into the Virtual Machine"
+  value       = "ssh ${var.admin_username}@${azurerm_public_ip.main.ip_address}"
 }
 
-output "function_app_name" {
-  value = module.app.function_app_name
+output "client_url" {
+  description = "The URL to access the React Client"
+  value       = "http://${azurerm_public_ip.main.ip_address}:3000"
 }
 
-output "event_hub_name" {
-  value = module.event_hubs.event_hub_name
-}
-
-output "key_vault_uri" {
-  value = module.security.key_vault_uri
+output "server_url" {
+  description = "The URL to access the Go Server Health Check"
+  value       = "http://${azurerm_public_ip.main.ip_address}:8081/health"
 }

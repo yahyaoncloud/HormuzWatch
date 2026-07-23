@@ -51,6 +51,18 @@ func NewHub() *Hub {
 	}
 }
 
+// Publish is the non-blocking entry point for high-volume producers. A slow
+// browser must never stall ingestion, scoring, or external-feed workers.
+func (h *Hub) Publish(message Message) bool {
+	select {
+	case h.Broadcast <- message:
+		return true
+	default:
+		log.Printf("[Hub] Broadcast queue full; dropping %s message", message.Type)
+		return false
+	}
+}
+
 func (h *Hub) Run() {
 	for {
 		select {
@@ -148,18 +160,17 @@ func (c *Client) WritePump() {
 				return
 			}
 
+			// Send each message in its own WebSocket frame.
+			// Previously we flushed queued messages into the same frame
+			// (json.NewEncoder per message), which concatenated JSON objects
+			// without a delimiter and caused JSON.parse failures on the client.
 			w, err := c.Conn.NextWriter(websocket.TextMessage)
 			if err != nil {
 				return
 			}
-			json.NewEncoder(w).Encode(message)
-
-			// Flush any queued messages in the same write frame
-			n := len(c.Send)
-			for i := 0; i < n; i++ {
-				json.NewEncoder(w).Encode(<-c.Send)
+			if err := json.NewEncoder(w).Encode(message); err != nil {
+				return
 			}
-
 			if err := w.Close(); err != nil {
 				return
 			}

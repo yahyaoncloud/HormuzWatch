@@ -1,0 +1,69 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Build output
+dist/
+build/
+dist-ssr/
+*.local
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Testing
+coverage/
+.nyc_output/
+
+# Storybook
+storybook-static/
+
+# Cache
+.cache/
+*.tsbuildinfo
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Vite
+.vite/
+vite.config.ts.timestamp-*
+
+# Playwright
+test-results/
+playwright-report/
+
+# OS
+Thumbs.db
+
+# Misc
+.DS_Store
+*.pem
+.vercel
+.netlify
+.firebase
+*.swp

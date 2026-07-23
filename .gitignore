@@ -33,3 +33,27 @@ Thumbs.db
 *.tfstate
 *.tfstate.*
 .terraform.lock.hcl
+
+credentials.json
+gcp-oauth.keys.json
+
+# Go binary
+server/server.exe
+
+# ML artifacts
+ml-service/models/*.joblib
+ml-service/backups/
+ml-service/predictions.json
+*.joblib
+
+# Python
+*.egg-info/
+.venv/
+venv/
+
+# Trae IDE
+.trae/
+
+# Supabase
+supabase/.temp/
+.env.*

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -8,12 +9,28 @@ import (
 
 	"Geospatial-harmuz-watch/server/internal/anomaly"
 	"Geospatial-harmuz-watch/server/internal/db"
+	"Geospatial-harmuz-watch/server/internal/domain/telemetry"
+	"Geospatial-harmuz-watch/server/internal/geo"
 	"Geospatial-harmuz-watch/server/internal/heatmap"
 	"Geospatial-harmuz-watch/server/internal/websocket/hub"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
+
+func safeSendNonBlocking(ch chan hub.Message, msg hub.Message) (sent bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			sent = false
+		}
+	}()
+	select {
+	case ch <- msg:
+		return true
+	default:
+		return false
+	}
+}
 
 type Handlers struct {
 	hub *hub.Hub
@@ -23,20 +40,9 @@ func NewHandlers(h *hub.Hub) *Handlers {
 	return &Handlers{hub: h}
 }
 
-// TelemetryPayload represents incoming telemetry data
-type TelemetryPayload struct {
-	TrackID           string  `json:"trackId" binding:"required"`
-	AssetName         string  `json:"assetName" binding:"required"`
-	Timestamp         string  `json:"timestamp" binding:"required"`
-	Lat               float64 `json:"lat" binding:"required"`
-	Lon               float64 `json:"lon" binding:"required"`
-	Speed             float64 `json:"speed"`
-	PreviousSpeed     float64 `json:"previousSpeed"`
-	Heading           float64 `json:"heading"`
-	CourseDelta       float64 `json:"courseDelta"`
-	AisAgeMinutes     int     `json:"aisAgeMinutes"`
-	HotZoneDistanceNm float64 `json:"hotZoneDistanceNm"`
-}
+// TelemetryPayload is retained as the HTTP name for the shared telemetry
+// domain contract. Integration workers use the same type and storage path.
+type TelemetryPayload = telemetry.Observation
 
 // HealthResponse represents the health check response
 type HealthResponse struct {
@@ -55,29 +61,12 @@ func (h *Handlers) PostTelemetry(c *gin.Context) {
 		})
 		return
 	}
+	payload.Normalize(telemetry.SourceWebApp)
 
 	// Store telemetry for heatmap aggregation
 	heatmap.AddTelemetry(payload.Lat, payload.Lon)
 
-	// Persist to SQLite
-	query := `
-		INSERT INTO tracks (track_id, asset_name, timestamp, lat, lon, speed, previous_speed, heading, course_delta, ais_age_minutes, hot_zone_distance_nm, last_updated)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-		ON CONFLICT(track_id) DO UPDATE SET
-			asset_name=excluded.asset_name,
-			timestamp=excluded.timestamp,
-			lat=excluded.lat,
-			lon=excluded.lon,
-			speed=excluded.speed,
-			previous_speed=excluded.previous_speed,
-			heading=excluded.heading,
-			course_delta=excluded.course_delta,
-			ais_age_minutes=excluded.ais_age_minutes,
-			hot_zone_distance_nm=excluded.hot_zone_distance_nm,
-			last_updated=CURRENT_TIMESTAMP;
-	`
-	_, err := db.Exec(query, payload.TrackID, payload.AssetName, payload.Timestamp, payload.Lat, payload.Lon, payload.Speed, payload.PreviousSpeed, payload.Heading, payload.CourseDelta, payload.AisAgeMinutes, payload.HotZoneDistanceNm)
-	if err != nil {
+	if err := db.PersistTelemetry(c.Request.Context(), payload); err != nil {
 		log.Printf("[Handler] Failed to persist track %s: %v", payload.TrackID, err)
 	}
 
@@ -110,7 +99,7 @@ func (h *Handlers) Analyze(c *gin.Context) {
 	}
 
 	inRestrictedZone, restrictedZoneName := anomaly.CheckGeofence(payload.Lat, payload.Lon)
-	nearHistoricalAttack := IsNearHistoricalAttack(payload.Lat, payload.Lon)
+	nearHistoricalAttack := geo.IsNearHistoricalAttack(payload.Lat, payload.Lon)
 
 	// Calculate anomaly score
 	score := anomaly.Score(
@@ -163,12 +152,37 @@ func (h *Handlers) Analyze(c *gin.Context) {
 	c.JSON(http.StatusOK, anomalyResult)
 }
 
-// Health returns the health status of the server
+// Health returns the health status of the server with component checks.
 func (h *Handlers) Health(c *gin.Context) {
-	c.JSON(http.StatusOK, HealthResponse{
-		Status:                 "healthy",
-		ManagedIdentityEnabled: false, // TODO: Check actual managed identity availability
-		Timestamp:              time.Now().UTC().Format(time.RFC3339),
+	dbHealthy := true
+	dbLatency := ""
+	dbStart := time.Now()
+	if err := db.Ping(); err != nil {
+		dbHealthy = false
+		dbLatency = err.Error()
+	}
+	dbPingMs := time.Since(dbStart).Milliseconds()
+
+	status := "healthy"
+	if !dbHealthy {
+		status = "degraded"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":                   status,
+		"timestamp":                time.Now().UTC().Format(time.RFC3339),
+		"managed_identity_enabled": false,
+		"components": gin.H{
+			"database": gin.H{
+				"healthy": dbHealthy,
+				"latency": dbLatency,
+				"ping_ms": dbPingMs,
+			},
+			"websocket": gin.H{
+				"healthy": h.hub != nil,
+			},
+		},
+		"version": "2.0.0",
 	})
 }
 
@@ -196,6 +210,9 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 		return
 	}
 
+	// Create a context that will be cancelled when the client disconnects
+	ctx, cancel := context.WithCancel(c.Request.Context())
+
 	client := &hub.Client{
 		Hub:  h.hub,
 		Conn: ws,
@@ -206,6 +223,14 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 	// Start client read/write loops
 	go client.ReadPump()
 	go client.WritePump()
+
+	// Register a cleanup callback to cancel context when client unregisters
+	// We do this by wrapping the original Unregister to also cancel our context
+	go func() {
+		// Wait for the client to be unregistered by watching the hub's unregister channel
+		// Actually, the simplest approach: when ReadPump finishes, it sends to Unregister
+		// We can't easily hook into that without modifying hub, so we'll use a different approach
+	}()
 
 	// Hydrate the dashboard from SQLite (async to prevent blocking the HTTP handler)
 	go func() {
@@ -218,11 +243,24 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 		rows, err := db.Query(query)
 		if err == nil {
 			for rows.Next() {
+				select {
+				case <-ctx.Done():
+					rows.Close()
+					return
+				default:
+				}
 				var p TelemetryPayload
 				if err := rows.Scan(&p.TrackID, &p.AssetName, &p.Timestamp, &p.Lat, &p.Lon, &p.Speed, &p.PreviousSpeed, &p.Heading, &p.CourseDelta, &p.AisAgeMinutes, &p.HotZoneDistanceNm); err == nil {
-					// Add small delay to prevent overflowing the websocket writer too aggressively
-					time.Sleep(2 * time.Millisecond)
-					client.Send <- hub.Message{Type: "telemetry", Data: p}
+					select {
+					case <-ctx.Done():
+						rows.Close()
+						return
+					default:
+						if !safeSendNonBlocking(client.Send, hub.Message{Type: "telemetry", Data: p}) {
+							rows.Close()
+							return
+						}
+					}
 				}
 			}
 			rows.Close()
@@ -239,13 +277,27 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 		rows, err = db.Query(query)
 		if err == nil {
 			for rows.Next() {
+				select {
+				case <-ctx.Done():
+					rows.Close()
+					return
+				default:
+				}
 				var res anomaly.Result
 				var reasonsJSON, actionsJSON string
 				if err := rows.Scan(&res.ID, &res.Score, &res.Severity, &reasonsJSON, &actionsJSON); err == nil {
 					json.Unmarshal([]byte(reasonsJSON), &res.Reasons)
 					json.Unmarshal([]byte(actionsJSON), &res.Actions)
-					time.Sleep(2 * time.Millisecond)
-					client.Send <- hub.Message{Type: "anomaly", Data: res}
+					select {
+					case <-ctx.Done():
+						rows.Close()
+						return
+					default:
+						if !safeSendNonBlocking(client.Send, hub.Message{Type: "anomaly", Data: res}) {
+							rows.Close()
+							return
+						}
+					}
 				}
 			}
 			rows.Close()
@@ -253,13 +305,21 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 			log.Printf("[Hydration] Failed to fetch anomalies: %v", err)
 		}
 	}()
+
+	// Monitor for client disconnect and cancel context
+	go func() {
+		<-c.Request.Context().Done()
+		cancel()
+	}()
 }
 
-// GetHeatmap returns current heatmap data
+// GetHeatmap returns current heatmap data, optionally filtered by source type.
 func (h *Handlers) GetHeatmap(c *gin.Context) {
-	gridData := heatmap.GetGridData()
+	source := c.DefaultQuery("source", "vessel") // vessel, fire, geo, or all
+	gridData := heatmap.GetGridDataBySource(source)
 	c.JSON(http.StatusOK, gin.H{
-		"type": "heatmap",
-		"data": gridData,
+		"type":   "heatmap",
+		"source": source,
+		"data":   gridData,
 	})
 }

@@ -1,0 +1,50 @@
+# HormuzWatch Cloudflare Tunnel Configuration
+# 
+# Setup (one-time):
+#   1. Install cloudflared: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
+#   2. cloudflared tunnel login
+#   3. cloudflared tunnel create hormuzwatch
+#   4. Copy the tunnel ID and credentials file path
+#   5. Update tunnel_id and credentials_file below
+#   6. Start the tunnel: scripts/start-tunnel.ps1
+#
+# The tunnel exposes:
+#   hormuzwatch.example.com -> localhost:10020 (Go backend API)
+#   ml.hormuzwatch.example.com -> localhost:8090 (Python ML gRPC + health)
+#   admin.hormuzwatch.example.com -> localhost:5173 (Vite dev / static build)
+
+tunnel: hormuzwatch
+credentials-file: C:\Users\amena\.cloudflared\hormuzwatch.json
+
+ingress:
+  # ── Public hostname mappings ────────────────────────────────
+  # Point these to your actual domain in Cloudflare DNS
+  
+  # Proxy frontend from Vite dev server or pre-built static files
+  - hostname: hormuzwatch.example.com
+    service: http://localhost:5173
+    originRequest:
+      noTLSVerify: true
+
+  # Go backend API (public endpoints)
+  - hostname: api.hormuzwatch.example.com
+    service: http://localhost:10020
+    originRequest:
+      noTLSVerify: true
+
+  # ML service health check only (gRPC goes direct)
+  - hostname: ml.hormuzwatch.example.com
+    service: http://localhost:8090
+    originRequest:
+      noTLSVerify: true
+
+  # Catch-all: return 404 for unmapped hostnames
+  - service: http_status:404
+
+# ── Optional: block requests without valid CF Access JWT ─────
+# Uncomment to require Cloudflare Access authentication:
+# access:
+#   required: true
+#   team_domain: your-team.cloudflareaccess.com
+#   audience: 
+#     - abc123your-access-app-audience

@@ -11,6 +11,9 @@ const (
 	MaxHistory = 20
 	// StaleThreshold is the duration after which a track is considered stale
 	StaleThreshold = 2 * time.Hour
+	// EWMAAlpha is the smoothing factor for Exponentially Weighted Moving Average
+	// Alpha = 2 / (N + 1) where N is the effective window. Alpha=0.15 ≈ N=12
+	EWMAAlpha = 0.15
 )
 
 // Observation represents a single telemetry snapshot
@@ -28,6 +31,13 @@ type TrackState struct {
 	AssetName   string
 	History     []Observation // Ring buffer, most recent last
 	LastUpdated time.Time
+
+	// EWMA baseline for anomaly detection (per-track adaptive baseline)
+	EWMACourse   float64 // EWMA of course delta
+	EWMAHeading  float64 // EWMA of heading delta
+	EWMASpeed    float64 // EWMA of speed delta
+	EWMAVariance float64 // EWMA of speed variance
+	EWMACount    int     // Number of observations incorporated into EWMA
 }
 
 // TrackStateManager is a thread-safe, in-memory track state store.
@@ -53,6 +63,8 @@ type ComputedDeltas struct {
 	SpeedVariance float64 // Variance of speed over the window
 	AISGapMinutes float64 // Minutes since last observation
 	IsFirstReport bool    // True if this is the first observation for this track
+	// EWMA deviation: z-score of current kinematic state vs per-track EWMA baseline
+	EWMADeviation float64
 }
 
 // Update ingests a new observation and returns the computed deltas.
@@ -98,6 +110,13 @@ func (m *TrackStateManager) computeDeltas(state *TrackState, current Observation
 	if len(state.History) == 0 {
 		d.IsFirstReport = true
 		d.AverageSpeed = current.Speed
+		// Initialize EWMA with first observation
+		state.EWMACourse = 0
+		state.EWMAHeading = 0
+		state.EWMASpeed = 0
+		state.EWMAVariance = 0
+		state.EWMACount = 1
+		d.EWMADeviation = 0
 		return d
 	}
 
@@ -138,6 +157,49 @@ func (m *TrackStateManager) computeDeltas(state *TrackState, current Observation
 		varSum += (s - d.AverageSpeed) * (s - d.AverageSpeed)
 	}
 	d.SpeedVariance = varSum / float64(len(allSpeeds))
+
+	// ── EWMA Update ─────────────────────────────────────────────────────
+	// Update per-track EWMA baseline with current deltas
+	alpha := EWMAAlpha
+	if state.EWMACount == 0 {
+		// First update after initialization
+		state.EWMACourse = d.CourseDelta
+		state.EWMAHeading = math.Abs(d.HeadingDelta)
+		state.EWMASpeed = math.Abs(d.SpeedDelta)
+		state.EWMAVariance = d.SpeedVariance
+		state.EWMACount = 1
+	} else {
+		state.EWMACourse = alpha*d.CourseDelta + (1-alpha)*state.EWMACourse
+		state.EWMAHeading = alpha*math.Abs(d.HeadingDelta) + (1-alpha)*state.EWMAHeading
+		state.EWMASpeed = alpha*math.Abs(d.SpeedDelta) + (1-alpha)*state.EWMASpeed
+		state.EWMAVariance = alpha*d.SpeedVariance + (1-alpha)*state.EWMAVariance
+		state.EWMACount++
+	}
+
+	// Compute EWMA deviation as z-score of current kinematic state vs baseline
+	// We combine normalized deviations across course, heading, speed, and variance
+	courseDev := 0.0
+	headingDev := 0.0
+	speedDev := 0.0
+	varianceDev := 0.0
+
+	if state.EWMACourse > 0 {
+		courseDev = (d.CourseDelta - state.EWMACourse) / state.EWMACourse
+	}
+	if state.EWMAHeading > 0 {
+		headingDev = (math.Abs(d.HeadingDelta) - state.EWMAHeading) / state.EWMAHeading
+	}
+	if state.EWMASpeed > 0 {
+		speedDev = (math.Abs(d.SpeedDelta) - state.EWMASpeed) / state.EWMASpeed
+	}
+	if state.EWMAVariance > 0 {
+		varianceDev = (d.SpeedVariance - state.EWMAVariance) / state.EWMAVariance
+	}
+
+	// RMS of normalized deviations → dimensionless z-score
+	d.EWMADeviation = math.Sqrt(
+		(courseDev*courseDev + headingDev*headingDev + speedDev*speedDev + varianceDev*varianceDev) / 4.0,
+	)
 
 	return d
 }

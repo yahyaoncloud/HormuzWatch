@@ -1,37 +1,35 @@
-variable "project" {
-  description = "Short project name used for resource naming."
+variable "location" {
+  description = "The Azure Region to deploy resources into (Mumbai = centralindia)"
   type        = string
-  default     = "hormuzshield"
+  default     = "centralindia"
 }
 
 variable "environment" {
-  description = "Deployment environment name."
+  description = "The environment name (e.g. dev, prod)"
   type        = string
   default     = "dev"
 }
 
-variable "location" {
-  description = "Azure region for primary resources."
+variable "project_name" {
+  description = "The name of the project"
   type        = string
-  default     = "eastus"
+  default     = "hormuzwatch"
 }
 
-variable "alert_email" {
-  description = "Operations email for Azure Monitor action groups."
+variable "vm_size" {
+  description = "The size of the Virtual Machine"
   type        = string
+  default     = "Standard_B2s" # 2 vCPU, 4GB RAM (good for Docker Compose)
 }
 
-variable "allowed_public_cidr" {
-  description = "Administrative CIDR allowed to reach public management endpoints."
+variable "admin_username" {
+  description = "Admin username for the VM"
   type        = string
-  default     = "0.0.0.0/0"
+  default     = "azureuser"
 }
 
-variable "tags" {
-  description = "Tags applied to all resources."
-  type        = map(string)
-  default = {
-    workload = "Geospatial-analytics"
-    owner    = "platform-engineering"
-  }
+variable "ssh_public_key" {
+  description = "Public SSH key for VM authentication (cat ~/.ssh/id_rsa.pub)"
+  type        = string
+  sensitive   = true
 }

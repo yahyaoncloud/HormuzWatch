@@ -4,7 +4,6 @@ import (
 	"math"
 
 	"Geospatial-harmuz-watch/server/internal/anomaly"
-	"Geospatial-harmuz-watch/server/internal/api"
 	"Geospatial-harmuz-watch/server/internal/geo"
 )
 
@@ -26,12 +25,14 @@ type FeatureVector struct {
 	PreviousSpeed        float64 `json:"previous_speed"`
 	Lat                  float64 `json:"lat"`
 	Lon                  float64 `json:"lon"`
+	// EWMA deviation: z-score of current kinematic state vs per-track EWMA baseline
+	EWMADeviation float64 `json:"ewma_deviation"`
 }
 
 // ExtractFeatures combines ComputedDeltas with geospatial context.
 func ExtractFeatures(trackID string, lat, lon, speed float64, deltas ComputedDeltas) FeatureVector {
 	inZone, zoneName := anomaly.CheckGeofence(lat, lon)
-	nearAttack := api.IsNearHistoricalAttack(lat, lon)
+	nearAttack := geo.IsNearHistoricalAttack(lat, lon)
 	distToZone := computeDistToNearestZone(lat, lon)
 	distToAttack := computeDistToNearestAttack(lat, lon, nearAttack)
 
@@ -52,6 +53,7 @@ func ExtractFeatures(trackID string, lat, lon, speed float64, deltas ComputedDel
 		PreviousSpeed:        deltas.PreviousSpeed,
 		Lat:                  lat,
 		Lon:                  lon,
+		EWMADeviation:        deltas.EWMADeviation,
 	}
 }
 

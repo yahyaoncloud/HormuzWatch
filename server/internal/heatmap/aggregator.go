@@ -6,29 +6,62 @@ import (
 	"time"
 )
 
+// SourceType identifies the origin of heatmap data.
+type SourceType string
+
+const (
+	SourceVessel SourceType = "vessel"
+	SourceFire   SourceType = "fire"
+	SourceGeo    SourceType = "geo"
+)
+
 // GridCell represents a geographic grid cell for heatmap
 type GridCell struct {
-	Lat       float64 `json:"lat"`
-	Lon       float64 `json:"lon"`
-	Intensity int     `json:"intensity"` // count of events in this cell (last 1 hour)
+	Lat       float64    `json:"lat"`
+	Lon       float64    `json:"lon"`
+	Intensity int        `json:"intensity"` // count of events in this cell (last 1 hour)
+	Source    SourceType `json:"source,omitempty"`
+}
+
+// cellData holds per-cell timestamp tracking
+type cellData struct {
+	cell       *GridCell
+	timestamps []time.Time
 }
 
 // HeatmapStore manages the heatmap grid data
 type HeatmapStore struct {
 	mu    sync.RWMutex
-	cells map[string]*GridCell
-	// Store timestamps for each entry to calculate 1-hour window
-	timestamps map[string][]time.Time
+	cells map[string]*cellData
 }
 
 var store = &HeatmapStore{
-	cells:      make(map[string]*GridCell),
-	timestamps: make(map[string][]time.Time),
+	cells: make(map[string]*cellData),
 }
 
-// AddTelemetry adds a telemetry point to the heatmap
+// AddTelemetry adds a vessel telemetry point to the heatmap.
 // Grid resolution: 0.5 degrees
 func AddTelemetry(lat, lon float64) {
+	addEvent(lat, lon, SourceVessel)
+}
+
+// AddFireEvent adds a fire/hotspot event (from NASA FIRMS).
+func AddFireEvent(lat, lon float64) {
+	// Fire events carry 3x weight
+	for i := 0; i < 3; i++ {
+		addEvent(lat, lon, SourceFire)
+	}
+}
+
+// AddGeoEvent adds a geopolitical event (from GDELT).
+func AddGeoEvent(lat, lon float64) {
+	// Geo events carry 5x weight
+	for i := 0; i < 5; i++ {
+		addEvent(lat, lon, SourceGeo)
+	}
+}
+
+func addEvent(lat, lon float64, source SourceType) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
@@ -42,39 +75,65 @@ func AddTelemetry(lat, lon float64) {
 	now := time.Now()
 	oneHourAgo := now.Add(-time.Hour)
 
-	var filteredTimestamps []time.Time
-	if timestamps, exists := store.timestamps[key]; exists {
-		for _, ts := range timestamps {
+	if data, exists := store.cells[key]; exists {
+		var filtered []time.Time
+		for _, ts := range data.timestamps {
 			if ts.After(oneHourAgo) {
-				filteredTimestamps = append(filteredTimestamps, ts)
+				filtered = append(filtered, ts)
 			}
 		}
-	}
-	filteredTimestamps = append(filteredTimestamps, now)
-	store.timestamps[key] = filteredTimestamps
-
-	// Update or create grid cell
-	if cell, exists := store.cells[key]; exists {
-		cell.Intensity = len(filteredTimestamps)
+		filtered = append(filtered, now)
+		data.timestamps = filtered
+		data.cell.Intensity = len(filtered)
+		// Keep the more important source if already set
+		if sourcePriority(source) > sourcePriority(data.cell.Source) {
+			data.cell.Source = source
+		}
 	} else {
-		store.cells[key] = &GridCell{
-			Lat:       gridLat,
-			Lon:       gridLon,
-			Intensity: 1,
+		store.cells[key] = &cellData{
+			cell: &GridCell{
+				Lat:       gridLat,
+				Lon:       gridLon,
+				Intensity: 1,
+				Source:    source,
+			},
+			timestamps: []time.Time{now},
 		}
 	}
 }
 
-// GetGridData returns all current grid cells with non-zero intensity
+func sourcePriority(s SourceType) int {
+	switch s {
+	case SourceGeo:
+		return 3
+	case SourceFire:
+		return 2
+	case SourceVessel:
+		return 1
+	default:
+		return 0
+	}
+}
+
+// GetGridData returns all current grid cells with non-zero intensity.
 func GetGridData() []GridCell {
+	return GetGridDataBySource("all")
+}
+
+// GetGridDataBySource returns grid cells filtered by source type.
+func GetGridDataBySource(source string) []GridCell {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
 
 	var gridData []GridCell
-	for _, cell := range store.cells {
-		if cell.Intensity > 0 {
-			gridData = append(gridData, *cell)
+	for _, data := range store.cells {
+		if data.cell.Intensity == 0 {
+			continue
 		}
+		if source != "all" && string(data.cell.Source) != source {
+			continue
+		}
+		gridData = append(gridData, *data.cell)
 	}
 	return gridData
 }
@@ -87,29 +146,24 @@ func ClearOldData() {
 	now := time.Now()
 	oneHourAgo := now.Add(-time.Hour)
 
-	for key, timestamps := range store.timestamps {
-		var filteredTimestamps []time.Time
-		for _, ts := range timestamps {
+	for key, data := range store.cells {
+		var filtered []time.Time
+		for _, ts := range data.timestamps {
 			if ts.After(oneHourAgo) {
-				filteredTimestamps = append(filteredTimestamps, ts)
+				filtered = append(filtered, ts)
 			}
 		}
-
-		if len(filteredTimestamps) == 0 {
+		if len(filtered) == 0 {
 			delete(store.cells, key)
-			delete(store.timestamps, key)
 		} else {
-			store.timestamps[key] = filteredTimestamps
-			if cell, exists := store.cells[key]; exists {
-				cell.Intensity = len(filteredTimestamps)
-			}
+			data.timestamps = filtered
+			data.cell.Intensity = len(filtered)
 		}
 	}
 }
 
 // cellKey generates a unique key for a grid cell
 func cellKey(lat, lon float64) string {
-	// Format with 1 decimal place precision
 	return fmt.Sprintf("%.1f,%.1f", lat, lon)
 }
 

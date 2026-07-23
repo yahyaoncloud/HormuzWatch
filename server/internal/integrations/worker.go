@@ -12,11 +12,13 @@ import (
 func StartWorkers(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *intelligence.MLClient) {
 	log.Println("Starting background integration workers...")
 
+	pipeline := intelligence.NewPipeline(h, tsm, mlClient)
+
 	// 1. Start AISStream for live vessel telemetry
-	go StartAISStream(h, tsm, mlClient)
+	go StartAISStream(pipeline)
 
 	// 2. Start OpenSky for live aircraft telemetry
-	go StartOpenSky(h, tsm, mlClient)
+	go StartOpenSky(pipeline)
 
 	// 3. Start GDELT for geopolitical event danger zones (heatmaps)
 	go StartGDELT()
@@ -25,6 +27,9 @@ func StartWorkers(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *int
 
 	// 5. Start FIRMS integration
 	go StartFIRMS(h)
+
+	// 6. Start Telemetry Resilience Simulator (ensures active tracks when external APIs pause)
+	go StartTelemetrySimulator(pipeline)
 
 	// Periodic stale track purge
 	go func() {

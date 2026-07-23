@@ -95,10 +95,7 @@ func StartFIRMS(h *hub.Hub) {
 
 			// High brightness = active fire / explosion
 			if brightness > 300.0 { // threshold in Kelvin
-				// Add to heatmap 3 times to create a stronger signal
-				for j := 0; j < 3; j++ {
-					heatmap.AddTelemetry(lat, lon)
-				}
+				heatmap.AddFireEvent(lat, lon)
 
 				payload := map[string]interface{}{
 					"lat":        lat,

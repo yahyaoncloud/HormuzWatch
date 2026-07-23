@@ -3,6 +3,8 @@ package api
 import (
 	"bytes"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -112,5 +114,40 @@ func CacheMiddleware(duration time.Duration) gin.HandlerFunc {
 			cacheMu.Unlock()
 			c.Writer.Header().Set("X-Cache", "MISS")
 		}
+	}
+}
+
+// --- API Key Auth ---
+
+// MetricsAuthMiddleware checks for a static API key in the Authorization header.
+func MetricsAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		expectedKey := os.Getenv("METRICS_API_KEY")
+		if expectedKey == "" {
+			// If no key is configured, block access to be safe
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "Metrics endpoint is disabled (no API key configured)",
+			})
+			return
+		}
+
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+			return
+		}
+
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header must be Bearer token"})
+			return
+		}
+
+		if parts[1] != expectedKey {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid API Key"})
+			return
+		}
+
+		c.Next()
 	}
 }

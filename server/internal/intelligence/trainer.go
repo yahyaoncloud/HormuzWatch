@@ -20,14 +20,14 @@ func RunTrainingJob(tsm *TrackStateManager, mlClient *MLClient) {
 
 		// Compute deltas for the most recent observation in the history
 		currentObs := state.History[len(state.History)-1]
-		
+
 		// Create a temporary state without the current observation to compute deltas
 		tempState := &TrackState{
 			History: state.History[:len(state.History)-1],
 		}
-		
+
 		deltas := tsm.computeDeltas(tempState, currentObs)
-		
+
 		// Extract geospatial features
 		distToZone := computeDistToNearestZone(currentObs.Lat, currentObs.Lon)
 		nearAttack := false // We approximate this since we don't have api package dependency here easily, or we can compute it
@@ -42,6 +42,7 @@ func RunTrainingJob(tsm *TrackStateManager, mlClient *MLClient) {
 			AISGapMinutes:      deltas.AISGapMinutes,
 			DistRestrictedZone: distToZone,
 			DistHistoricalSite: distToAttack,
+			EWMADeviation:      deltas.EWMADeviation,
 		}
 		features = append(features, payload)
 	}
@@ -63,7 +64,7 @@ func RunTrainingJob(tsm *TrackStateManager, mlClient *MLClient) {
 
 // StartAutomatedTraining loop runs the training job periodically (e.g., daily).
 func StartAutomatedTraining(tsm *TrackStateManager, mlClient *MLClient) {
-	// For testing purposes, we might want to train more frequently. 
+	// For testing purposes, we might want to train more frequently.
 	// Let's set it to every 1 hour.
 	ticker := time.NewTicker(1 * time.Hour)
 	go func() {

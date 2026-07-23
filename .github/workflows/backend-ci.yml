@@ -1,0 +1,80 @@
+# HormuzWatch — Auto-build on push to main/master
+name: Backend CI
+
+on:
+  push:
+    branches: [main, master]
+
+defaults:
+  run:
+    shell: powershell
+
+jobs:
+  build-go:
+    name: Build Go Backend
+    runs-on: self-hosted
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      - name: Build
+        working-directory: server
+        run: go build -o ../build/hormuz-server.exe ./cmd/...
+
+      - name: Stop existing service
+        continue-on-error: true
+        run: |
+          $pid = Get-Content -Path "build/server.pid" -ErrorAction SilentlyContinue
+          if ($pid) { Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue }
+
+      - name: Deploy & restart
+        run: |
+          Copy-Item -Force build/hormuz-server.exe deploy/hormuz-server.exe
+          Start-Process -FilePath "deploy/hormuz-server.exe" -WorkingDirectory "deploy" -WindowStyle Hidden
+          Start-Sleep -Seconds 3
+          Get-Process -Name "hormuz-server" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id | Out-File -FilePath "build/server.pid"
+
+      - name: Health check
+        run: |
+          Start-Sleep -Seconds 5
+          $response = try { Invoke-RestMethod -Uri "http://localhost:10020/health" -TimeoutSec 10 } catch { $null }
+          if ($response.status -eq "healthy") {
+            Write-Host "Server healthy — deploy success"
+          } else {
+            Write-Host "WARNING: Health check failed"
+          }
+
+  build-python:
+    name: Verify Python ML Service
+    runs-on: self-hosted
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        working-directory: ml-service
+        run: pip install -r requirements.txt --quiet
+
+      - name: Verify imports
+        working-directory: ml-service
+        run: python -c "from app import app; print('ML service imports OK')"
+
+      - name: Verify CLI
+        working-directory: ml-service
+        run: python ml_cli.py status

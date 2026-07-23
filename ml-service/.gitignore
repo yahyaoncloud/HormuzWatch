@@ -1,0 +1,9 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Local data (training inputs)
+data/

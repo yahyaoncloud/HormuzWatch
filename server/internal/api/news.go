@@ -9,21 +9,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type NewsItem struct {
-	ID      string    `json:"id"`
-	Title   string    `json:"title"`
-	Link    string    `json:"link"`
-	PubDate time.Time `json:"pub_date"`
-	Source  string    `json:"source"`
-	Summary string    `json:"summary"`
-}
-
-// GetNews returns the latest intelligence briefing news from the database.
+// GetNews returns the latest intelligence articles from the articles table.
 func GetNews(c *gin.Context) {
 	query := `
-		SELECT id, title, link, pub_date, source, summary 
-		FROM news 
-		ORDER BY pub_date DESC 
+		SELECT id, title, url, published_at, source_id, summary 
+		FROM articles 
+		ORDER BY published_at DESC 
 		LIMIT 100
 	`
 	rows, err := db.Query(query)
@@ -33,17 +24,30 @@ func GetNews(c *gin.Context) {
 	}
 	defer rows.Close()
 
-	var news []NewsItem
+	var news []gin.H
 	for rows.Next() {
-		var item NewsItem
-		if err := rows.Scan(&item.ID, &item.Title, &item.Link, &item.PubDate, &item.Source, &item.Summary); err != nil {
+		var id, title, url, source string
+		var publishedAt time.Time
+		var summary *string
+		if err := rows.Scan(&id, &title, &url, &publishedAt, &source, &summary); err != nil {
 			continue
 		}
-		news = append(news, item)
+		summaryVal := ""
+		if summary != nil {
+			summaryVal = *summary
+		}
+		news = append(news, gin.H{
+			"id":      id,
+			"title":   title,
+			"link":    url,
+			"pubDate": publishedAt,
+			"source":  source,
+			"summary": summaryVal,
+		})
 	}
 
 	if len(news) == 0 {
-		news = []NewsItem{}
+		news = []gin.H{}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"news": news})

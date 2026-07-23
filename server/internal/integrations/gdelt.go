@@ -72,10 +72,7 @@ func StartGDELT() {
 				lon := feature.Geometry.Coordinates[0]
 				lat := feature.Geometry.Coordinates[1]
 
-				// Increase weight of this area in the heatmap
-				for i := 0; i < 5; i++ {
-					heatmap.AddTelemetry(lat, lon)
-				}
+				heatmap.AddGeoEvent(lat, lon)
 				
 				intelligence.GeoStore.AddEvent(lat, lon, 1.0)
 				

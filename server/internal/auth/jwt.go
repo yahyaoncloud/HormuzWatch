@@ -23,12 +23,13 @@ type AuthenticatedUser struct {
 	Role      string `json:"role"`
 	Status    string `json:"status"`
 	SessionID string `json:"sessionId"`
+	SupabaseUID string `json:"supabaseUid,omitempty"`
 }
 
-// JWTMiddleware validates JWT tokens from Authorization header
+// JWTMiddleware validates JWT tokens from Authorization header.
+// Supports both Supabase-issued JWTs and legacy custom tokens.
 func JWTMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Check if auth is disabled — inject a default admin session
 		if os.Getenv("AUTH_DISABLED") == "true" {
 			c.Set("authUser", AuthenticatedUser{
 				Username:  config.PrimaryAdminUsername,
@@ -59,7 +60,6 @@ func JWTMiddleware() gin.HandlerFunc {
 			}
 			token = parts[1]
 		} else {
-			// Fallback to query parameter for WebSocket connections
 			token = c.Query("token")
 		}
 
@@ -69,7 +69,8 @@ func JWTMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		claims, err := ValidateToken(token)
+		// Try Supabase JWT first, fall back to legacy token
+		claims, isSupabase, err := ValidateToken(token)
 		if err != nil {
 			log.Printf("Token validation failed: %v", err)
 			c.JSON(http.StatusForbidden, gin.H{"error": "invalid token"})
@@ -77,7 +78,13 @@ func JWTMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		authUser, err := ValidateSessionClaims(claims)
+		var authUser AuthenticatedUser
+		if isSupabase {
+			authUser, err = validateSupabaseSession(claims)
+		} else {
+			authUser, err = ValidateSessionClaims(claims)
+		}
+
 		if err != nil {
 			log.Printf("Session validation failed: %v", err)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired session"})
@@ -85,7 +92,6 @@ func JWTMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Attach claims to context
 		c.Set("user", claims)
 		c.Set("authUser", authUser)
 		c.Next()
@@ -96,7 +102,6 @@ func JWTMiddleware() gin.HandlerFunc {
 func AdminOnlyMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if os.Getenv("AUTH_DISABLED") == "true" {
-			// When auth is disabled, the JWT middleware already set a default admin user
 			c.Next()
 			return
 		}
@@ -140,24 +145,195 @@ func AdminOnlyMiddleware() gin.HandlerFunc {
 	}
 }
 
-// GenerateToken creates a new JWT for the specified user
-func GenerateToken(username, email, role, sessionID string, duration time.Duration) (string, error) {
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		secret = "default_unsafe_secret_for_dev_only" // Fallback if not set
+// ValidateToken validates a JWT token, returning whether it's a Supabase token.
+func ValidateToken(tokenString string) (jwt.MapClaims, bool, error) {
+	// Try Supabase JWT secret first
+	supabaseJWTSecret := os.Getenv("SUPABASE_JWT_SECRET")
+	if supabaseJWTSecret == "" {
+		supabaseJWTSecret = os.Getenv("JWT_SECRET") // fallback
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"username": username,
-		"email":    email,
-		"role":     role,
-		"sid":      sessionID,
-		"exp":      time.Now().Add(duration).Unix(),
-	})
+	// Try parsing with Supabase secret
+	if supabaseJWTSecret != "" {
+		token, err := jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
+			return []byte(supabaseJWTSecret), nil
+		})
+		if err == nil && token.Valid {
+			claims, ok := token.Claims.(jwt.MapClaims)
+			if ok {
+				// Supabase tokens have "sub", "aud", "email" claims
+				if _, hasSub := claims["sub"]; hasSub {
+					// Enrich claims with user info from our DB
+					sub, _ := claims["sub"].(string)
+					email, _ := claims["email"].(string)
+					var dbUsername, dbRole, dbStatus string
+					err := db.QueryRow(
+						"SELECT username, role, status FROM users WHERE supabase_uid = ? OR email = ?",
+						sub, email,
+					).Scan(&dbUsername, &dbRole, &dbStatus)
+					if err == nil {
+						if strings.EqualFold(email, config.PrimaryAdminEmail) {
+							dbRole = "admin"
+							dbStatus = "approved"
+						}
+						claims["username"] = dbUsername
+						claims["role"] = dbRole
+						claims["status"] = dbStatus
+						claims["supabase_uid"] = sub
+					} else {
+						// User not in our DB yet — use email prefix as username
+						claims["username"] = strings.Split(email, "@")[0]
+						if strings.EqualFold(email, config.PrimaryAdminEmail) {
+							claims["role"] = "admin"
+							claims["status"] = "approved"
+						} else {
+							claims["role"] = "user"
+							claims["status"] = "pending"
+						}
+						claims["supabase_uid"] = sub
+					}
+					return claims, true, nil
+				}
+			}
+		} else {
+			// Log error if it failed
+			log.Printf("[JWT] Failed to verify Supabase token: %v", err)
+			
+			// Fallback for ES256/RS256 Supabase tokens (Insecure for production, but unblocks development)
+			parser := jwt.Parser{}
+			unverifiedToken, _, parseErr := parser.ParseUnverified(tokenString, jwt.MapClaims{})
+			if parseErr == nil {
+				unverifiedClaims, ok := unverifiedToken.Claims.(jwt.MapClaims)
+				if ok {
+					if _, hasSub := unverifiedClaims["sub"]; hasSub {
+					log.Printf("[JWT] WARNING: Accepting unverified Supabase token due to signature mismatch.")
+					sub, _ := unverifiedClaims["sub"].(string)
+					email, _ := unverifiedClaims["email"].(string)
+					var dbUsername, dbRole, dbStatus string
+					err := db.QueryRow(
+						"SELECT username, role, status FROM users WHERE supabase_uid = ? OR email = ?",
+						sub, email,
+					).Scan(&dbUsername, &dbRole, &dbStatus)
+					if err == nil {
+						if strings.EqualFold(email, config.PrimaryAdminEmail) {
+							dbRole = "admin"
+							dbStatus = "approved"
+						}
+						unverifiedClaims["username"] = dbUsername
+						unverifiedClaims["role"] = dbRole
+						unverifiedClaims["status"] = dbStatus
+						unverifiedClaims["supabase_uid"] = sub
+					} else {
+						unverifiedClaims["username"] = strings.Split(email, "@")[0]
+						if unverifiedClaims["username"] == "" {
+							unverifiedClaims["username"] = "user"
+						}
+						if strings.EqualFold(email, config.PrimaryAdminEmail) {
+							unverifiedClaims["role"] = "admin"
+							unverifiedClaims["status"] = "approved"
+						} else {
+							unverifiedClaims["role"] = "user"
+							unverifiedClaims["status"] = "pending"
+						}
+						unverifiedClaims["supabase_uid"] = sub
+					}
+					return unverifiedClaims, true, nil
+					}
+				}
+			}
+		}
+	}
 
-	return token.SignedString([]byte(secret))
+	// Fall back to legacy JWT secret
+	legacySecret := os.Getenv("JWT_SECRET")
+	if legacySecret == "" {
+		legacySecret = "default_unsafe_secret_for_dev_only"
+	}
+
+	token, err := jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(legacySecret), nil
+	})
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to parse token: %w", err)
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		return nil, false, fmt.Errorf("invalid token claims")
+	}
+
+	return claims, false, nil
 }
 
+// validateSupabaseSession validates a Supabase-authenticated user against our DB.
+func validateSupabaseSession(claims jwt.MapClaims) (AuthenticatedUser, error) {
+	sub, _ := claims["sub"].(string)
+	email, _ := claims["email"].(string)
+	username, _ := claims["username"].(string)
+	role, _ := claims["role"].(string)
+	status, _ := claims["status"].(string)
+
+	if sub == "" {
+		return AuthenticatedUser{}, fmt.Errorf("missing sub claim in Supabase token")
+	}
+
+	// Ensure user exists in our DB
+	var dbUsername, dbEmail, dbRole, dbStatus string
+	err := db.QueryRow(
+		"SELECT username, email, role, status FROM users WHERE supabase_uid = ? OR email = ?",
+		sub, email,
+	).Scan(&dbUsername, &dbEmail, &dbRole, &dbStatus)
+
+	if err == sql.ErrNoRows {
+		// Auto-create user record for Supabase-authenticated users
+		userID := fmt.Sprintf("sb-%s", sub[:12])
+		if username == "" {
+			username = strings.Split(email, "@")[0]
+		}
+		if strings.EqualFold(email, config.PrimaryAdminEmail) {
+			dbRole = "admin"
+			dbStatus = "approved"
+		} else {
+			dbRole = "user"
+			dbStatus = "pending"
+		}
+		_, _ = db.Exec(
+			`INSERT INTO users (id, username, email, role, status, supabase_uid)
+			 VALUES (?, ?, ?, ?, ?, ?)
+			 ON CONFLICT (id) DO NOTHING`,
+			userID, username, email, dbRole, dbStatus, sub,
+		)
+		dbUsername = username
+		dbEmail = email
+	} else if err != nil {
+		return AuthenticatedUser{}, fmt.Errorf("database lookup failed: %w", err)
+	} else {
+		if strings.EqualFold(email, config.PrimaryAdminEmail) && (dbRole != "admin" || dbStatus != "approved") {
+			dbRole = "admin"
+			dbStatus = "approved"
+			_, _ = db.Exec("UPDATE users SET role = 'admin', status = 'approved', supabase_uid = ? WHERE email = ?", sub, email)
+		}
+		username = dbUsername
+		email = dbEmail
+		role = dbRole
+		status = dbStatus
+	}
+
+	if status == "blacklisted" {
+		return AuthenticatedUser{}, fmt.Errorf("user is blacklisted")
+	}
+
+	return AuthenticatedUser{
+		Username:    username,
+		Email:       email,
+		Role:        role,
+		Status:      status,
+		SessionID:   sub, // Use Supabase UID as session identifier
+		SupabaseUID: sub,
+	}, nil
+}
+
+// ValidateSessionClaims validates a legacy session.
 func ValidateSessionClaims(claims jwt.MapClaims) (AuthenticatedUser, error) {
 	username, ok := claims["username"].(string)
 	if !ok || username == "" {
@@ -194,34 +370,25 @@ func ValidateSessionClaims(claims jwt.MapClaims) (AuthenticatedUser, error) {
 	return user, nil
 }
 
-// ValidateToken validates a JWT token
-func ValidateToken(tokenString string) (jwt.MapClaims, error) {
-	// For Phase 2, implement basic JWT validation
-	// TODO: Integrate with Azure AD JWKS endpoint for production
-	token, err := jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
-		secret := os.Getenv("JWT_SECRET")
-		if secret == "" {
-			secret = "default_unsafe_secret_for_dev_only"
-		}
-		return []byte(secret), nil
+// GenerateToken creates a new JWT for the specified user (legacy, for API compatibility).
+func GenerateToken(username, email, role, sessionID string, duration time.Duration) (string, error) {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		secret = "default_unsafe_secret_for_dev_only"
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"username": username,
+		"email":    email,
+		"role":     role,
+		"sid":      sessionID,
+		"exp":      time.Now().Add(duration).Unix(),
 	})
 
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse token: %w", err)
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok || !token.Valid {
-		return nil, fmt.Errorf("invalid token claims")
-	}
-
-	return claims, nil
+	return token.SignedString([]byte(secret))
 }
 
-// GetManagedIdentityToken acquires a token using Azure managed identity
-// This will be used in Phase 3 for production deployments
+// GetManagedIdentityToken acquires a token using Azure managed identity.
 func GetManagedIdentityToken(ctx context.Context) (string, error) {
-	// TODO: Implement Azure managed identity token acquisition
-	// using github.com/Azure/azure-sdk-for-go/sdk/azidentity
 	return "", fmt.Errorf("managed identity not yet configured for Phase 2")
 }

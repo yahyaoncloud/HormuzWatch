@@ -1,0 +1,19 @@
+# ── ROCm / AMD GPU acceleration ──────────────────────────
+# Install PyTorch with ROCm first (see docs/LINUX_DEPLOYMENT.md section 2c):
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm6.1
+
+# ── GPU-accelerated ML libraries ──────────────────────────
+cupy>=13.0.0           # NumPy-compatible GPU arrays (ROCm backend via hipBLAS)
+joblib>=1.4.0           # Model persistence
+scikit-learn>=1.5.0     # ML algorithms (CPU training, GPU-assisted inference)
+xgboost>=2.1.0          # GPU-accelerated gradient boosting
+numpy>=1.26.0           # Base array ops (used with CuPy for GPU)
+
+# ── GPU monitoring ────────────────────────────────────────
+pyrsmi>=0.5.0           # ROCm SMI Python bindings (optional)
+
+# ── Optional: Deep learning for future models ─────────────
+# Uncomment when adding transformer/ONNX models:
+# transformers>=4.40.0    # HuggingFace (GPU inference via PyTorch)
+# onnxruntime-rocm>=1.18   # ONNX Runtime with ROCm backend
+# sentencepiece>=0.2.0     # Tokenizer for LLMs

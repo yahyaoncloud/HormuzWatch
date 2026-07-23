@@ -1,0 +1,103 @@
+---
+- name: Setup Azure VM and Deploy HormuzWatch
+  hosts: azure_vm
+  become: yes
+  vars:
+    project_dir: /opt/hormuzwatch
+    # Define your secrets here or pass them via --extra-vars during runtime
+    database_url: "{{ lookup('env', 'DATABASE_URL') | default('postgresql://user:pass@host:5432/db', true) }}"
+    supabase_url: "{{ lookup('env', 'SUPABASE_URL') | default('https://your-supabase-url.supabase.co', true) }}"
+    supabase_anon_role: "{{ lookup('env', 'SUPABASE_ANON_ROLE') | default('your-anon-key', true) }}"
+    supabase_jwt_secret: "{{ lookup('env', 'SUPABASE_JWT_SECRET') | default('your-jwt-secret', true) }}"
+
+  tasks:
+    - name: Ensure APT cache is updated
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - git
+          - rsync
+        state: present
+
+    - name: Create directory for Docker's GPG key
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Add Docker's official GPG key
+      shell: "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg"
+      args:
+        creates: /etc/apt/keyrings/docker.gpg
+
+    - name: Add Docker repository
+      shell: >
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" 
+        | tee /etc/apt/sources.list.d/docker.list > /dev/null
+      args:
+        creates: /etc/apt/sources.list.d/docker.list
+
+    - name: Update apt and install Docker
+      apt:
+        update_cache: yes
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+
+    - name: Add azureuser to docker group
+      user:
+        name: azureuser
+        groups: docker
+        append: yes
+
+    - name: Enable and start Docker service
+      systemd:
+        name: docker
+        enabled: yes
+        state: started
+
+    - name: Ensure project directory exists
+      file:
+        path: "{{ project_dir }}"
+        state: directory
+        owner: azureuser
+        group: azureuser
+        mode: '0755'
+
+    - name: Synchronize local project to remote VM
+      become: no
+      ansible.posix.synchronize:
+        src: ../
+        dest: "{{ project_dir }}"
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=node_modules"
+          - "--exclude=terraform"
+          - "--exclude=ansible"
+          - "--exclude=.env"
+
+    - name: Create .env file on remote
+      template:
+        src: templates/env.j2
+        dest: "{{ project_dir }}/.env"
+        owner: azureuser
+        group: azureuser
+        mode: '0600'
+
+    - name: Build and deploy Docker Compose stack
+      become: no
+      command: docker compose up -d --build
+      args:
+        chdir: "{{ project_dir }}"

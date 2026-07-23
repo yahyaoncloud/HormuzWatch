@@ -1,18 +1,19 @@
 package integrations
 
 import (
+	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
-	"Geospatial-harmuz-watch/server/internal/anomaly"
+	aisStream "github.com/aisstream/ais-message-models/golang/aisStream"
+
 	"Geospatial-harmuz-watch/server/internal/api"
-	"Geospatial-harmuz-watch/server/internal/db"
-	"Geospatial-harmuz-watch/server/internal/heatmap"
+	"Geospatial-harmuz-watch/server/internal/domain/telemetry"
 	"Geospatial-harmuz-watch/server/internal/intelligence"
-	"Geospatial-harmuz-watch/server/internal/websocket/hub"
 
 	"github.com/gorilla/websocket"
 )
@@ -24,24 +25,7 @@ type AISStreamSubscription struct {
 	FilterMessageTypes []string       `json:"FilterMessageTypes,omitempty"`
 }
 
-type AISMessage struct {
-	MessageType string `json:"MessageType"`
-	MetaData    struct {
-		MMSI      int     `json:"MMSI"`
-		ShipName  string  `json:"ShipName"`
-		Latitude  float64 `json:"latitude"`
-		Longitude float64 `json:"longitude"`
-		TimeUTC   string  `json:"time_utc"`
-	} `json:"MetaData"`
-	Message struct {
-		PositionReport *struct {
-			Cog float64 `json:"Cog"`
-			Sog float64 `json:"Sog"`
-		} `json:"PositionReport"`
-	} `json:"Message"`
-}
-
-func StartAISStream(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *intelligence.MLClient) {
+func StartAISStream(p *intelligence.Pipeline) {
 	apiKey := os.Getenv("AISSTREAM_API_KEY")
 	if apiKey == "" || apiKey == "your_aisstream_api_key" {
 		log.Println("AISSTREAM_API_KEY not configured. Skipping AISStream integration.")
@@ -57,18 +41,36 @@ func StartAISStream(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *i
 		{30.0, 60.0}, // Top right
 	}
 
+	// Optional TLS bypass for development when stream.aisstream.io presents a
+	// certificate that fails system validation (e.g. clock skew / expired cert
+	// -> "x509: certificate has expired or is not yet valid"). OFF by default —
+	// never enable in production.
+	insecure := os.Getenv("AISSTREAM_INSECURE_SKIP_VERIFY") == "true"
+	dialer := *websocket.DefaultDialer
+	dialer.HandshakeTimeout = 20 * time.Second
+	if insecure {
+		dialer.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+
+	backoff := newRetryBackoff(10*time.Second, 5*time.Minute)
 	for {
 		log.Println("[AISStream] Connecting to", url, "...")
-		conn, resp, err := websocket.DefaultDialer.Dial(url, nil)
+		conn, resp, err := dialer.Dial(url, nil)
 		if err != nil {
+			retryAfter := ""
 			if resp != nil {
+				retryAfter = resp.Header.Get("Retry-After")
 				log.Printf("[AISStream] Dial error: %v (HTTP %d)", err, resp.StatusCode)
+				resp.Body.Close()
 			} else {
 				log.Printf("[AISStream] Dial error: %v (no HTTP response)", err)
 			}
-			time.Sleep(10 * time.Second)
+			delay := backoff.Next(retryAfter)
+			log.Printf("[AISStream] Retry in %s", delay)
+			time.Sleep(delay)
 			continue
 		}
+		backoff.Reset()
 
 		subMsg := AISStreamSubscription{
 			APIKey:             apiKey,
@@ -82,7 +84,9 @@ func StartAISStream(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *i
 		if err := conn.WriteJSON(subMsg); err != nil {
 			log.Printf("[AISStream] Subscription write error: %v", err)
 			conn.Close()
-			time.Sleep(10 * time.Second)
+			delay := backoff.Next("")
+			log.Printf("[AISStream] Retry in %s", delay)
+			time.Sleep(delay)
 			continue
 		}
 
@@ -95,108 +99,62 @@ func StartAISStream(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *i
 				break
 			}
 
-			var aisMsg AISMessage
+			// Decode using the official aisstream.io message models.
+			var aisMsg aisStream.AisStreamMessage
 			if err := json.Unmarshal(message, &aisMsg); err != nil {
 				continue
 			}
 
-			if aisMsg.MessageType == "PositionReport" && aisMsg.Message.PositionReport != nil {
-				speed := aisMsg.Message.PositionReport.Sog
-				heading := aisMsg.Message.PositionReport.Cog
+			if aisMsg.MessageType != aisStream.POSITION_REPORT || aisMsg.Message.PositionReport == nil {
+				continue
+			}
+			pr := aisMsg.Message.PositionReport
 
-				// Handle empty ShipName temporarily (could enrich later)
-				shipName := aisMsg.MetaData.ShipName
-				if shipName == "" {
-					shipName = "Unknown Vessel"
-				}
+			// Skip invalid / sentinel positions.
+			if pr.Latitude < -90 || pr.Latitude > 90 || pr.Longitude < -180 || pr.Longitude > 180 {
+				continue
+			}
 
-				payload := api.TelemetryPayload{
-					TrackID:           fmt.Sprintf("%d", aisMsg.MetaData.MMSI), // Using MMSI as ID
-					AssetName:         shipName,
-					Timestamp:         aisMsg.MetaData.TimeUTC,
-					Lat:               aisMsg.MetaData.Latitude,
-					Lon:               aisMsg.MetaData.Longitude,
-					Speed:             speed,
-					Heading:           heading,
-					AisAgeMinutes:     0, // Will be updated by TSM
-					HotZoneDistanceNm: 0, // Will be handled by Features
-				}
+			mmsi := fmt.Sprintf("%d", pr.UserID)
 
-				heatmap.AddTelemetry(payload.Lat, payload.Lon)
-
-				// ── Intelligence Pipeline ──────────────────────────
-				deltas := tsm.Update(payload.TrackID, payload.AssetName,
-					payload.Lat, payload.Lon, payload.Speed, payload.Heading)
-
-				// Enrich payload with computed values
-				payload.CourseDelta = deltas.CourseDelta
-				payload.PreviousSpeed = deltas.PreviousSpeed
-				payload.AisAgeMinutes = int(deltas.AISGapMinutes)
-
-				features := intelligence.ExtractFeatures(
-					payload.TrackID, payload.Lat, payload.Lon,
-					payload.Speed, deltas)
-
-				ruleScore := anomaly.Score(
-					features.CourseDelta, features.AISGapMinutes,
-					features.Speed, features.PreviousSpeed,
-					features.DistToRestrictedZone,
-					features.InRestrictedZone, features.NearHistoricalAttack)
-
-				mlScore, explanation := mlClient.Predict(features)
-				geoScore := intelligence.GeoStore.ScoreForLocation(payload.Lat, payload.Lon)
-
-				assessment := intelligence.ComputeComposite(features, ruleScore, mlScore, geoScore, explanation)
-
-				h.Broadcast <- hub.Message{
-					Type: "telemetry",
-					Data: payload,
-				}
-
-				// Persist to SQLite
-				trackQuery := `
-					INSERT INTO tracks (track_id, asset_name, timestamp, lat, lon, speed, previous_speed, heading, course_delta, ais_age_minutes, hot_zone_distance_nm, last_updated)
-					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-					ON CONFLICT(track_id) DO UPDATE SET
-						asset_name=excluded.asset_name,
-						timestamp=excluded.timestamp,
-						lat=excluded.lat,
-						lon=excluded.lon,
-						speed=excluded.speed,
-						previous_speed=excluded.previous_speed,
-						heading=excluded.heading,
-						course_delta=excluded.course_delta,
-						ais_age_minutes=excluded.ais_age_minutes,
-						hot_zone_distance_nm=excluded.hot_zone_distance_nm,
-						last_updated=CURRENT_TIMESTAMP;
-				`
-				db.Exec(trackQuery, payload.TrackID, payload.AssetName, payload.Timestamp, payload.Lat, payload.Lon, payload.Speed, payload.PreviousSpeed, payload.Heading, payload.CourseDelta, payload.AisAgeMinutes, payload.HotZoneDistanceNm)
-
-				// Broadcast anomaly if score > 0
-				if assessment.FinalScore > 0 {
-					h.Broadcast <- hub.Message{
-						Type: "anomaly",
-						Data: assessment,
-					}
-					reasonsJSON, _ := json.Marshal(assessment.Reasons)
-					actionsJSON, _ := json.Marshal(assessment.Actions)
-					anomalyQuery := `
-						INSERT INTO anomalies (track_id, score, severity, reasons, actions, last_updated)
-						VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-						ON CONFLICT(track_id) DO UPDATE SET
-							score=excluded.score,
-							severity=excluded.severity,
-							reasons=excluded.reasons,
-							actions=excluded.actions,
-							last_updated=CURRENT_TIMESTAMP;
-					`
-					db.Exec(anomalyQuery, assessment.TrackID, assessment.FinalScore, assessment.Severity, string(reasonsJSON), string(actionsJSON))
+			shipName := "Unknown Vessel"
+			if v, ok := aisMsg.MetaData["ShipName"]; ok {
+				if s, ok := v.(string); ok && s != "" {
+					shipName = s
 				}
 			}
+
+			timeUTC := ""
+			if v, ok := aisMsg.MetaData["time_utc"]; ok {
+				if s, ok := v.(string); ok {
+					timeUTC = s
+				}
+			}
+
+			speed := pr.Sog
+			heading := pr.Cog
+
+			payload := api.TelemetryPayload{
+				TrackID:           mmsi,
+				AssetName:         shipName,
+				Timestamp:         timeUTC,
+				Lat:               pr.Latitude,
+				Lon:               pr.Longitude,
+				Speed:             speed,
+				Heading:           heading,
+				AisAgeMinutes:     0, // Will be updated by TSM
+				HotZoneDistanceNm: 0, // Will be handled by Features
+				ObjectType:        telemetry.DomainVessel,
+				Source:            telemetry.SourceAISStream,
+			}
+
+			// ── Intelligence Pipeline ──────────────────────────
+			p.ProcessObservation(context.Background(), &payload)
 		}
 
 		conn.Close()
-		log.Println("[AISStream] Disconnected. Reconnecting in 10s...")
-		time.Sleep(10 * time.Second)
+		delay := backoff.Next("")
+		log.Printf("[AISStream] Disconnected. Reconnecting in %s...", delay)
+		time.Sleep(delay)
 	}
 }

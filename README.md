@@ -1,340 +1,196 @@
-# HormuzWatch - Strategic Intelligence Platform
+# HormuzWatch — Gulf Intelligence Platform
 
-Real-time geospatial surveillance and anomaly detection system for strategic regions, featuring containerized Go backend and React Router v7 frontend with WebSocket real-time updates and threat heatmap visualization.
+Real-time geospatial surveillance, multi-source news intelligence, and ensemble anomaly detection for strategic maritime regions.
 
----
-
-## 🏗️ Phase 2: Containerized Architecture (Current)
-
-### Services
-
-**Backend: Go Server** (`:8080`)
-
-- REST API for telemetry ingestion
-- WebSocket hub for real-time streaming
-- Multi-factor anomaly scoring engine
-- Heatmap aggregation for threat visualization
-
-**Frontend: React** (`:3000`)
-
-- React Router v7 with 7-page routing
-- WebSocket client for real-time updates
-- Leaflet map with anomaly heatmap layer
-- Dark mode support
-
-**Orchestration: Docker Compose**
-
-- Local development environment
-- Two-service setup with health checks
-- Network bridge for service communication
+**Stack:** Go · Python (ROCm GPU) · React 19 · Supabase · Cloudflare Tunnel
 
 ---
 
-## 🚀 Quick Start
+## Architecture
 
-### Prerequisites
-
-- Docker Desktop installed and running
-
-### Run Locally
-
-```bash
-# Build and start containers (first run: 3-5 minutes)
-docker-compose up --build
-
-# Wait for both services to show "healthy"
-# Then access: http://localhost:3000
+```
+ 16 News Sources (RSS)       AISStream / OpenSky       Python ML (GPU)
+        │                         │                        │
+        ▼                         ▼                        ▼
+ ┌──────────────┐    ┌──────────────────────┐    ┌─────────────────┐
+ │  Scheduler   │    │   WebSocket Stream   │    │  Ensemble       │
+ │  (15 min)    │    │   (real-time)        │    │  IF + LOF +     │
+ │  Worker Pool │    │                      │    │  XGBoost (GPU)  │
+ └──────┬───────┘    └──────────┬───────────┘    └────────┬────────┘
+        │                       │                         │
+        ▼                       ▼                         ▼
+ ┌─────────────────────────────────────────────────────────────────┐
+ │                     Go Backend (:10020)                          │
+ │  Gin REST API  ·  WebSocket Hub  ·  gRPC Client  ·  JWT Auth   │
+ └─────────────────────────────┬───────────────────────────────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        ▼                     ▼                     ▼
+ ┌──────────────┐    ┌──────────────┐    ┌──────────────────┐
+ │  Supabase    │    │  Cloudflare  │    │  React Frontend  │
+ │  PostgreSQL  │    │  Tunnel      │    │  (client-v2)     │
+ │              │    │  (public)    │    │  :5173 dev       │
+ └──────────────┘    └──────────────┘    └──────────────────┘
 ```
 
-### Access Points
+---
 
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8080
-- **Health Check**: http://localhost:8080/health
+## Quick Start
+
+### Prerequisites
+- Go 1.23+, Python 3.11+, Node.js 20+
+- Supabase project (PostgreSQL)
+
+### Setup
+
+```bash
+git clone https://github.com/your-org/HormuzWatch.git
+cd HormuzWatch
+
+# Environment
+cp .env.example .env   # Edit with Supabase credentials
+
+# Build & start (Windows)
+.\scripts\manage.ps1 build
+.\scripts\manage.ps1 start
+
+# Build & start (Linux)
+chmod +x scripts/manage.sh
+./scripts/manage.sh venv
+./scripts/manage.sh build
+./scripts/manage.sh start
+```
+
+### Access
+
+| Service | URL |
+|---------|-----|
+| Frontend (dev) | http://localhost:5173 |
+| Go Backend | http://localhost:10020 |
+| Python ML | http://localhost:8090 |
+| Health Check | http://localhost:10020/health |
+| Pipeline Status | http://localhost:10020/public/news/pipeline/status |
 
 ---
 
-## ✨ Key Features
+## Components
 
-- **Real-Time Asset Tracking** — WebSocket updates every 2 seconds
-- **Multi-Factor Anomaly Detection** — Route deviation, stale telemetry, speed drops, hot zone proximity
-- **Interactive Map** — OpenStreetMap with marker clustering
-- **Threat Heatmap** — Real-time visualization of threat hotspots
-- **Dark Mode** — Built-in theme toggle
-- **URL-Based Navigation** — React Router v7 with persistent state
-- **JWT Authentication** — Ready for Phase 3 Azure AD integration
+### Go Backend (`server/`)
+- **16 RSS intelligence sources** — WAM, SPA, KUNA, IRNA, USNI, UKMTO, IMO, Maritime Executive...
+- **7-step ML pipeline** per article — clean → dedup → language → entities → classify → features → score
+- **4-phase coordinate extraction** — regex decimal → DMS → entity geocode → country centroid
+- **Pipeline state machine** — tracks every article through QUEUED → SCORED → GEOCODED → STORED → DONE
+- **REST API** — 15 endpoints with unified `{data, total}` response format
+- **Health monitoring** — DB ping, WebSocket status, component health
+
+### Python ML Service (`ml-service/`)
+- **Ensemble anomaly scoring** — IsolationForest + LOF + XGBoost
+- **4 domains** — vessel (9 features), aviation (9), heatmap (4), news (18)
+- **AMD GPU support** — ROCm 6.1+ with PyTorch, CuPy, XGBoost GPU
+- **CLI management** — `python ml_cli.py [serve|status|stop|train|models|predict]`
+- **Training script** — `python train_gpu.py --domain vessel` with GPU/CPU auto-detection
+
+### React Frontend (`client-v2/`)
+- React 19 + React Router v8 + Tailwind CSS v4
+- Admin dashboard with live pipeline metrics
+- Leaflet map with vessel/aircraft tracking + news geo-overlay
+- Supabase auth (admin-only login)
+- Real-time WebSocket updates
+
+### DevOps
+- **GitHub Actions** — auto-build on push to main (Windows + Linux workflows)
+- **Cloudflare Tunnel** — public serving via `api.hormuzwatch.app`
+- **systemd services** — Linux auto-start with dedicated `hormuzwatch` user
+- **Windows Task Scheduler** — auto-start on boot via `scripts/manage.ps1`
 
 ---
 
-## 🧪 Verification Checklist
+## Key Endpoints
 
-- [ ] Docker Desktop is running
-- [ ] `docker-compose up --build` completes without errors
-- [ ] Both containers show "healthy" in `docker-compose ps`
-- [ ] Frontend loads at http://localhost:3000 (no blank page)
-- [ ] Asset markers appear on map and update every 2 seconds
-- [ ] Browser DevTools → Network → WS shows WebSocket connection
-- [ ] Anomaly scores display on asset markers
-- [ ] Heatmap toggle button works (top-right of map)
-- [ ] Navigation links work (React Router)
-- [ ] Selected asset persists in URL query params
-
-See [IMPLEMENTATION_SUMMARY.md](./docs/project-info/IMPLEMENTATION_SUMMARY.md) for complete setup guide.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Server health (DB ping, WS status) |
+| GET | `/public/news/latest` | Latest scored articles |
+| GET | `/public/news/heatmap` | Geo-tagged articles for map display |
+| GET | `/public/news/pipeline/status` | Pipeline state metrics |
+| GET | `/public/events` | Intelligence events timeline |
+| GET | `/public/threats` | Active threat board |
+| GET | `/public/tracks/active` | Real-time vessel/aircraft positions |
+| WS | `/ws/stream` | WebSocket telemetry + anomaly stream |
+| POST | `/auth/login` | Admin JWT login (Supabase) |
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 HormuzWatch/
-├── server/                 # Go backend
-│   ├── cmd/main.go        # Entry point
-│   ├── internal/          # Internal packages
-│   │   ├── api/           # HTTP handlers
-│   │   ├── websocket/     # WebSocket hub
-│   │   ├── anomaly/       # Threat scoring
-│   │   ├── auth/          # JWT middleware
-│   │   ├── heatmap/       # Visualization
-│   │   └── integrations/  # Azure services
-│   ├── go.mod
-│   └── Dockerfile
-├── client/                # React frontend
+├── server/                    # Go backend
+│   ├── cmd/main.go           # Entry point — wires all layers
+│   ├── internal/
+│   │   ├── intelligence/     # News pipeline + ML bridge
+│   │   │   ├── news/         # 15 files — scorer, cleaner, dedup, entities, coords...
+│   │   │   └── source/       # 6 files — RSS, API, scraper, 16 Gulf sources
+│   │   ├── scheduler/        # Periodic job runner (15-min RSS refresh)
+│   │   ├── worker/           # Bounded goroutine pool (4 workers, rate-limited)
+│   │   ├── api/              # REST handlers (news, events, threats, health...)
+│   │   ├── db/               # PostgreSQL schema + queries
+│   │   ├── websocket/        # Real-time telemetry hub
+│   │   └── auth/             # JWT + Supabase admin auth
+│   └── DESIGN.md             # Low-level design document
+├── ml-service/                # Python ML service
+│   ├── app.py                # FastAPI (health, train, predict)
+│   ├── ml_cli.py             # CLI manager (serve, status, stop, train)
+│   ├── train_gpu.py          # GPU-accelerated training
+│   ├── lib/                  # Scoring, features, logging
+│   ├── models/               # .joblib model bundles
+│   └── requirements-gpu.txt  # ROCm GPU dependencies
+├── client-v2/                 # React frontend
 │   ├── src/
-│   │   ├── main.tsx       # Router entry point
-│   │   ├── routes/        # Route configuration
-│   │   ├── pages/         # Page components (7 routes)
-│   │   ├── context/       # WebSocket provider
-│   │   ├── components/    # Reusable components
-│   │   └── layouts/       # Layout components
-│   ├── package.json       # Dependencies (React Router v7)
-│   └── Dockerfile
-├── docker-compose.yml     # Service orchestration
-├── .env                   # Configuration
-└── docs/
-    ├── docker/DOCKER_COMPOSE_DEV.md
-    ├── phases/PROJECT_PHASES_ROADMAP.md
-    ├── project-info/IMPLEMENTATION_SUMMARY.md
-    └── ...
+│   │   ├── app/routes/       # admin/, auth/, public/ route groups
+│   │   ├── lib/api.ts        # Typed API client (all 15 endpoints)
+│   │   └── environments/     # Centralized config
+│   └── PIPELINE_FRONTEND_GUIDE.md
+├── scripts/                   # Service management
+│   ├── manage.ps1            # Windows (PowerShell)
+│   └── manage.sh             # Linux (bash + systemd)
+├── .github/workflows/         # CI/CD
+│   ├── backend-ci.yml        # Windows self-hosted
+│   └── backend-ci-linux.yml  # Linux (ubuntu-latest)
+├── docs/                      # Documentation
+│   ├── LINUX_DEPLOYMENT.md   # Full Linux deployment + GPU setup
+│   ├── MIGRATION_WINDOWS_TO_LINUX.md
+│   ├── DEVOPS.md             # Operations runbook
+│   ├── architecture/         # Architecture diagrams
+│   └── plan/                 # Future plans
+├── terraform/                 # Azure infrastructure (IaC)
+├── proto/                     # gRPC service definitions
+└── infra-observability/       # Prometheus, Fluent Bit, OTEL
 ```
 
 ---
 
-## 📊 API Endpoints
+## Documentation Index
 
-| Method | Endpoint     | Purpose             | Auth |
-| ------ | ------------ | ------------------- | ---- |
-| GET    | `/health`    | Service status      | ✓    |
-| POST   | `/telemetry` | Ingest track data   | ✓    |
-| POST   | `/analyze`   | Anomaly analysis    | ✓    |
-| GET    | `/ws/stream` | WebSocket real-time | ✓    |
-| GET    | `/heatmap`   | Heatmap grid data   | ✓    |
-
----
-
-## 🌐 WebSocket Messages
-
-**Telemetry:**
-
-```json
-{
-  "type": "telemetry",
-  "data": {
-    "imo": "9234567",
-    "vesselName": "Asset Alpha",
-    "lat": 26.125,
-    "lon": 56.234,
-    "speed": 12.5,
-    "heading": 45
-  }
-}
-```
-
-**Anomaly:**
-
-```json
-{
-  "type": "anomaly",
-  "data": {
-    "id": "9234567",
-    "score": 67,
-    "severity": "high",
-    "reasons": ["Course deviation: 52° (>45°)"],
-    "actions": ["Alert operations team"]
-  }
-}
-```
-
-**Heatmap:**
-
-```json
-{
-  "type": "heatmap",
-  "data": [{ "lat": 26.0, "lon": 56.0, "intensity": 5 }]
-}
-```
+| Document | Content |
+|----------|---------|
+| [server/DESIGN.md](server/DESIGN.md) | Low-level design — pipeline, scoring, state machine, data model |
+| [DEVOPS.md](DEVOPS.md) | Operations — Cloudflare Tunnel, CI/CD, monitoring, runbooks |
+| [docs/LINUX_DEPLOYMENT.md](docs/LINUX_DEPLOYMENT.md) | Linux deployment — systemd, ROCm GPU, firewall, verification |
+| [docs/MIGRATION_WINDOWS_TO_LINUX.md](docs/MIGRATION_WINDOWS_TO_LINUX.md) | Windows → Linux migration guide |
+| [client-v2/PIPELINE_FRONTEND_GUIDE.md](client-v2/PIPELINE_FRONTEND_GUIDE.md) | Frontend API utilization guide |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | High-level system architecture |
+| [TODO.md](TODO.md) | Implementation roadmap |
 
 ---
 
-## 🔧 Common Commands
+## Technologies
 
-```bash
-# Start services
-docker-compose up --build
-
-# Watch logs
-docker-compose logs -f
-
-# Go server logs only
-docker-compose logs -f go-server
-
-# React frontend logs only
-docker-compose logs -f react-frontend
-
-# Check status
-docker-compose ps
-
-# Stop services
-docker-compose down
-
-# Full rebuild (no cache)
-docker-compose build --no-cache
-
-# Validate configuration
-docker-compose config
-```
+**Backend:** Go 1.23 · Gin · PostgreSQL (Supabase) · gRPC · WebSocket · JWT
+**ML:** Python 3.11 · PyTorch (ROCm) · CuPy · XGBoost · scikit-learn · FastAPI
+**Frontend:** React 19 · TypeScript · React Router v8 · Tailwind CSS v4 · Leaflet · TanStack Query
+**Infrastructure:** Cloudflare Tunnel · GitHub Actions · systemd · Docker · Terraform (Azure)
 
 ---
 
-## 🔄 Development Workflow
-
-### Backend Changes
-
-```bash
-# Edit Go code in server/internal/*/
-nano server/internal/anomaly/scorer.go
-
-# Rebuild and restart
-docker-compose up --build go-server
-
-# Watch logs
-docker-compose logs -f go-server
-```
-
-### Frontend Changes
-
-```bash
-# Edit React code in client/src/
-nano client/src/pages/DashboardPage.tsx
-
-# Rebuild container (Vite handles hot reload)
-docker-compose up --build react-frontend
-
-# Check logs
-docker-compose logs -f react-frontend
-```
-
----
-
-## 🐛 Troubleshooting
-
-### Docker not running
-
-**Issue:** `Docker daemon is not available`  
-**Solution:** Start Docker Desktop
-
-### Port already in use
-
-**Issue:** `Port 8080 is already in use`  
-**Solution:** Edit `docker-compose.yml` ports or stop conflicting process
-
-### No telemetry on map
-
-**Issue:** Blank map, no asset markers  
-**Solution:**
-
-1. Check WebSocket connected: DevTools → Network → WS filter
-2. Verify backend health: `curl http://localhost:8080/health`
-3. Check auth disabled: `.env` should have `AUTH_DISABLED=true`
-
-### Frontend shows blank page
-
-**Issue:** White/blank page at localhost:3000  
-**Solution:**
-
-1. Check console errors: DevTools → Console
-2. Check frontend logs: `docker-compose logs react-frontend`
-3. Try hard refresh: Ctrl+Shift+R or Cmd+Shift+R
-
-See [docs/docker/DOCKER_COMPOSE_DEV.md](./docs/docker/DOCKER_COMPOSE_DEV.md) for detailed troubleshooting.
-
----
-
-## 🛣️ Phase Roadmap
-
-**Phase 1: Foundation** ✅  
-Local MVP with simulated telemetry, React + TypeScript frontend, Node.js backend
-
-**Phase 2: Containerization** ✅ (Current)  
-Go server with WebSocket, React Router v7 frontend, Docker Compose, anomaly heatmap
-
-**Phase 3: Production Infrastructure** 📋  
-Azure deployment (Terraform), real data sources (AISStream, OpenSky, GDELT), Event Hubs, Azure Functions
-
-**Phase 4: Intelligence** 📋  
-Multi-factor threat scoring, GDELT enrichment, Azure OpenAI integration
-
-**Phase 5: Prediction** 📋  
-Historical analysis, route deviation detection, regional risk indexing, daily reports
-
-**Phase 6: Polish** 📋  
-ADRs, test coverage, security audit, FinOps validation, interview-ready
-
-See [docs/phases/PROJECT_PHASES_ROADMAP.md](./docs/phases/PROJECT_PHASES_ROADMAP.md) for details.
-
----
-
-## 🔐 Security
-
-- JWT authentication with Azure AD JWKS support (Phase 3)
-- Rate limiting: 120 req/60s per IP
-- CORS middleware
-- Zod schema validation
-- Managed identity for Azure (Phase 3)
-
----
-
-## 📚 Documentation
-
-- **[IMPLEMENTATION_SUMMARY.md](./docs/project-info/IMPLEMENTATION_SUMMARY.md)** — Complete setup & architecture
-- **[docs/docker/DOCKER_COMPOSE_DEV.md](./docs/docker/DOCKER_COMPOSE_DEV.md)** — Local development guide
-- **[docs/phases/PROJECT_PHASES_ROADMAP.md](./docs/phases/PROJECT_PHASES_ROADMAP.md)** — Phase details
-- **[docs/project-info/architecture.md](./docs/project-info/architecture.md)** — System design
-- **[docs/azure/deployment-guide.md](./docs/azure/deployment-guide.md)** — Production deployment
-- **[docs/project-info/CONTRIBUTING.md](./docs/project-info/CONTRIBUTING.md)** — Contributing guidelines
-
----
-
-## 🤝 Contributing
-
-See [docs/project-info/CONTRIBUTING.md](./docs/project-info/CONTRIBUTING.md) for guidelines.
-
----
-
-## 📝 Technologies
-
-**Backend:** Go 1.23 · Gin · WebSocket · JWT  
-**Frontend:** React 19 · TypeScript · React Router v7 · Tailwind CSS · Leaflet  
-**Infrastructure:** Docker Compose · Docker · Vite · Gin  
-**Future:** Azure · Event Hubs · Functions · Terraform
-
----
-
-**Status**: Phase 2 - Containerized MVP Complete  
-**Next**: Phase 3 - Azure Infrastructure & Real Data Sources  
-**Updated**: June 2, 2026
-
----
-
-## 📖 Description
-
-HormuzWatch is a multi-domain intelligence platform providing geospatial surveillance, asset tracking, anomaly detection, and situational awareness across strategic regions.
+**Updated:** July 2026

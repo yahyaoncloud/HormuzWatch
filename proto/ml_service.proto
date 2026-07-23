@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+package hormuzwatch.ml;
+
+option go_package = "Geospatial-harmuz-watch/server/internal/mlgrpc;mlgrpc";
+
+// MLInferenceService — production gRPC contract between the Go backend
+// (server) and the Python ML inference service (ml-service).
+//
+// Replaces the legacy REST POST /api/predict and /api/train calls with a
+// typed, low-latency, TLS-terminated (aburcloud.com) transport.
+//
+// Generate:
+//   protoc --go_out=. --go_opt=paths=source_relative \
+//          --go-grpc_out=. --go-grpc_opt=paths=source_relative \
+//          proto/ml_service.proto
+//   python -m grpc_tools.protoc -I proto --python_out=ml-service \
+//          --grpc_python_out=ml-service proto/ml_service.proto
+service MLInferenceService {
+  // Predict returns the ensemble anomaly score + SHAP contributions for a
+  // single feature vector. Mirrors GET/POST /api/predict semantics.
+  rpc Predict(PredictRequest) returns (PredictResponse);
+
+  // Train triggers an offline (re)fit for a domain. Mirrors /api/train.
+  rpc Train(TrainRequest) returns (TrainResponse);
+}
+
+// FeatureVector — the canonical scoring features sent by the Go backend.
+// Field numbers match the JSON keys used by the legacy /api/predict payload
+// so the two transports stay interchangeable.
+message FeatureVector {
+  string track_id = 1;
+  double course_delta = 2;
+  double heading_delta = 3;
+  double speed_delta = 4;
+  double average_speed = 5;
+  double speed_variance = 6;
+  double ais_gap_minutes = 7;
+  double dist_restricted_zone = 8;
+  double dist_historical_site = 9;
+  double ewma_deviation = 10;
+  bool in_restricted_zone = 11;
+  bool near_historical_attack = 12;
+  string domain = 13;
+}
+
+message PredictRequest {
+  string domain = 1;           // vessel | aviation | heatmap
+  FeatureVector features = 2;  // backend-computed deltas + geofence context
+  bool explain = 3;            // request SHAP contributions
+  string track_id = 4;
+}
+
+message ShapContribution {
+  string feature = 1;
+  double value = 2;
+  double contribution = 3;
+  string direction = 4;        // "increases_risk" | "decreases_risk"
+}
+
+message PredictResponse {
+  string domain = 1;
+  string track_id = 2;
+  double probability = 3;       // calibrated 0..1
+  double anomaly_score = 4;     // 0..100 (alias of probability*100)
+  bool is_anomaly = 5;
+  double raw_iforest_score = 6;
+  double raw_lof_score = 7;
+  double inference_time_ms = 8;
+  string model_version = 9;
+  repeated ShapContribution shap_contributions = 10;
+}
+
+message TrainRequest {
+  string domain = 1;
+  double contamination = 2;
+  // feature_rows is a flat repeated list of FeatureVector for offline training.
+  repeated FeatureVector feature_rows = 3;
+}
+
+message TrainResponse {
+  string status = 1;            // "accepted" | "trained" | "error"
+  string model_version = 2;
+  int32 n_samples = 3;
+  double contamination = 4;
+  string message = 5;
+}
