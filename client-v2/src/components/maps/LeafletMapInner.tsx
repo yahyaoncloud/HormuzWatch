@@ -12,7 +12,7 @@ import { ZoomIn, ZoomOut } from 'lucide-react';
 import * as apiMethods from '@/lib/api';
 import { getConflictFeed } from '@/lib/api';
 import { useWebSocket } from '@/providers';
-import { useSettingsStore } from '@/stores';
+import { useSettingsStore, useRealtimeStore } from '@/stores';
 import type { ConflictEvent } from '@/types/websocket';
 
 const CENTER: [number, number] = [26.06, 56.28];
@@ -21,13 +21,13 @@ const DEFAULT_MIN_ZOOM = 3;
 const DEFAULT_MAX_ZOOM = 16;
 
 export const DEFAULT_GULF_BOUNDS: L.LatLngBoundsExpression = [
-  [11.0, 34.0],
-  [36.0, 65.0],
+  [5.0, 32.0],   // SW: Sri Lanka, Red Sea
+  [36.0, 95.0],  // NE: Bay of Bengal, Myanmar
 ];
 
 export const LOCKED_BOUNDS: L.LatLngBoundsExpression = [
-  [21.0, 47.0],
-  [31.0, 63.0],
+  [5.0, 32.0],
+  [36.0, 95.0],
 ];
 
 const LOCKED_MIN_ZOOM = 6;
@@ -51,10 +51,29 @@ function classifyObject(id: string | undefined): 'asset' | 'aircraft' {
   return 'asset';
 }
 
-function getRegionNameByCoords(_lat: number, lon: number): string {
-  if (lon < 56.0) return 'Persian Gulf';
-  if (lon >= 56.0 && lon <= 59.0) return 'Strait of Hormuz';
-  return 'Gulf of Oman';
+function getRegionNameByCoords(lat: number, lon: number): string {
+  // Red Sea & Suez Corridor
+  if (lat >= 12 && lat <= 32 && lon >= 32 && lon <= 48) return 'Red Sea';
+  // Persian Gulf
+  if (lat >= 24 && lat <= 32 && lon >= 48 && lon <= 57) return 'Persian Gulf';
+  // Strait of Hormuz
+  if (lat >= 24 && lat <= 28 && lon >= 55 && lon <= 59) return 'Strait of Hormuz';
+  // Gulf of Oman
+  if (lat >= 22 && lat <= 27 && lon >= 57 && lon <= 63) return 'Gulf of Oman';
+  // Pakistan Coast
+  if (lat >= 22 && lat <= 27 && lon >= 60 && lon <= 72) return 'Pakistan Coast';
+  // India West Coast
+  if (lat >= 8 && lat <= 23 && lon >= 68 && lon <= 78) return 'India West';
+  // Sri Lanka
+  if (lat >= 5 && lat <= 10 && lon >= 78 && lon <= 82) return 'Sri Lanka';
+  // Bay of Bengal / India East
+  if (lat >= 5 && lat <= 23 && lon >= 78 && lon <= 95) return 'Bay of Bengal';
+  // Arabian Sea
+  if (lat >= 5 && lat <= 25 && lon >= 56 && lon <= 78) return 'Arabian Sea';
+  // Gulf of Aden
+  if (lat >= 10 && lat <= 17 && lon >= 42 && lon <= 54) return 'Gulf of Aden';
+
+  return 'Regional Waters';
 }
 
 import { createTacticalLeafletIcon } from '@/icons';
@@ -206,6 +225,8 @@ export interface LeafletMapProps {
   className?: string;
   heatmap?: boolean;
   onHeatmapChange?: (v: boolean) => void;
+  showVessels?: boolean;
+  showAircraft?: boolean;
   showConflicts?: boolean;
   onShowConflictsChange?: (v: boolean) => void;
   showMetrics?: boolean;
@@ -225,6 +246,8 @@ export default function LeafletMapInner({
   className,
   heatmap,
   onHeatmapChange: _onHeatmapChange,
+  showVessels = true,
+  showAircraft = true,
   showConflicts: showConflictsProp,
   onShowConflictsChange: _onShowConflictsChange,
   showMetrics: _showMetrics,
@@ -322,13 +345,18 @@ export default function LeafletMapInner({
   const showConflicts = showConflictsProp ?? true;
   const [searchParams, setSearchParams] = useSearchParams();
   const [tracks, setTracks] = useState<any[]>([]);
+  const tracksRef = useRef<any[]>([]);
+  tracksRef.current = tracks; // always latest for heatmap fallback
   const { subscribe } = useWebSocket();
+  const wsConflicts = useRealtimeStore((s) => s.conflicts);
 
+  // REST fallback for initial load before WebSocket delivers conflicts
   const { data: conflictData } = useQuery({
     queryKey: ['conflict-feed'],
     queryFn: getConflictFeed,
-    refetchInterval: 300000,
-    staleTime: 120000,
+    enabled: wsConflicts.length === 0, // only fetch if WS hasn't delivered yet
+    refetchInterval: false,
+    staleTime: Infinity,
   });
 
   const { data: initialTracesData } = useQuery({
@@ -342,7 +370,9 @@ export default function LeafletMapInner({
       }
       return [];
     },
-    refetchInterval: 15000,
+    // Real-time updates come via WebSocket — no need for polling
+    refetchInterval: false,
+    staleTime: 60000,
   });
 
   useEffect(() => {
@@ -603,13 +633,14 @@ export default function LeafletMapInner({
         const res = await apiMethods.getHeatmap('all');
         let newPoints: [number, number, number][] = [];
         if (res?.type === 'heatmap' && Array.isArray(res.data) && res.data.length > 0) {
+          // Backend returns objects {lat, lon, intensity, source}, not arrays
           newPoints = res.data.map((cell: any) => [
-            cell[0],
-            cell[1],
-            Math.min(1, (cell[2] || 1) / 30),
+            cell.lat ?? cell[0],
+            cell.lon ?? cell[1],
+            Math.min(1, ((cell.intensity ?? cell[2]) || 1) / 30),
           ]);
-        } else if (tracks && tracks.length > 0) {
-          newPoints = tracks.map((t) => [
+        } else if (tracksRef.current && tracksRef.current.length > 0) {
+          newPoints = tracksRef.current.map((t) => [
             t.lat,
             t.lon,
             Math.min(1, ((t.score || 20) + 10) / 100),
@@ -686,12 +717,17 @@ export default function LeafletMapInner({
       const lat = parseCoord(track.lat) ?? parseCoord(track.latitude);
       const lon = parseCoord(track.lon) ?? parseCoord(track.longitude);
       if (lat === null || lon === null) return;
+
+      // Layer visibility filter
+      const isAircraft = classifyObject(track.id) === 'aircraft';
+      if (isAircraft && !showAircraft) return;
+      if (!isAircraft && !showVessels) return;
+
       const selected = String(track.id) === String(selectedTrackId);
       const marker = L.marker([lat, lon], {
         icon: makeIcon(track.id, track.severity, track.heading || 0, selected),
       });
 
-      const isAircraft = classifyObject(track.id) === 'aircraft';
       const severityColor: Record<string, string> = {
         critical: '#b91c1c',
         high: '#b45309',
@@ -824,7 +860,9 @@ export default function LeafletMapInner({
       }
     });
 
-    if (showConflicts && conflictData?.conflicts) {
+    // Merge WS conflicts with REST fallback (WS preferred)
+    const allConflicts = wsConflicts.length > 0 ? wsConflicts : (conflictData?.conflicts || []);
+    if (showConflicts && allConflicts.length > 0) {
       const severityColor: Record<string, string> = {
         critical: '#ef4444',
         high: '#f97316',
@@ -842,7 +880,7 @@ export default function LeafletMapInner({
           </svg>
         </div>`;
 
-      const filteredConflicts = conflictData.conflicts.filter((c: ConflictEvent) => {
+      const filteredConflicts = allConflicts.filter((c: ConflictEvent) => {
         if (severityFilter && severityFilter !== 'all' && c.severity !== severityFilter) {
           return false;
         }

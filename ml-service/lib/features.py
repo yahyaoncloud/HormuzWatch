@@ -82,11 +82,39 @@ NEWS_COLS: list[str] = [
     "publisher_weight",
 ]
 
+# ── Transit anomaly features ──────────────────────────────────────────────
+# Used to detect anomalous gate-line crossing patterns. Features are
+# computed by the Go backend's gate.go module when a crossing is detected.
+TRANSIT_COLS: list[str] = [
+    "crossing_speed",            # Speed at gate crossing (knots)
+    "time_since_last_transit_h", # Hours since this vessel last crossed
+    "crossing_hour",             # Hour of day (0-23)
+    "vessel_speed_before",       # Speed 10 min before crossing
+    "destination_direction_match", # 1.0 if destination matches crossing direction, 0.0 otherwise
+    "gate_dist_from_center_nm",  # Distance from crossing point to gate center (NM)
+    "speed_vs_avg_ratio",        # Crossing speed / vessel's average speed
+]
+
+# ── Blockade severity features ────────────────────────────────────────────
+# Used for data-driven severity classification (normal/elevated/high/critical).
+# Features are computed by the Go backend's blockade.go module.
+BLOCKADE_COLS: list[str] = [
+    "strait_transits_24h",       # Number of Strait crossings in 24h
+    "anchored_ratio_pct",        # Percentage of vessels anchored
+    "waiting_fleet_6h",          # Vessels stationary 6+ hours
+    "waiting_fleet_24h",         # Vessels stationary 24+ hours
+    "active_vessels",            # Total active vessel count
+    "anchorage_zone_count",      # Number of anchorage zones with vessels
+    "flag_entropy",              # Shannon entropy of flag state distribution (0-1)
+]
+
 DOMAIN_FEATURE_COLS: dict[str, list[str]] = {
     "vessel": VESSEL_COLS,
     "aviation": AVIATION_COLS,
     "heatmap": HEATMAP_COLS,
     "news": NEWS_COLS,
+    "transit": TRANSIT_COLS,
+    "blockade": BLOCKADE_COLS,
 }
 
 
@@ -250,120 +278,131 @@ class NewsFeatures(BaseModel):
     All features are computed by the Go backend's news preprocessing pipeline
     (cleaning → language detection → translation → entity extraction →
     keyword extraction → category classification → feature engineering).
+    """
+    # ... (existing fields unchanged) ...
+    keyword_count: int = Field(ge=0, le=500)
+    entity_count: int = Field(ge=0, le=200)
+    article_length: int = Field(ge=0, le=100000)
+    publication_age_hours: float = Field(ge=0.0, le=8760.0)
+    military_term_count: int = Field(ge=0, le=200)
+    energy_term_count: int = Field(ge=0, le=200)
+    shipping_term_count: int = Field(ge=0, le=200)
+    cyber_term_count: int = Field(ge=0, le=100)
+    country_risk_score: float = Field(ge=0.0, le=1.0)
+    source_reliability: float = Field(ge=0.0, le=1.0)
+    sentiment_score: float = Field(ge=0.0, le=1.0)
+    organization_count: int = Field(ge=0, le=50)
+    company_count: int = Field(ge=0, le=50)
+    port_mentions: int = Field(ge=0, le=30)
+    airport_mentions: int = Field(ge=0, le=30)
+    ship_mentions: int = Field(ge=0, le=30)
+    aircraft_mentions: int = Field(ge=0, le=30)
+    publisher_weight: float = Field(ge=0.0, le=1.0)
 
-    Range constraints reflect physically meaningful values for a single
-    news article (e.g. an article cannot have negative length or
-    more than 1000 keyword hits).
+    def to_array(self) -> np.ndarray:
+        d = self.model_dump()
+        return np.array([d[col] for col in NEWS_COLS], dtype=np.float64)
+
+
+class TransitFeatures(BaseModel):
+    """
+    7-dimensional feature vector for transit anomaly detection.
+
+    Computed by the Go backend's gate.go module when a vessel crosses
+    a gate line. Used to detect anomalous crossing patterns (e.g. night
+    crossings, destination mismatch, unusual speed for vessel type).
     """
 
-    keyword_count: int = Field(
-        ge=0,
-        le=500,
-        description="Number of unique keywords extracted from the article.",
+    crossing_speed: float = Field(
+        ge=0.0, le=50.0,
+        description="Speed at gate crossing (knots).",
     )
-    entity_count: int = Field(
-        ge=0,
-        le=200,
-        description="Total number of named entities detected.",
+    time_since_last_transit_h: float = Field(
+        ge=0.0, le=8760.0,
+        description="Hours since this vessel last crossed any gate.",
     )
-    article_length: int = Field(
-        ge=0,
-        le=100000,
-        description="Character count of cleaned article text.",
+    crossing_hour: float = Field(
+        ge=0.0, le=23.0,
+        description="Hour of day the crossing occurred (0-23).",
     )
-    publication_age_hours: float = Field(
-        ge=0.0,
-        le=8760.0,  # 1 year
-        description="Hours elapsed since publication.",
+    vessel_speed_before: float = Field(
+        ge=0.0, le=50.0,
+        description="Vessel speed 10 minutes before crossing (knots).",
     )
-    military_term_count: int = Field(
-        ge=0,
-        le=200,
-        description="Count of military/conflict keyword matches.",
+    destination_direction_match: float = Field(
+        ge=0.0, le=1.0,
+        description="1.0 if AIS destination matches crossing direction, 0.0 otherwise.",
     )
-    energy_term_count: int = Field(
-        ge=0,
-        le=200,
-        description="Count of energy/resource keyword matches.",
+    gate_dist_from_center_nm: float = Field(
+        ge=0.0, le=30.0,
+        description="Distance from crossing point to gate line center (NM).",
     )
-    shipping_term_count: int = Field(
-        ge=0,
-        le=200,
-        description="Count of maritime/shipping keyword matches.",
-    )
-    cyber_term_count: int = Field(
-        ge=0,
-        le=100,
-        description="Count of cybersecurity keyword matches.",
-    )
-    country_risk_score: float = Field(
-        ge=0.0,
-        le=1.0,
-        description="Baseline geopolitical risk for the article's country.",
-    )
-    source_reliability: float = Field(
-        ge=0.0,
-        le=1.0,
-        description="Baseline reliability score for the publishing source.",
-    )
-    sentiment_score: float = Field(
-        ge=0.0,
-        le=1.0,
-        description="Sentiment polarity (0=negative, 0.5=neutral, 1=positive).",
-    )
-    organization_count: int = Field(
-        ge=0,
-        le=50,
-        description="Number of military/government organizations detected.",
-    )
-    company_count: int = Field(
-        ge=0,
-        le=50,
-        description="Number of companies/corporations detected.",
-    )
-    port_mentions: int = Field(
-        ge=0,
-        le=30,
-        description="Number of port references detected.",
-    )
-    airport_mentions: int = Field(
-        ge=0,
-        le=30,
-        description="Number of airport references detected.",
-    )
-    ship_mentions: int = Field(
-        ge=0,
-        le=30,
-        description="Number of ship/vessel references detected.",
-    )
-    aircraft_mentions: int = Field(
-        ge=0,
-        le=30,
-        description="Number of aircraft references detected.",
-    )
-    publisher_weight: float = Field(
-        ge=0.0,
-        le=1.0,
-        description="Publisher authority weight (same as source_reliability baseline).",
+    speed_vs_avg_ratio: float = Field(
+        ge=0.0, le=10.0,
+        description="Crossing speed divided by vessel's 24h average speed.",
     )
 
     def to_array(self) -> np.ndarray:
-        """Return features as a 1-D NumPy array in canonical column order."""
         d = self.model_dump()
-        return np.array([d[col] for col in NEWS_COLS], dtype=np.float64)
+        return np.array([d[col] for col in TRANSIT_COLS], dtype=np.float64)
+
+
+class BlockadeFeatures(BaseModel):
+    """
+    7-dimensional feature vector for blockade severity classification.
+
+    Computed by the Go backend's blockade.go module from aggregated
+    vessel and transit statistics. Used to classify the regional
+    maritime situation (normal / elevated / high / critical).
+    """
+
+    strait_transits_24h: int = Field(
+        ge=0, le=1000,
+        description="Number of Strait of Hormuz crossings in last 24h.",
+    )
+    anchored_ratio_pct: float = Field(
+        ge=0.0, le=100.0,
+        description="Percentage of active vessels currently anchored.",
+    )
+    waiting_fleet_6h: int = Field(
+        ge=0, le=500,
+        description="Vessels stationary for 6+ hours.",
+    )
+    waiting_fleet_24h: int = Field(
+        ge=0, le=500,
+        description="Vessels stationary for 24+ hours.",
+    )
+    active_vessels: int = Field(
+        ge=0, le=2000,
+        description="Total active vessel count in the region.",
+    )
+    anchorage_zone_count: int = Field(
+        ge=0, le=20,
+        description="Number of anchorage zones with at least one vessel.",
+    )
+    flag_entropy: float = Field(
+        ge=0.0, le=1.0,
+        description="Shannon entropy of flag state distribution (0=uniform, 1=diverse).",
+    )
+
+    def to_array(self) -> np.ndarray:
+        d = self.model_dump()
+        return np.array([d[col] for col in BLOCKADE_COLS], dtype=np.float64)
 
 
 # ---------------------------------------------------------------------------
 # Union type for top-level routing
 # ---------------------------------------------------------------------------
 
-AnyFeatures = VesselFeatures | AviationFeatures | HeatmapFeatures | NewsFeatures
+AnyFeatures = VesselFeatures | AviationFeatures | HeatmapFeatures | NewsFeatures | TransitFeatures | BlockadeFeatures
 
 DOMAIN_SCHEMA: dict[str, type] = {
     "vessel": VesselFeatures,
     "aviation": AviationFeatures,
     "heatmap": HeatmapFeatures,
     "news": NewsFeatures,
+    "transit": TransitFeatures,
+    "blockade": BlockadeFeatures,
 }
 
 

@@ -57,6 +57,7 @@ export async function getAdminSession() {
       user: {
         id: "cookie_user",
         email: cookieSession.email,
+        email_confirmed_at: cookieSession.createdAt, // Trust cookie session as verified
         app_metadata: {},
         user_metadata: { full_name: cookieSession.role },
         aud: "authenticated",

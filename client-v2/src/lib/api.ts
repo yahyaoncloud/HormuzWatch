@@ -67,6 +67,11 @@ export interface PublicMetrics {
   avgScore: number;
   activeRegions: number;
   timestamp: string;
+  // Pipeline queue metrics (added v2.1)
+  queueEnqueued?: number;
+  queueDropped?: number;
+  queueProcessed?: number;
+  queueDepth?: number;
 }
 
 export interface PublicMetricsResponse {
@@ -135,7 +140,7 @@ export interface RestrictedZone {
 export interface HeatmapResponse {
   type: string;
   source: string;
-  data: number[][];
+  data: Array<{ lat: number; lon: number; intensity: number; source: string }>;
 }
 
 export interface AIBriefing {
@@ -161,6 +166,33 @@ export interface DetailedReport {
   executive_summary: string;
   sections: ReportSection[];
   appendices: string[];
+}
+
+/** Real-time in-memory pipeline stats (no DB queries). */
+export interface RealtimeStats {
+  totalTracks: number;
+  maritimeCount: number;
+  aviationCount: number;
+  anchoredCount: number;
+  slowCount: number;
+  maneuveringCount: number;
+  transitingCount: number;
+  avgSpeed: number;
+  highAnomalyCount: number;
+  totalAnomalies: number;
+  avgEWMA: number;
+  updatedAt: string;
+}
+
+export interface RealtimeStatsResponse {
+  status: string;
+  stats: RealtimeStats;
+  queue: {
+    enqueued: number;
+    dropped: number;
+    processed: number;
+    depth: number;
+  };
 }
 
 // ============================================================
@@ -262,6 +294,15 @@ export async function getTopTraces(): Promise<TopTracesResponse> {
 /** Get aggregate platform metrics (public) */
 export async function getPublicMetrics(): Promise<PublicMetricsResponse> {
   return fetchPublic<PublicMetricsResponse>('/public/metrics');
+}
+
+/** Get real-time in-memory pipeline stats (no DB queries). */
+export async function getRealtimeStats(): Promise<RealtimeStatsResponse> {
+  try {
+    return await fetchPublic<RealtimeStatsResponse>('/public/analytics/stats');
+  } catch {
+    return fetchWithAuth<RealtimeStatsResponse>('/admin/stats/realtime');
+  }
 }
 
 /** Get historical attacks (public) */
@@ -878,5 +919,137 @@ export async function updateServerSettings(
     method: 'POST',
     body: JSON.stringify(settings),
   });
+}
+
+// ============================================================
+// Transit & Blockade Analytics (public)
+// ============================================================
+
+export interface TransitEvent {
+  mmsi: number;
+  gate: string;
+  direction: string;
+  crossed_at: string;
+  speed: number;
+  ship_name: string;
+  ship_type: string;
+  flag: string;
+  destination: string;
+}
+
+export interface TransitSummary {
+  hours: number;
+  gate_filter: string;
+  inbound: number;
+  outbound: number;
+  by_gate: Record<string, { inbound: number; outbound: number }>;
+  recent_events: TransitEvent[];
+}
+
+export interface VesselStateCounts {
+  states: Record<string, number>;
+  total: number;
+  zone_counts: Record<string, number>;
+}
+
+export interface BlockadeIndicators {
+  active_vessels: number;
+  anchored_vessels: number;
+  anchored_ratio_pct: number;
+  waiting_fleet_6h: number;
+  waiting_fleet_24h: number;
+  strait_transits_24h: number;
+  strait_status: 'NO_TRANSIT' | 'LIMITED' | 'ACTIVE';
+  situation: { level: string; title: string; text: string };
+  fleet_by_type: Array<{ type: string; count: number }>;
+  fleet_by_flag: Array<{ flag: string; count: number }>;
+}
+
+export async function getTransits(hours?: number, gate?: string): Promise<TransitSummary> {
+  const params = new URLSearchParams();
+  if (hours) params.set('hours', String(hours));
+  if (gate) params.set('gate', gate);
+  const qs = params.toString();
+  return fetchPublic<TransitSummary>(`/public/analytics/transits${qs ? '?' + qs : ''}`);
+}
+
+export async function getVesselStates(): Promise<VesselStateCounts> {
+  return fetchPublic<VesselStateCounts>('/public/analytics/states');
+}
+
+export async function getBlockadeIndicators(): Promise<BlockadeIndicators> {
+  return fetchPublic<BlockadeIndicators>('/public/analytics/blockade');
+}
+
+export async function getFlagDistribution(hours?: number): Promise<{ hours: number; data: Array<{ flag: string; vessels: number; display_name: string }> }> {
+  const params = hours ? `?hours=${hours}` : '';
+  return fetchPublic(`/public/analytics/flags${params}`);
+}
+
+export async function getDataQuality(): Promise<{
+  total_positions: number;
+  clean_positions: number;
+  clean_percentage: number;
+  anomalies: Record<string, { count: number; description: string }>;
+}> {
+  return fetchPublic('/public/analytics/data-quality');
+}
+
+// ============================================================
+// Admin Dataset Export (admin-only)
+// ============================================================
+
+export interface ExportRequest {
+  period_hours: number;
+  format: 'csv' | 'json';
+  tables?: string;
+}
+
+export interface ExportResult {
+  status: string;
+  label: string;
+  files: string[];
+  format: string;
+  tables: string[];
+  period_hours: number;
+}
+
+export interface ExportFileInfo {
+  name: string;
+  size: number;
+  created_at: string;
+  format: string;
+  period_hrs: number;
+}
+
+export interface ExportListResponse {
+  exports: ExportFileInfo[];
+  count: number;
+}
+
+/** Trigger a dataset export from the backend (admin only). */
+export async function exportDataset(req: ExportRequest): Promise<ExportResult> {
+  return fetchWithAuth<ExportResult>('/api/admin/datasets/export', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  });
+}
+
+/** List completed dataset exports (admin only). */
+export async function listExports(): Promise<ExportListResponse> {
+  return fetchWithAuth<ExportListResponse>('/api/admin/datasets/exports');
+}
+
+/** Get the download URL for an exported file. */
+export function getExportDownloadUrl(filename: string): string {
+  return `${API_BASE}/api/admin/datasets/download/${encodeURIComponent(filename)}`;
+}
+
+/** Delete an exported dataset file (admin only). */
+export async function deleteExport(filename: string): Promise<{ status: string; file: string }> {
+  return fetchWithAuth<{ status: string; file: string }>(
+    `/api/admin/datasets/download/${encodeURIComponent(filename)}`,
+    { method: 'DELETE' }
+  );
 }
 

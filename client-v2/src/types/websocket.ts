@@ -5,6 +5,8 @@ export type WSMessageType =
   | 'telemetry' // Real-time vessel/aircraft position updates
   | 'anomaly' // Anomaly detection results
   | 'traces' // Public top traces (SSE)
+  | 'stats' // Real-time in-memory pipeline stats
+  | 'conflict' // Conflict/intelligence events (from WebSocket)
   | 'metric' // Platform metrics
   | 'status' // System status
   | 'incident' // Incident notifications
@@ -94,6 +96,27 @@ export interface MetricPayload {
   avgScore: number;
   activeRegions: number;
   timestamp: string;
+}
+
+// Real-time in-memory pipeline stats (from TSM via WebSocket, every 1s)
+export interface StatsPayload {
+  totalTracks: number;
+  maritimeCount: number;
+  aviationCount: number;
+  anchoredCount: number;
+  slowCount: number;
+  maneuveringCount: number;
+  transitingCount: number;
+  avgSpeed: number;
+  highAnomalyCount: number;
+  totalAnomalies: number;
+  avgEWMA: number;
+  updatedAt: string;
+  // Queue health (atomic counters, no DB)
+  queueEnqueued: number;
+  queueDropped: number;
+  queueProcessed: number;
+  queueDepth: number;
 }
 
 // System status

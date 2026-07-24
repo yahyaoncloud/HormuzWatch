@@ -4,9 +4,11 @@ import loginBg from '@/assets/login_background.png';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { adminLogin } from '@/lib/auth';
+import { useAdminStore } from '@/stores';
 
 export default function LoginRoute() {
   const navigate = useNavigate();
+  const setSession = useAdminStore((s) => s.setSession);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +20,13 @@ export default function LoginRoute() {
     setBusy(true);
 
     try {
-      await adminLogin(email, password);
+      const data = await adminLogin(email, password);
+      // Wire the Supabase session into the admin store immediately so
+      // the route guard reads isAuthenticated / isVerified without
+      // waiting for the SupabaseAuthProvider's async hydration.
+      if (data.session) {
+        setSession(data.session);
+      }
       navigate('/admin');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Invalid credentials. Please try again.';
@@ -36,7 +44,7 @@ export default function LoginRoute() {
       {/* light gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-zinc-100 via-zinc-100/50 to-zinc-800/10 pointer-events-none" />
 
-      <Card className="relative z-10 w-full max-w-sm rounded-2xl border border-[var(--color-border)]/60 bg-[var(--color-bg-card)]/95 shadow-2xl backdrop-blur-xl">
+      <Card className="relative z-10 w-full max-w-sm rounded-md border border-[var(--color-border)]/60 bg-[var(--color-bg-card)]/95 shadow-2xl backdrop-blur-xl">
         <CardHeader className="pb-4 text-center">
           <Link to="/" className="inline-flex items-center gap-2 mb-6" aria-label="HormuzWatch Home">
             <svg className="w-8 h-8 text-[var(--color-primary-600)]" viewBox="0 0 32 32" fill="none" aria-hidden="true">

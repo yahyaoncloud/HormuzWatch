@@ -276,6 +276,21 @@ func GetArticlesWithCoords(hoursBack int, minRiskScore float64) (*sql.Rows, erro
 	)
 }
 
+// StoreArticleMetadata updates the metadata JSONB column on an article.
+// Used to store regex-extracted JSON payloads, LLM threat classifications,
+// and other enrichment data produced after the initial article INSERT.
+func StoreArticleMetadata(articleID, key string, value string) error {
+	if PGX == nil {
+		return nil
+	}
+	_, err := PGX.Exec(context.Background(), `
+		UPDATE articles
+		SET metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object($2::text, $3::jsonb)
+		WHERE id = $1
+	`, articleID, key, value)
+	return err
+}
+
 // ── Country queries ────────────────────────────────────────────────
 
 // SeedCountries populates the countries table with Gulf-region defaults.

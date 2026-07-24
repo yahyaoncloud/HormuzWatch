@@ -2,28 +2,23 @@ import { Slot } from '@radix-ui/react-slot';
 import { type ButtonHTMLAttributes, forwardRef } from 'react';
 import { cn } from '@/utils/cn';
 
-// ============================================================
-// Button — shadcn-style, editorial brown theme (self-contained,
-// no cva / no radix-slot so it works with the project's deps).
-// ============================================================
-
 const VARIANTS: Record<string, string> = {
   default:
-    'bg-[var(--color-primary-600)] text-[var(--color-neutral-0)] hover:bg-[var(--color-primary-700)] border border-[var(--color-border)]',
+    'bg-[var(--color-primary-600)] text-white hover:bg-[var(--color-primary-700)] border border-transparent',
   outline:
-    'border border-[var(--color-border)] bg-[var(--color-bg)] text-[var(--color-fg)] hover:bg-[var(--color-bg-elevated)] hover:border-[var(--color-primary-300)]',
+    'border border-[var(--color-border)] bg-transparent text-[var(--color-fg)] hover:bg-[var(--color-bg-elevated)]',
   ghost:
     'text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-fg)]',
   secondary:
-    'bg-[var(--color-neutral-100)] text-[var(--color-neutral-800)] hover:bg-[var(--color-neutral-200)]',
-  link: 'text-[var(--color-primary-700)] underline-offset-4 hover:underline',
+    'bg-[var(--color-bg-elevated)] text-[var(--color-fg)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)]',
+  link: 'text-[var(--color-primary-600)] underline-offset-4 hover:underline',
 };
 
 const SIZES: Record<string, string> = {
-  default: 'h-10 px-5 text-sm',
-  sm: 'h-9 px-4 text-sm',
-  lg: 'h-12 px-7 text-base',
-  icon: 'h-10 w-10',
+  default: 'h-9 px-3.5 text-[13px]',
+  sm: 'h-8 px-3 text-xs',
+  lg: 'h-10 px-5 text-sm',
+  icon: 'h-8 w-8',
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -39,9 +34,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <Comp
         ref={ref}
         className={cn(
-          'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-ui font-medium transition-colors',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-600)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)]',
-          'disabled:pointer-events-none disabled:opacity-50',
+          'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md font-ui font-medium transition-colors',
+          'focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-[var(--color-primary-600)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--color-bg)]',
+          'disabled:pointer-events-none disabled:opacity-40',
           VARIANTS[variant],
           SIZES[size],
           className

@@ -50,14 +50,14 @@ export function DisclaimerModal({ open, onClose }: { open: boolean; onClose: () 
       />
       <div
         className={cn(
-          'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] transition-all duration-300 ease-out',
+          'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md rounded-md border border-[var(--color-border)] bg-[var(--color-bg-card)] transition-all duration-300 ease-out',
           visible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
         )}
       >
         <div className="p-6">
           <div className="flex items-start justify-between gap-4 mb-4">
             <div className="flex items-center gap-3 shrink-0">
-              <div className="h-10 w-10 rounded-xl bg-[var(--color-warning-muted,rgba(251,191,36,0.15))] flex items-center justify-center">
+              <div className="h-10 w-10 rounded-md bg-[var(--color-warning-muted,rgba(251,191,36,0.15))] flex items-center justify-center">
                 <AlertTriangle className="h-5 w-5 text-[var(--color-warning)]" aria-hidden="true" />
               </div>
               <h2 className="font-display text-lg font-semibold text-[var(--color-fg)]">

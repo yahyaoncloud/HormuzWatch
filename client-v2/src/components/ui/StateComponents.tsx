@@ -78,7 +78,7 @@ export function ErrorState({
   return (
     <div
       className={cn(
-        'p-8 text-center max-w-md mx-auto rounded-xl border border-red-500/30 bg-red-500/5',
+        'p-8 text-center max-w-md mx-auto rounded-md border border-red-500/30 bg-red-500/5',
         fullScreen && 'my-12',
         className
       )}
@@ -91,7 +91,7 @@ export function ErrorState({
         <button
           type="button"
           onClick={onRetry}
-          className="mt-4 px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/30 text-xs font-semibold rounded-xl hover:bg-red-500/20 transition-colors inline-flex items-center gap-1.5"
+          className="mt-4 px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/30 text-xs font-semibold rounded-md hover:bg-red-500/20 transition-colors inline-flex items-center gap-1.5"
         >
           <Loader2 className="h-3.5 w-3.5" />
           {retryLabel}
@@ -119,8 +119,8 @@ export function EmptyState({
   variant = 'default',
 }: EmptyStateProps) {
   const variants = {
-    default: 'text-center py-12 text-[var(--color-fg-muted)] font-mono text-xs border border-dashed border-[var(--color-border)] rounded-xl',
-    dashed: 'text-center py-12 text-[var(--color-fg-muted)] font-mono text-xs border border-dashed border-[var(--color-border)] rounded-xl',
+    default: 'text-center py-12 text-[var(--color-fg-muted)] font-mono text-xs border border-dashed border-[var(--color-border)] rounded-md',
+    dashed: 'text-center py-12 text-[var(--color-fg-muted)] font-mono text-xs border border-dashed border-[var(--color-border)] rounded-md',
     card: 'text-center py-8 text-[var(--color-fg-muted)]',
   };
 

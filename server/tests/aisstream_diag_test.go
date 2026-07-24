@@ -33,13 +33,46 @@ func TestAISStreamConnectionDiag(t *testing.T) {
 	defer conn.Close()
 
 	// Subscribing to BoundingBox: Persian Gulf / Strait of Hormuz / Gulf Peninsula
+	// Format: [latitude, longitude] (NOT [longitude, latitude])
+	// Using full production bounding boxes to maximize vessel coverage
 	subMsg := map[string]interface{}{
 		"APIKey": apiKey,
 		"BoundingBoxes": [][][2]float64{
+			// Persian Gulf
 			{
-				 {47.0, 24.0},
-        {57.8, 31.0},
+				{24.0, 47.0},
+				{31.0, 57.8},
 			},
+			// Strait of Hormuz
+			{
+				{25.2, 55.2},
+				{27.4, 58.8},
+			},
+			// Gulf of Oman
+			{
+				{22.0, 56.0},
+				{27.0, 61.8},
+			},
+			// Arabian Sea
+			{
+				{8.0, 56.0},
+				{25.0, 76.0},
+			},
+			// Gulf of Aden & Bab el-Mandeb
+			{
+				{10.5, 42.0},
+				{16.8, 53.0},
+			},
+			// Red Sea & Suez
+			{
+				{12.0, 32.0},
+				{31.8, 44.0},
+			},
+		},
+		"FilterMessageTypes": []string{
+			"PositionReport",
+			"StandardClassBPositionReport",
+			"ExtendedClassBPositionReport",
 		},
 	}
 
@@ -50,9 +83,9 @@ func TestAISStreamConnectionDiag(t *testing.T) {
 		t.Fatalf("Failed to write subscription JSON: %v", err)
 	}
 
-	t.Log("Subscription sent. Waiting for incoming WebSocket messages (10 sec timeout)...")
+	t.Log("Subscription sent. Waiting for incoming WebSocket messages (20 sec timeout)...")
 
-	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	conn.SetReadDeadline(time.Now().Add(20 * time.Second))
 	messageCount := 0
 
 	for messageCount < 5 {

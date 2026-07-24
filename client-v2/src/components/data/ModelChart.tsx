@@ -588,7 +588,7 @@ export function ModelDashboard({
   return (
     <div className={cn('space-y-4', className)}>
       {/* Realtime vs Static Stream Toggler */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-card)] p-3">
         <div className="flex items-center gap-2">
           <span className="font-display text-sm font-semibold text-[var(--color-fg)]">
             Chart Data Stream Mode
@@ -634,7 +634,7 @@ export function ModelDashboard({
       </div>
 
       {/* Tab Bar */}
-      <div className="flex gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-1 overflow-x-auto">
+      <div className="flex gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-1 overflow-x-auto">
         {CHART_TABS.map((tab) => (
           <button
             key={tab.id}
@@ -665,7 +665,7 @@ export function ModelDashboard({
             height={320}
             xLabel="Anomaly Score"
             yLabel="Frequency"
-            className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] overflow-hidden"
+            className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-card)] overflow-hidden"
           />
           <p className="font-ui text-xs text-[var(--color-fg-muted)] leading-relaxed max-w-3xl">
             {mode === 'realtime'
@@ -685,7 +685,7 @@ export function ModelDashboard({
           <FeatureImportanceChart
             features={currentFeatures}
             height={340}
-            className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] overflow-hidden"
+            className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-card)] overflow-hidden"
           />
           <p className="font-ui text-xs text-[var(--color-fg-muted)] leading-relaxed max-w-3xl">
             {mode === 'realtime'
@@ -708,7 +708,7 @@ export function ModelDashboard({
             height={320}
             yLabel={mode === 'realtime' ? 'Live Events / min' : 'Anomalies / day'}
             color={THEME.info}
-            className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] overflow-hidden"
+            className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-card)] overflow-hidden"
           />
           <p className="font-ui text-xs text-[var(--color-fg-muted)] leading-relaxed max-w-3xl">
             {mode === 'realtime'
@@ -730,7 +730,7 @@ export function ModelDashboard({
             series={currentCompSeries}
             height={340}
             yLabel={mode === 'realtime' ? 'Confidence / Score' : 'F1 Score'}
-            className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] overflow-hidden"
+            className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-card)] overflow-hidden"
           />
           <p className="font-ui text-xs text-[var(--color-fg-muted)] leading-relaxed max-w-3xl">
             {mode === 'realtime'

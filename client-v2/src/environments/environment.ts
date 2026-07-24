@@ -48,6 +48,10 @@ export const env = {
     timeoutMs: num(import.meta.env.VITE_API_TIMEOUT_MS, 5000),
   },
 
+  // ── ML / Analysis Service ─────────────────────────────────────────
+  /** Python ML service URL (used by analysis charts page). */
+  mlServiceUrl: import.meta.env.VITE_ML_SERVICE_URL || "http://localhost:8090",
+
   // ── WebSocket ─────────────────────────────────────────────────────
   ws: {
     /** Telemetry WebSocket endpoint. */

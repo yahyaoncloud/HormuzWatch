@@ -2,6 +2,7 @@ package intelligence
 
 import (
 	"math"
+	"strings"
 	"sync"
 	"time"
 )
@@ -226,4 +227,82 @@ func (m *TrackStateManager) TrackCount() int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return len(m.tracks)
+}
+
+// RealtimeStats holds live in-memory statistics computed from the track state.
+type RealtimeStats struct {
+	TotalTracks      int     `json:"totalTracks"`
+	MaritimeCount    int     `json:"maritimeCount"`
+	AviationCount    int     `json:"aviationCount"`
+	AnchoredCount    int     `json:"anchoredCount"`
+	SlowCount        int     `json:"slowCount"`
+	ManeuveringCount int     `json:"maneuveringCount"`
+	TransitingCount  int     `json:"transitingCount"`
+	AvgSpeed         float64 `json:"avgSpeed"`
+	HighAnomalyCount int     `json:"highAnomalyCount"`
+	TotalAnomalies   int     `json:"totalAnomalies"`
+	AvgEWMA          float64 `json:"avgEWMA"`
+	UpdatedAt        string  `json:"updatedAt"`
+}
+
+// GetStats returns real-time statistics computed entirely from in-memory track state.
+func (m *TrackStateManager) GetStats() RealtimeStats {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	s := RealtimeStats{
+		TotalTracks: len(m.tracks),
+		UpdatedAt:   time.Now().UTC().Format(time.RFC3339),
+	}
+
+	var totalSpeed float64
+	speedCount := 0
+	var totalEWMA float64
+
+	for _, t := range m.tracks {
+		if strings.HasPrefix(t.TrackID, "FLIGHT-") || strings.HasPrefix(t.TrackID, "ADS-") || strings.HasPrefix(t.TrackID, "ICAO-") {
+			s.AviationCount++
+		} else {
+			s.MaritimeCount++
+		}
+
+		if len(t.History) > 0 {
+			lastSpeed := t.History[len(t.History)-1].Speed
+			totalSpeed += lastSpeed
+			speedCount++
+			switch {
+			case lastSpeed < 0.5:
+				s.AnchoredCount++
+			case lastSpeed < 3:
+				s.SlowCount++
+			case lastSpeed < 8:
+				s.ManeuveringCount++
+			default:
+				s.TransitingCount++
+			}
+		}
+
+		if t.EWMACount > 1 {
+			dev := math.Abs(t.EWMAVariance)
+			if t.EWMASpeed > 10 {
+				dev *= 2
+			}
+			totalEWMA += dev
+			if dev > 2.0 {
+				s.HighAnomalyCount++
+			}
+			if dev > 1.0 {
+				s.TotalAnomalies++
+			}
+		}
+	}
+
+	if speedCount > 0 {
+		s.AvgSpeed = totalSpeed / float64(speedCount)
+	}
+	if len(m.tracks) > 0 {
+		s.AvgEWMA = totalEWMA / float64(len(m.tracks))
+	}
+
+	return s
 }

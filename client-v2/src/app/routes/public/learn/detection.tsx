@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { Section } from '@/components/layout/Section';
-import { MetricGrid, PLATFORM_METRICS } from '@/components/data/MetricGrid';
+import { LivePlatformMetrics } from '@/components/data/MetricGrid';
 import { EditorialMap } from '@/components/maps';
 import { cn } from '@/utils/cn';
 
@@ -190,23 +190,11 @@ export default function LearnDetection() {
             showMetricsRibbon={false}
           />
         </div>
-        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: 'Active Anomalies', value: '23', color: 'danger' },
-            { label: 'Critical Priority', value: '5', color: 'danger' },
-            { label: 'Avg Detection Latency', value: '247ms', color: 'success' },
-            { label: 'Detection Rate', value: '1.2K/hr', color: 'primary' },
-          ].map((m) => (
-            <div
-              key={m.label}
-              className="glass-card rounded-xl p-4 border border-border/50 text-center"
-            >
-              <div className="font-data text-data-lg" style={{ color: `var(--color-${m.color})` }}>
-                {m.value}
-              </div>
-              <div className="font-ui text-caption text-fg-muted mt-1">{m.label}</div>
-            </div>
-          ))}
+        <div className="mt-4 glass-card rounded-xl p-4 border border-border/50 text-center">
+          <p className="font-ui text-body text-fg-muted">
+            Real-time detection statistics are computed live from the anomaly pipeline.
+            Connect your dashboard for current metrics.
+          </p>
         </div>
       </Section>
 
@@ -417,7 +405,7 @@ export default function LearnDetection() {
         subtitle="Real-time system performance"
         className="mb-4"
       >
-        <MetricGrid metrics={PLATFORM_METRICS} columns={4} />
+        <LivePlatformMetrics columns={4} />
       </Section>
 
       {/* FAQ */}

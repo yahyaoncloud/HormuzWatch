@@ -99,6 +99,32 @@ func DefaultGulfSources() []Source {
 			"https://www.opec.org/opec_web/en/pressroom/feed.xml",
 			"en", "AT",
 		),
+
+		// ── Scraper Sources (HTML pages without RSS) ───────────────
+		NewScraperSource(
+			"IRGC Press",
+			"https://sepahnews.ir/en",
+			"a.news-title",        // link selector: article title links
+			"h1.entry-title",      // title selector on article page
+			"div.entry-content",   // body selector
+			"fa", "IR",
+		),
+		NewScraperSource(
+			"Yemen Press Agency",
+			"https://www.saba.ye/en",
+			"a.news-title, h2 a",  // link selector
+			"h1.entry-title, h2.title", // title selector
+			"div.entry-content, article", // body selector
+			"ar", "YE",
+		),
+		NewScraperSource(
+			"Tasnim News",
+			"https://www.tasnimnews.com/en",
+			"a.news-link, .news-item a",
+			"h1.title, h1.news-title",
+			"div.content, article.news-body",
+			"fa", "IR",
+		),
 	}
 }
 

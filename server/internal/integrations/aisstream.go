@@ -1,7 +1,6 @@
 package integrations
 
 import (
-	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -13,6 +12,7 @@ import (
 
 	"Geospatial-harmuz-watch/server/internal/api"
 	"Geospatial-harmuz-watch/server/internal/domain/telemetry"
+	"Geospatial-harmuz-watch/server/internal/geo"
 	"Geospatial-harmuz-watch/server/internal/intelligence"
 
 	"github.com/gorilla/websocket"
@@ -34,45 +34,51 @@ func StartAISStream(p *intelligence.Pipeline) {
 
 	url := "wss://stream.aisstream.io/v0/stream"
 
-	// Bounding Box for AISStream Subscription: Regional Middle East / Arabian Peninsula / Gulf
-	// Latitude: 10.0°N to 35.0°N, Longitude: 32.0°E to 75.0°E
+	// Bounding Box for AISStream Subscription: Regional Middle East / Arabian Peninsula / Gulf / India / Bay of Bengal
+	// Latitude: 5.0°N to 35.0°N, Longitude: 32.0°E to 95.0°E
 	boundingBoxes := [][][2]float64{
-	// Persian Gulf
-	{
-		{24.0, 47.0},
-		{31.0, 57.8},
-	},
+		// Persian Gulf
+		{
+			{24.0, 47.0},
+			{31.0, 57.8},
+		},
 
-	// Strait of Hormuz
-	{
-		{25.2, 55.2},
-		{27.4, 58.8},
-	},
+		// Strait of Hormuz
+		{
+			{25.2, 55.2},
+			{27.4, 58.8},
+		},
 
-	// Gulf of Oman
-	{
-		{22.0, 56.0},
-		{27.0, 61.8},
-	},
+		// Gulf of Oman
+		{
+			{22.0, 56.0},
+			{27.0, 61.8},
+		},
 
-	// Arabian Sea
-	{
-		{8.0, 56.0},
-		{25.0, 76.0},
-	},
+		// Arabian Sea (India west coast, Pakistan coast)
+		{
+			{5.0, 56.0},
+			{25.0, 78.0},
+		},
 
-	// Gulf of Aden & Bab el-Mandeb
-	{
-		{10.5, 42.0},
-		{16.8, 53.0},
-	},
+		// Gulf of Aden & Bab el-Mandeb
+		{
+			{10.5, 42.0},
+			{16.8, 53.0},
+		},
 
-	// Red Sea & Suez
-	{
-		{12.0, 32.0},
-		{31.8, 44.0},
-	},
-}
+		// Red Sea & Suez
+		{
+			{12.0, 32.0},
+			{31.8, 44.0},
+		},
+
+		// Bay of Bengal & East India Coast
+		{
+			{5.0, 78.0},
+			{23.5, 95.0},
+		},
+	}
 
 	// Optional TLS bypass for development when stream.aisstream.io presents a
 	// certificate that fails system validation (e.g. clock skew / expired cert
@@ -106,14 +112,14 @@ func StartAISStream(p *intelligence.Pipeline) {
 		backoff.Reset()
 
 		subMsg := AISStreamSubscription{
-	    APIKey: apiKey,
-    	BoundingBoxes: boundingBoxes,
-    	FilterMessageTypes: []string{
-        "PositionReport",
-        "StandardClassBPositionReport",
-        "ExtendedClassBPositionReport",
-    },
-}
+			APIKey:        apiKey,
+			BoundingBoxes: boundingBoxes,
+			FilterMessageTypes: []string{
+				"PositionReport",
+				"StandardClassBPositionReport",
+				"ExtendedClassBPositionReport",
+			},
+		}
 
 		subJSON, _ := json.Marshal(subMsg)
 		log.Printf("[AISStream] Sending subscription: %s", string(subJSON))
@@ -170,8 +176,8 @@ func StartAISStream(p *intelligence.Pipeline) {
 				continue
 			}
 
-			// Filter positions strictly to expanded Middle East / Arabian Peninsula / Gulf / Red Sea sector (8.0°N to 32.0°N, 32.0°E to 76.0°E)
-			if lat < 8.0 || lat > 32.0 || lon < 32.0 || lon > 76.0 {
+			// Filter positions to expanded Middle East / Arabian Peninsula / Gulf / Red Sea / India / Bay of Bengal sector (5.0°N to 32.0°N, 32.0°E to 95.0°E)
+			if lat < 5.0 || lat > 32.0 || lon < 32.0 || lon > 95.0 {
 				continue
 			}
 
@@ -209,8 +215,22 @@ func StartAISStream(p *intelligence.Pipeline) {
 				Source:            telemetry.SourceAISStream,
 			}
 
-			// ── Intelligence Pipeline ──────────────────────────
-			p.ProcessObservation(context.Background(), &payload)
+			// ── Data Quality Filters ─────────────────────────
+			// Reject AIS protocol "not available" sentinel (102.3 kn = 0x3FF)
+			if speed >= 102.3 {
+				continue
+			}
+			// Reject suspicious speeds from coastal receiver glitches
+			if speed >= 40.0 {
+				continue
+			}
+			// Reject positions on land (Natural Earth 10m mask)
+			if geo.IsOnLand(lat, lon) {
+				continue
+			}
+
+			// ── Intelligence Pipeline (non-blocking queue) ──
+			p.EnqueueObservation(&payload)
 		}
 
 		conn.Close()

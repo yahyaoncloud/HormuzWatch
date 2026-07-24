@@ -41,9 +41,9 @@ export default function AdminProfile() {
       </div>
 
       {/* Identity Banner */}
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="h-16 w-16 rounded-2xl bg-[var(--color-primary-600)]/20 border border-[var(--color-primary-600)]/40 flex items-center justify-center text-[var(--color-primary-600)] font-bold text-2xl">
+          <div className="h-16 w-16 rounded-md bg-[var(--color-primary-600)]/20 border border-[var(--color-primary-600)]/40 flex items-center justify-center text-[var(--color-primary-600)] font-bold text-2xl">
             <User className="h-8 w-8" />
           </div>
           <div>
@@ -61,7 +61,7 @@ export default function AdminProfile() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Change Password Card */}
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6 space-y-4">
+        <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6 space-y-4">
           <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-3">
             <Key className="h-5 w-5 text-[var(--color-primary-600)]" />
             <h3 className="font-display text-base font-bold text-[var(--color-fg)]">Change Master Password</h3>
@@ -115,7 +115,7 @@ export default function AdminProfile() {
         </div>
 
         {/* API Token Management */}
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6 space-y-4 flex flex-col justify-between">
+        <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6 space-y-4 flex flex-col justify-between">
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
               <div className="flex items-center gap-2">
@@ -161,7 +161,7 @@ export default function AdminProfile() {
       </div>
 
       {/* Active Session Info */}
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6 space-y-4">
+      <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6 space-y-4">
         <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-3">
           <Laptop className="h-5 w-5 text-[var(--color-primary-600)]" />
           <h3 className="font-display text-base font-bold text-[var(--color-fg)]">Active Login Sessions</h3>

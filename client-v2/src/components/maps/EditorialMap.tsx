@@ -650,7 +650,7 @@ export function EditorialMap({
 
       <div
         ref={containerRef}
-        className="absolute inset-0 rounded-xl overflow-hidden"
+        className="absolute inset-0 rounded-md overflow-hidden"
         style={{ zIndex: 0 }}
       />
 
@@ -948,7 +948,7 @@ export function EmbedMap({
   return (
     <div
       ref={containerRef}
-      className={cn('rounded-xl overflow-hidden border border-border/50', className)}
+      className={cn('rounded-md overflow-hidden border border-border/50', className)}
       style={{ height }}
       role="img"
       aria-label={`Map centered at ${center[1].toFixed(2)}°N, ${center[0].toFixed(2)}°E`}

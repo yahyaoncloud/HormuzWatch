@@ -12,6 +12,7 @@ import (
 	"Geospatial-harmuz-watch/server/internal/domain/telemetry"
 	"Geospatial-harmuz-watch/server/internal/geo"
 	"Geospatial-harmuz-watch/server/internal/heatmap"
+	"Geospatial-harmuz-watch/server/internal/intelligence"
 	"Geospatial-harmuz-watch/server/internal/version"
 	"Geospatial-harmuz-watch/server/internal/websocket/hub"
 
@@ -35,10 +36,11 @@ func safeSendNonBlocking(ch chan hub.Message, msg hub.Message) (sent bool) {
 
 type Handlers struct {
 	hub *hub.Hub
+	tsm *intelligence.TrackStateManager
 }
 
-func NewHandlers(h *hub.Hub) *Handlers {
-	return &Handlers{hub: h}
+func NewHandlers(h *hub.Hub, tsm *intelligence.TrackStateManager) *Handlers {
+	return &Handlers{hub: h, tsm: tsm}
 }
 
 // TelemetryPayload is retained as the HTTP name for the shared telemetry
@@ -237,11 +239,11 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 
 	// Hydrate the dashboard from SQLite (async to prevent blocking the HTTP handler)
 	go func() {
-		// Fetch tracks updated in the last 2 hours
+		// Fetch tracks updated in the last 15 minutes (fresh data only)
 		query := `
 			SELECT track_id, asset_name, timestamp, lat, lon, speed, previous_speed, heading, course_delta, ais_age_minutes, hot_zone_distance_nm 
 			FROM tracks 
-			WHERE last_updated >= NOW() - INTERVAL '2 hours'
+			WHERE last_updated >= NOW() - INTERVAL '15 minutes'
 		`
 		rows, err := db.Query(query)
 		if err == nil {
@@ -271,11 +273,11 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 			log.Printf("[Hydration] Failed to fetch tracks: %v", err)
 		}
 
-		// Fetch anomalies updated in the last 2 hours
+		// Fetch anomalies updated in the last 15 minutes (fresh data only)
 		query = `
 			SELECT track_id, score, severity, reasons, actions 
 			FROM anomalies 
-			WHERE last_updated >= NOW() - INTERVAL '2 hours'
+			WHERE last_updated >= NOW() - INTERVAL '15 minutes'
 		`
 		rows, err = db.Query(query)
 		if err == nil {
@@ -324,5 +326,24 @@ func (h *Handlers) GetHeatmap(c *gin.Context) {
 		"type":   "heatmap",
 		"source": source,
 		"data":   gridData,
+	})
+}
+
+// GetRealtimeStats returns live in-memory pipeline statistics — no DB queries.
+func (h *Handlers) GetRealtimeStats(c *gin.Context) {
+	stats := h.tsm.GetStats()
+
+	// Enrich with queue metrics (atomic counters, no DB)
+	qm := intelligence.QueueMetrics()
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"stats":  stats,
+		"queue": gin.H{
+			"enqueued":  qm["enqueued"],
+			"dropped":   qm["dropped"],
+			"processed": qm["processed"],
+			"depth":     qm["depth"],
+		},
 	})
 }

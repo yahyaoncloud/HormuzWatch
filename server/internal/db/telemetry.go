@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"Geospatial-harmuz-watch/server/internal/domain/telemetry"
 )

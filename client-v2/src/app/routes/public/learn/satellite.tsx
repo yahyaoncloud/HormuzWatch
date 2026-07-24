@@ -112,9 +112,9 @@ export default function LearnSatellite() {
         subtitle="How HormuzWatch integrates VIIRS, Sentinel-2, and SAR imagery for maritime domain awareness"
         level={1}
         badges={[
-          { label: 'satellite sources', value: '4', color: 'primary' },
-          { label: 'dark vessels detected', value: '12', color: 'danger' },
-          { label: 'SAR revisit', value: '6h', color: 'info' },
+          { label: 'satellite sources', value: '—', color: 'primary' },
+          { label: 'dark vessels detected', value: '—', color: 'danger' },
+          { label: 'SAR revisit', value: '—', color: 'info' },
         ]}
       >
         <DocParagraph>
@@ -160,10 +160,10 @@ export default function LearnSatellite() {
         {/* VIIRS fire events legend */}
         <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'SAR dark vessels', value: '12', color: 'danger' },
-            { label: 'VIIRS fire events', value: '8', color: 'warning' },
-            { label: 'Sentinel-2 age', value: '2 days', color: 'info' },
-            { label: 'AIS correlated', value: '89%', color: 'success' },
+            { label: 'SAR dark vessels', value: '—', color: 'danger' },
+            { label: 'VIIRS fire events', value: '—', color: 'warning' },
+            { label: 'Sentinel-2 age', value: '—', color: 'info' },
+            { label: 'AIS correlated', value: '—', color: 'success' },
           ].map((m) => (
             <div
               key={m.label}

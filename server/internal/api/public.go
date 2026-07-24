@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"Geospatial-harmuz-watch/server/internal/db"
+	"Geospatial-harmuz-watch/server/internal/intelligence"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,17 +24,17 @@ var (
 
 // TopTrace represents a vessel trace with its anomaly data for public display.
 type TopTrace struct {
-	TrackID     string  `json:"trackId"`
-	AssetName   string  `json:"assetName"`
-	Timestamp   string  `json:"timestamp"`
-	Lat         float64 `json:"lat"`
-	Lon         float64 `json:"lon"`
-	Speed       float64 `json:"speed"`
-	Heading     float64 `json:"heading"`
-	Score       float64 `json:"score"`
-	Severity    string  `json:"severity"`
-	Reasons     string  `json:"reasons"`
-	UpdatedAt   string  `json:"updatedAt"`
+	TrackID   string  `json:"trackId"`
+	AssetName string  `json:"assetName"`
+	Timestamp string  `json:"timestamp"`
+	Lat       float64 `json:"lat"`
+	Lon       float64 `json:"lon"`
+	Speed     float64 `json:"speed"`
+	Heading   float64 `json:"heading"`
+	Score     float64 `json:"score"`
+	Severity  string  `json:"severity"`
+	Reasons   string  `json:"reasons"`
+	UpdatedAt string  `json:"updatedAt"`
 }
 
 // GetTopTraces returns the current top 10 traces by anomaly score (public, no auth).
@@ -177,6 +178,10 @@ type PublicMetrics struct {
 	AvgScore       float64 `json:"avgScore"`
 	ActiveRegions  int     `json:"activeRegions"`
 	Timestamp      string  `json:"timestamp"`
+	QueueEnqueued  int64   `json:"queueEnqueued"`
+	QueueDropped   int64   `json:"queueDropped"`
+	QueueProcessed int64   `json:"queueProcessed"`
+	QueueDepth     int64   `json:"queueDepth"`
 }
 
 // GetPublicMetrics returns aggregate metrics for public visitors (no auth required).
@@ -219,38 +224,45 @@ func GetPublicMetrics(c *gin.Context) {
 func queryPublicMetrics() PublicMetrics {
 	m := PublicMetrics{Timestamp: time.Now().UTC().Format(time.RFC3339)}
 
-	// Total active tracks in last 2 hours
-	db.DB.QueryRow(`SELECT COUNT(*) FROM tracks WHERE last_updated >= NOW() - INTERVAL '2 hours'`).Scan(&m.TotalTracks)
+	// Total active tracks in last 15 minutes (fresh data only)
+	db.DB.QueryRow(`SELECT COUNT(*) FROM tracks WHERE last_updated >= NOW() - INTERVAL '15 minutes'`).Scan(&m.TotalTracks)
 
 	// Maritime count (non-flight IDs)
-	db.DB.QueryRow(`SELECT COUNT(*) FROM tracks WHERE last_updated >= NOW() - INTERVAL '2 hours' AND track_id NOT LIKE 'FLIGHT-%' AND track_id NOT LIKE 'ADS-%' AND track_id NOT LIKE 'ICAO-%'`).Scan(&m.MaritimeCount)
+	db.DB.QueryRow(`SELECT COUNT(*) FROM tracks WHERE last_updated >= NOW() - INTERVAL '15 minutes' AND track_id NOT LIKE 'FLIGHT-%' AND track_id NOT LIKE 'ADS-%' AND track_id NOT LIKE 'ICAO-%'`).Scan(&m.MaritimeCount)
 
 	// Aviation count (flight IDs)
-	db.DB.QueryRow(`SELECT COUNT(*) FROM tracks WHERE last_updated >= NOW() - INTERVAL '2 hours' AND (track_id LIKE 'FLIGHT-%' OR track_id LIKE 'ADS-%' OR track_id LIKE 'ICAO-%')`).Scan(&m.AviationCount)
+	db.DB.QueryRow(`SELECT COUNT(*) FROM tracks WHERE last_updated >= NOW() - INTERVAL '15 minutes' AND (track_id LIKE 'FLIGHT-%' OR track_id LIKE 'ADS-%' OR track_id LIKE 'ICAO-%')`).Scan(&m.AviationCount)
 
 	// Severity breakdown from anomalies
-	db.DB.QueryRow(`SELECT COUNT(*) FROM anomalies a JOIN tracks t ON a.track_id = t.track_id WHERE t.last_updated >= NOW() - INTERVAL '2 hours' AND a.severity = 'critical'`).Scan(&m.CriticalCount)
-	db.DB.QueryRow(`SELECT COUNT(*) FROM anomalies a JOIN tracks t ON a.track_id = t.track_id WHERE t.last_updated >= NOW() - INTERVAL '2 hours' AND a.severity = 'high'`).Scan(&m.HighCount)
-	db.DB.QueryRow(`SELECT COUNT(*) FROM anomalies a JOIN tracks t ON a.track_id = t.track_id WHERE t.last_updated >= NOW() - INTERVAL '2 hours' AND a.severity = 'medium'`).Scan(&m.MediumCount)
-	db.DB.QueryRow(`SELECT COUNT(*) FROM anomalies a JOIN tracks t ON a.track_id = t.track_id WHERE t.last_updated >= NOW() - INTERVAL '2 hours' AND a.severity = 'low'`).Scan(&m.LowCount)
+	db.DB.QueryRow(`SELECT COUNT(*) FROM anomalies a JOIN tracks t ON a.track_id = t.track_id WHERE t.last_updated >= NOW() - INTERVAL '15 minutes' AND a.severity = 'critical'`).Scan(&m.CriticalCount)
+	db.DB.QueryRow(`SELECT COUNT(*) FROM anomalies a JOIN tracks t ON a.track_id = t.track_id WHERE t.last_updated >= NOW() - INTERVAL '15 minutes' AND a.severity = 'high'`).Scan(&m.HighCount)
+	db.DB.QueryRow(`SELECT COUNT(*) FROM anomalies a JOIN tracks t ON a.track_id = t.track_id WHERE t.last_updated >= NOW() - INTERVAL '15 minutes' AND a.severity = 'medium'`).Scan(&m.MediumCount)
+	db.DB.QueryRow(`SELECT COUNT(*) FROM anomalies a JOIN tracks t ON a.track_id = t.track_id WHERE t.last_updated >= NOW() - INTERVAL '15 minutes' AND a.severity = 'low'`).Scan(&m.LowCount)
 
 	// Average anomaly score
-	db.DB.QueryRow(`SELECT COALESCE(AVG(a.score), 0) FROM anomalies a JOIN tracks t ON a.track_id = t.track_id WHERE t.last_updated >= NOW() - INTERVAL '2 hours'`).Scan(&m.AvgScore)
+	db.DB.QueryRow(`SELECT COALESCE(AVG(a.score), 0) FROM anomalies a JOIN tracks t ON a.track_id = t.track_id WHERE t.last_updated >= NOW() - INTERVAL '15 minutes'`).Scan(&m.AvgScore)
 
 	// Active regions: how many of the monitored Gulf regions currently have
 	// active track coverage (last 2h), derived from track longitudes instead of
 	// a hardcoded constant.
 	m.ActiveRegions = queryActiveRegions()
 
+	// Pipeline queue metrics
+	qm := intelligence.QueueMetrics()
+	m.QueueEnqueued = qm["enqueued"]
+	m.QueueDropped = qm["dropped"]
+	m.QueueProcessed = qm["processed"]
+	m.QueueDepth = qm["depth"]
+
 	return m
 }
 
 // queryActiveRegions counts the distinct monitored Gulf regions that have at
-// least one active track in the last 2 hours. Regions are bucketed by
+// least one active track in the last 15 minutes. Regions are bucketed by
 // longitude: Persian Gulf (<56°E), Strait of Hormuz (56–59°E), Gulf of Oman
 // (>=59°E). This replaces the previous hardcoded value of 3.
 func queryActiveRegions() int {
-	rows, err := db.DB.Query(`SELECT lon FROM tracks WHERE last_updated >= NOW() - INTERVAL '2 hours'`)
+	rows, err := db.DB.Query(`SELECT lon FROM tracks WHERE last_updated >= NOW() - INTERVAL '15 minutes'`)
 	if err != nil {
 		log.Printf("[PublicMetrics] failed to query active regions: %v", err)
 		return 0

@@ -1,10 +1,10 @@
 import { type LoaderFunctionArgs, useLoaderData, useRouteError } from 'react-router';
 import { Section } from '@/components/layout/Section';
 import {
-  AVIATION_METRICS,
-  MARITIME_METRICS,
-  MetricGrid,
   RegionalDashboardBlock,
+  MetricGrid,
+  LiveMaritimeMetrics,
+  LiveAviationMetrics,
 } from '@/components/data/MetricGrid';
 import { RegionalEditorialMap, type RegionKey } from '@/components/maps';
 import { getPublicMetrics, getTopTraces } from '@/lib/api';
@@ -67,14 +67,7 @@ export async function clientLoader({ params }: LoaderFunctionArgs) {
   // Calculate regional metrics
   const anomaliesCount = regionalTraces.length;
   // If there are anomalies in the region, risk score goes up
-  const baseRisk =
-    regionParam === 'hormuz'
-      ? 72
-      : regionParam === 'red-sea'
-        ? 68
-        : regionParam === 'suez'
-          ? 45
-          : 61;
+  const baseRisk = 0;
   const riskScore = Math.min(100, baseRisk + anomaliesCount * 5);
 
   const regionMeta = {
@@ -234,13 +227,7 @@ export async function clientLoader({ params }: LoaderFunctionArgs) {
                 ? 0.15
                 : 0.45)
       )
-    : regionParam === 'hormuz'
-      ? 234
-      : regionParam === 'red-sea'
-        ? 567
-        : regionParam === 'suez'
-          ? 89
-          : 1123;
+    : 0;
   const aircraftCount = globalMetrics
     ? Math.round(
         globalMetrics.aviationCount *
@@ -252,13 +239,7 @@ export async function clientLoader({ params }: LoaderFunctionArgs) {
                 ? 0.1
                 : 0.38)
       )
-    : regionParam === 'hormuz'
-      ? 45
-      : regionParam === 'red-sea'
-        ? 78
-        : regionParam === 'suez'
-          ? 12
-          : 156;
+    : 0;
 
   return {
     region: regionParam,
@@ -269,51 +250,16 @@ export async function clientLoader({ params }: LoaderFunctionArgs) {
       aircraft: aircraftCount,
       anomalies: anomaliesCount,
       riskScore: riskScore,
-      aisRate:
-        regionParam === 'hormuz'
-          ? 1200
-          : regionParam === 'red-sea'
-            ? 2100
-            : regionParam === 'suez'
-              ? 450
-              : 3200,
-      adsbRate:
-        regionParam === 'hormuz'
-          ? 800
-          : regionParam === 'red-sea'
-            ? 1200
-            : regionParam === 'suez'
-              ? 200
-              : 900,
+      aisRate: 0,
+      adsbRate: 0,
       lastIncident,
     },
     liveVessels: vesselsCount,
     liveAircraft: aircraftCount,
     activeAnomalies: anomaliesCount,
-    riskTrend:
-      regionParam === 'hormuz'
-        ? [65, 67, 68, 70, 71, 72]
-        : regionParam === 'red-sea'
-          ? [50, 55, 58, 62, 65, 68]
-          : regionParam === 'suez'
-            ? [44, 45, 45, 46, 45, 45]
-            : [55, 58, 59, 60, 62, 61],
-    vesselTrend:
-      regionParam === 'hormuz'
-        ? [220, 225, 228, 230, 232, 234]
-        : regionParam === 'red-sea'
-          ? [540, 548, 552, 558, 562, 567]
-          : regionParam === 'suez'
-            ? [80, 82, 85, 87, 88, 89]
-            : [1080, 1095, 1105, 1112, 1118, 1123],
-    aircraftTrend:
-      regionParam === 'hormuz'
-        ? [42, 43, 44, 45, 45, 45]
-        : regionParam === 'red-sea'
-          ? [70, 72, 75, 76, 78, 78]
-          : regionParam === 'suez'
-            ? [10, 11, 11, 12, 12, 12]
-            : [142, 145, 148, 150, 153, 156],
+    riskTrend: [],
+    vesselTrend: [],
+    aircraftTrend: [],
   };
 }
 
@@ -427,7 +373,7 @@ export default function HormuzIntelligence() {
         className="mt-12"
         wide
       >
-        <MetricGrid metrics={MARITIME_METRICS} columns={4} />
+        <LiveMaritimeMetrics columns={4} />
       </Section>
 
       <Section
@@ -437,7 +383,7 @@ export default function HormuzIntelligence() {
         className="mt-12"
         wide
       >
-        <MetricGrid metrics={AVIATION_METRICS} columns={4} />
+        <LiveAviationMetrics columns={4} />
       </Section>
 
       <Section

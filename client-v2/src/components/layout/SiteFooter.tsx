@@ -26,7 +26,7 @@ export const Wordmark = ({ className }: { className?: string }) => (
 export function SiteFooter() {
   return (
     <footer className="border-t border-[var(--color-border)] bg-[var(--color-bg)]">
-      <div className="mx-auto max-w-5xl px-5 py-8 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="mx-auto max-w-5xl px-5 py-4 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Wordmark />
           <span className="hidden sm:inline font-ui text-xs text-[var(--color-fg-subtle)]">
@@ -52,12 +52,6 @@ export function SiteFooter() {
             className="font-ui text-xs text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] transition-colors"
           >
             Documentation
-          </Link>
-          <Link
-            to="/api"
-            className="font-ui text-xs text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] transition-colors"
-          >
-            API
           </Link>
         </nav>
 

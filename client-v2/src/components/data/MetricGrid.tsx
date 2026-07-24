@@ -106,7 +106,7 @@ export function MetricCard({ metric, compact = false, className, onClick }: Metr
   return (
     <article
       className={cn(
-        'glass-card rounded-xl p-4 md:p-5 transition-all hover:border-[var(--color-primary-300)]',
+        'glass-card rounded-md p-4 md:p-5 transition-all hover:border-[var(--color-primary-300)]',
         statusClass && `ring-1 ${statusClass}`,
         compact && 'p-3',
         className
@@ -479,245 +479,6 @@ function transformPlatformMetrics(data: Awaited<ReturnType<typeof getPublicMetri
 }
 
 // ============================================================
-// Static Metric Exports - For use in static pages
-// ============================================================
-
-export const MARITIME_METRICS: Metric[] = [
-  {
-    id: 'vessels',
-    label: 'Active Vessels',
-    value: 12847,
-    unit: '',
-    color: 'primary',
-    trend: 'up',
-    change: 2.3,
-    sparkline: [],
-    realtime: true,
-    threshold: { warn: 15000, critical: 20000 },
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.5}
-          d="M21 12l-2 2m-9.663-10.08l-4.663 4.663M21 12l-2 2m0 0v12m-2-2h-12m-2 0V6a2 2 0 012-2h9.663M3 20h18a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-        />
-      </svg>
-    ),
-  },
-  {
-    id: 'ais_messages',
-    label: 'AIS Messages/min',
-    value: 45200,
-    unit: '/min',
-    color: 'info',
-    trend: 'up',
-    change: 1.2,
-    sparkline: [],
-    realtime: true,
-    format: formatCompact,
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.5}
-          d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"
-        />
-      </svg>
-    ),
-  },
-  {
-    id: 'anomalies',
-    label: 'Active Anomalies',
-    value: 23,
-    unit: '',
-    color: 'danger',
-    trend: 'up',
-    change: 15,
-    sparkline: [],
-    realtime: true,
-    threshold: { warn: 50, critical: 100 },
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.5}
-          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-        />
-      </svg>
-    ),
-  },
-  {
-    id: 'risk_index',
-    label: 'Maritime Risk Index',
-    value: 67,
-    unit: '/100',
-    color: 'warning',
-    trend: 'up',
-    change: 3,
-    sparkline: [],
-    realtime: true,
-    threshold: { warn: 60, critical: 80 },
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.5}
-          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-        />
-      </svg>
-    ),
-  },
-];
-
-export const AVIATION_METRICS: Metric[] = [
-  {
-    id: 'aircraft',
-    label: 'Active Aircraft',
-    value: 8234,
-    unit: '',
-    color: 'info',
-    trend: 'stable',
-    change: 0.2,
-    sparkline: [],
-    realtime: true,
-    threshold: { warn: 10000, critical: 15000 },
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.5}
-          d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"
-        />
-      </svg>
-    ),
-  },
-  {
-    id: 'adsb_messages',
-    label: 'ADS-B Messages/min',
-    value: 128700,
-    unit: '/min',
-    color: 'primary',
-    trend: 'up',
-    change: 0.8,
-    sparkline: [],
-    realtime: true,
-    format: formatCompact,
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.5}
-          d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"
-        />
-      </svg>
-    ),
-  },
-  {
-    id: 'aviation_anomalies',
-    label: 'Aviation Anomalies',
-    value: 0,
-    unit: '',
-    color: 'danger',
-    trend: 'stable',
-    change: 0,
-    sparkline: [],
-    realtime: true,
-    threshold: { warn: 10, critical: 25 },
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.5}
-          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-        />
-      </svg>
-    ),
-  },
-  {
-    id: 'altitude_avg',
-    label: 'Avg Altitude',
-    value: 35000,
-    unit: 'ft',
-    color: 'success',
-    trend: 'stable',
-    change: 0,
-    sparkline: [],
-    realtime: true,
-    format: (v) => formatNumber(v) + ' ft',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.5}
-          d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"
-        />
-      </svg>
-    ),
-  },
-];
-
-export const PLATFORM_METRICS: Metric[] = [
-  {
-    id: 'api_uptime',
-    label: 'API Uptime',
-    value: '99.99%',
-    unit: '',
-    color: 'success',
-    trend: 'stable',
-    change: 0,
-    sparkline: [],
-    realtime: false,
-    threshold: { warn: 99.5, critical: 99.0 },
-    format: (v) => v.toString(),
-  },
-  {
-    id: 'ws_throughput',
-    label: 'WebSocket Throughput',
-    value: 754,
-    unit: 'msg/s',
-    color: 'primary',
-    trend: 'up',
-    change: 5.2,
-    sparkline: [],
-    realtime: true,
-    format: formatCompact,
-  },
-  {
-    id: 'ingestion_rate',
-    label: 'Data Ingestion Rate',
-    value: 21.1,
-    unit: 'MB/s',
-    color: 'info',
-    trend: 'up',
-    change: 3.1,
-    sparkline: [],
-    realtime: true,
-    format: (v) => v.toFixed(1) + ' MB/s',
-  },
-  {
-    id: 'detection_latency',
-    label: 'Detection Latency',
-    value: 247,
-    unit: 'ms',
-    color: 'warning',
-    trend: 'down',
-    change: -12,
-    sparkline: [],
-    realtime: true,
-    threshold: { warn: 500, critical: 1000 },
-    format: (v) => v.toFixed(0) + ' ms',
-  },
-];
-
-// ============================================================
 // Live Metric Components - Auto-fetching from API
 // ============================================================
 
@@ -750,7 +511,7 @@ export function LiveMaritimeMetrics({
         )}
       >
         {[...Array(columns)].map((_, i) => (
-          <div key={i} className="glass-card rounded-xl p-4 md:p-5 animate-pulse">
+          <div key={i} className="glass-card rounded-md p-4 md:p-5 animate-pulse">
             <div className="h-4 bg-[var(--color-bg-elevated)] rounded w-3/4 mb-2"></div>
             <div className="h-8 bg-[var(--color-bg-elevated)] rounded w-1/2"></div>
           </div>
@@ -791,7 +552,7 @@ export function LiveAviationMetrics({
         )}
       >
         {[...Array(columns)].map((_, i) => (
-          <div key={i} className="glass-card rounded-xl p-4 md:p-5 animate-pulse">
+          <div key={i} className="glass-card rounded-md p-4 md:p-5 animate-pulse">
             <div className="h-4 bg-[var(--color-bg-elevated)] rounded w-3/4 mb-2"></div>
             <div className="h-8 bg-[var(--color-bg-elevated)] rounded w-1/2"></div>
           </div>
@@ -836,7 +597,7 @@ export function LivePlatformMetrics({
         )}
       >
         {[...Array(columns)].map((_, i) => (
-          <div key={i} className="glass-card rounded-xl p-4 md:p-5 animate-pulse">
+          <div key={i} className="glass-card rounded-md p-4 md:p-5 animate-pulse">
             <div className="h-4 bg-[var(--color-bg-elevated)] rounded w-3/4 mb-2"></div>
             <div className="h-8 bg-[var(--color-bg-elevated)] rounded w-1/2"></div>
           </div>
@@ -951,7 +712,7 @@ interface RegionalDashboardBlockProps {
 
 export function RegionalDashboardBlock({ region, metrics }: RegionalDashboardBlockProps) {
   return (
-    <div className="glass-card rounded-xl p-4">
+    <div className="glass-card rounded-md p-4">
       <div className="flex items-center justify-between mb-4">
         <h4 className="font-display text-heading-sm text-[var(--color-fg)]">{region}</h4>
         <span

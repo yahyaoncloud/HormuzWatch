@@ -53,7 +53,7 @@ export function Modal({
   if (!open) return null;
 
   const sizeClasses = {
-    sm: 'max-w-md',
+    sm: 'max-w-sm',
     md: 'max-w-lg',
     lg: 'max-w-2xl',
     xl: 'max-w-4xl',
@@ -62,7 +62,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
       onClick={closeOnOverlayClick ? onClose : undefined}
       role="dialog"
       aria-modal="true"
@@ -73,22 +73,22 @@ export function Modal({
         ref={contentRef}
         tabIndex={-1}
         className={cn(
-          'relative w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 shadow-2xl animate-in slide-in-from-bottom-4 duration-200',
+          'relative w-full border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 shadow-lg',
           sizeClasses[size],
           className
         )}
         onClick={(e) => e.stopPropagation()}
       >
         {(title || showClose) && (
-          <div className="flex items-start justify-between border-b border-[var(--color-border)] pb-4 mb-4">
+          <div className="flex items-start justify-between border-b border-[var(--color-border)] pb-3 mb-3">
             <div>
               {title && (
-                <h2 id="modal-title" className="font-display text-lg font-bold text-[var(--color-fg)]">
+                <h2 id="modal-title" className="font-display text-base font-semibold text-[var(--color-fg)]">
                   {title}
                 </h2>
               )}
               {subtitle && (
-                <p id="modal-subtitle" className="mt-1 font-ui text-xs text-[var(--color-fg-muted)]">
+                <p id="modal-subtitle" className="mt-0.5 font-ui text-xs text-[var(--color-fg-muted)]">
                   {subtitle}
                 </p>
               )}
@@ -97,10 +97,10 @@ export function Modal({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1 rounded-lg text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-fg)] transition-colors"
+                className="p-1 text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-fg)] transition-colors"
                 aria-label="Close dialog"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             )}
           </div>
@@ -172,15 +172,9 @@ export function Drawer({
     bottom: 'bottom-0 left-0 right-0',
   };
 
-  const animationClasses = {
-    right: 'slide-in-from-right-4',
-    left: 'slide-in-from-left-4',
-    bottom: 'slide-in-from-bottom-4',
-  };
-
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-end bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-end justify-end bg-black/40 backdrop-blur-sm"
       onClick={closeOnOverlayClick ? onClose : undefined}
       role="dialog"
       aria-modal="true"
@@ -191,24 +185,23 @@ export function Drawer({
         ref={contentRef}
         tabIndex={-1}
         className={cn(
-          'relative rounded-t-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] shadow-2xl flex flex-col animate-in duration-300',
+          'relative border border-[var(--color-border)] bg-[var(--color-bg-card)] shadow-lg flex flex-col',
           sizeClasses[size],
           positionClasses[position],
-          animationClasses[position],
           className
         )}
         onClick={(e) => e.stopPropagation()}
       >
         {(title || showClose) && (
-          <div className="flex items-start justify-between border-b border-[var(--color-border)] p-4 pb-3">
+          <div className="flex items-start justify-between border-b border-[var(--color-border)] p-3">
             <div className="pr-4">
               {title && (
-                <h2 id="drawer-title" className="font-display text-lg font-bold text-[var(--color-fg)]">
+                <h2 id="drawer-title" className="font-display text-base font-semibold text-[var(--color-fg)]">
                   {title}
                 </h2>
               )}
               {subtitle && (
-                <p id="drawer-subtitle" className="mt-1 font-ui text-xs text-[var(--color-fg-muted)]">
+                <p id="drawer-subtitle" className="mt-0.5 font-ui text-xs text-[var(--color-fg-muted)]">
                   {subtitle}
                 </p>
               )}
@@ -217,21 +210,21 @@ export function Drawer({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1 rounded-lg text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-fg)] transition-colors shrink-0"
+                className="p-1 text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-fg)] transition-colors shrink-0"
                 aria-label="Close drawer"
               >
                 {position === 'bottom' ? (
-                  <ChevronDown className="h-5 w-5" />
+                  <ChevronDown className="h-4 w-4" />
                 ) : position === 'left' ? (
-                  <ChevronRight className="h-5 w-5" />
+                  <ChevronRight className="h-4 w-4" />
                 ) : (
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4" />
                 )}
               </button>
             )}
           </div>
         )}
-        <div className="flex-1 overflow-y-auto p-4">{children}</div>
+        <div className="flex-1 overflow-y-auto p-3">{children}</div>
       </div>
     </div>
   );
@@ -268,13 +261,13 @@ export function ConfirmDialog({
 
   return (
     <Modal open={open} onClose={onClose} title={title} size="sm">
-      <p className="font-ui text-sm text-[var(--color-fg-muted)] mb-6">{message}</p>
-      <div className="flex items-center justify-end gap-3">
+      <p className="font-ui text-sm text-[var(--color-fg-muted)] mb-4">{message}</p>
+      <div className="flex items-center justify-end gap-2">
         <button
           type="button"
           onClick={onClose}
           disabled={loading}
-          className="px-4 py-2 border border-[var(--color-border)] bg-[var(--color-bg)] text-xs font-semibold rounded-xl hover:bg-[var(--color-bg-elevated)] transition-colors"
+          className="px-3.5 py-2 border border-[var(--color-border)] text-xs font-medium rounded-md hover:bg-[var(--color-bg-elevated)] transition-colors"
         >
           {cancelLabel}
         </button>
@@ -282,19 +275,9 @@ export function ConfirmDialog({
           type="button"
           onClick={onConfirm}
           disabled={loading}
-          className={cn('px-4 py-2 text-xs font-semibold rounded-xl transition-colors', variantStyles[variant])}
+          className={cn('px-3.5 py-2 text-xs font-medium rounded-md transition-colors', variantStyles[variant])}
         >
-          {loading ? (
-            <>
-              <svg className="animate-spin h-3.5 w-3.5 mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-                <path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="1" />
-              </svg>
-              Processing...
-            </>
-          ) : (
-            confirmLabel
-          )}
+          {loading ? 'Processing...' : confirmLabel}
         </button>
       </div>
     </Modal>

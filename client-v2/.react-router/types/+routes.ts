@@ -59,6 +59,9 @@ type Pages = {
   "/admin/analytics": {
     params: {};
   };
+  "/admin/analysis": {
+    params: {};
+  };
   "/intelligence": {
     params: {};
   };
@@ -94,9 +97,6 @@ type Pages = {
   "/learn/detection": {
     params: {};
   };
-  "/api": {
-    params: {};
-  };
   "/research": {
     params: {};
   };
@@ -116,7 +116,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/login" | "/register" | "/admin" | "/admin/news" | "/admin/sources" | "/admin/events" | "/admin/threats" | "/admin/users" | "/admin/settings" | "/admin/datasets" | "/admin/profile" | "/admin/audit" | "/admin/tracking" | "/admin/watchlist" | "/admin/analytics" | "/intelligence" | "/intelligence/:region" | "/learn" | "/learn/satellite" | "/learn/regional" | "/learn/anomaly" | "/learn/heatmaps" | "/learn/adsb" | "/learn/ais" | "/learn/architecture" | "/learn/detection" | "/api" | "/research" | "/deploy" | "/about" | "/*";
+    page: "/" | "/login" | "/register" | "/admin" | "/admin/news" | "/admin/sources" | "/admin/events" | "/admin/threats" | "/admin/users" | "/admin/settings" | "/admin/datasets" | "/admin/profile" | "/admin/audit" | "/admin/tracking" | "/admin/watchlist" | "/admin/analytics" | "/admin/analysis" | "/intelligence" | "/intelligence/:region" | "/learn" | "/learn/satellite" | "/learn/regional" | "/learn/anomaly" | "/learn/heatmaps" | "/learn/adsb" | "/learn/ais" | "/learn/architecture" | "/learn/detection" | "/research" | "/deploy" | "/about" | "/*";
   };
   "routes/auth/login.tsx": {
     id: "routes/auth/login";
@@ -128,7 +128,7 @@ type RouteFiles = {
   };
   "routes/admin/layout.tsx": {
     id: "routes/admin/layout";
-    page: "/admin" | "/admin/news" | "/admin/sources" | "/admin/events" | "/admin/threats" | "/admin/users" | "/admin/settings" | "/admin/datasets" | "/admin/profile" | "/admin/audit" | "/admin/tracking" | "/admin/watchlist" | "/admin/analytics";
+    page: "/admin" | "/admin/news" | "/admin/sources" | "/admin/events" | "/admin/threats" | "/admin/users" | "/admin/settings" | "/admin/datasets" | "/admin/profile" | "/admin/audit" | "/admin/tracking" | "/admin/watchlist" | "/admin/analytics" | "/admin/analysis";
   };
   "routes/admin/dashboard.tsx": {
     id: "routes/admin/dashboard";
@@ -182,9 +182,13 @@ type RouteFiles = {
     id: "routes/admin/analytics";
     page: "/admin/analytics";
   };
+  "routes/admin/analysis.tsx": {
+    id: "routes/admin/analysis";
+    page: "/admin/analysis";
+  };
   "routes/public/layout.tsx": {
     id: "routes/public/layout";
-    page: "/" | "/intelligence" | "/intelligence/:region" | "/learn" | "/learn/satellite" | "/learn/regional" | "/learn/anomaly" | "/learn/heatmaps" | "/learn/adsb" | "/learn/ais" | "/learn/architecture" | "/learn/detection" | "/api" | "/research" | "/deploy" | "/about";
+    page: "/" | "/intelligence" | "/intelligence/:region" | "/learn" | "/learn/satellite" | "/learn/regional" | "/learn/anomaly" | "/learn/heatmaps" | "/learn/adsb" | "/learn/ais" | "/learn/architecture" | "/learn/detection" | "/research" | "/deploy" | "/about";
   };
   "routes/public/home.tsx": {
     id: "routes/public/home";
@@ -238,10 +242,6 @@ type RouteFiles = {
     id: "routes/public/learn/detection";
     page: "/learn/detection";
   };
-  "routes/public/api.tsx": {
-    id: "routes/public/api";
-    page: "/api";
-  };
   "routes/public/research.tsx": {
     id: "routes/public/research";
     page: "/research";
@@ -278,6 +278,7 @@ type RouteModules = {
   "routes/admin/tracking": typeof import("./src/app/routes/admin/tracking.tsx");
   "routes/admin/watchlist": typeof import("./src/app/routes/admin/watchlist.tsx");
   "routes/admin/analytics": typeof import("./src/app/routes/admin/analytics.tsx");
+  "routes/admin/analysis": typeof import("./src/app/routes/admin/analysis.tsx");
   "routes/public/layout": typeof import("./src/app/routes/public/layout.tsx");
   "routes/public/home": typeof import("./src/app/routes/public/home.tsx");
   "routes/public/intelligence/index": typeof import("./src/app/routes/public/intelligence/index.tsx");
@@ -292,7 +293,6 @@ type RouteModules = {
   "routes/public/learn/ais": typeof import("./src/app/routes/public/learn/ais.tsx");
   "routes/public/learn/architecture": typeof import("./src/app/routes/public/learn/architecture.tsx");
   "routes/public/learn/detection": typeof import("./src/app/routes/public/learn/detection.tsx");
-  "routes/public/api": typeof import("./src/app/routes/public/api.tsx");
   "routes/public/research": typeof import("./src/app/routes/public/research.tsx");
   "routes/public/deploy": typeof import("./src/app/routes/public/deploy.tsx");
   "routes/public/about": typeof import("./src/app/routes/public/about.tsx");

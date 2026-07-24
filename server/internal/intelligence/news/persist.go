@@ -92,8 +92,16 @@ func ProcessAndStore(ctx context.Context, raw source.RawArticle, sourceID string
 		translator := NewTranslator()
 		if translated, err := translator.Translate(ctx, raw.Content, assessment.Language, "en"); err == nil && translated != "" {
 			slog.Debug("article translated", "article", articleID, "from", assessment.Language, "to", "en")
-			// Translation stored in metadata — could persist as a separate column
 		}
+	}
+
+	// ── Text-to-JSON extraction fallback (always, not just LLM) ─
+	// Produces a structured JSON payload from raw text using regex.
+	// This runs regardless of LLM availability so every article has
+	// a minimum JSON payload with country/city/vessel extraction.
+	extractedJSON := ExtractTextToJSON(raw.Content + " " + raw.Title)
+	if extractedJSON != "" {
+		_ = db.StoreArticleMetadata(articleID, "regex_extraction", extractedJSON)
 	}
 
 	// ── State: STORED → DONE ─────────────────────────────────

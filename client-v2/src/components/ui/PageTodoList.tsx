@@ -27,7 +27,7 @@ export function PageTodoList({ pageTitle, items: initialItems }: PageTodoListPro
   const progressPct = Math.round((completedCount / items.length) * 100) || 0;
 
   return (
-    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-5 space-y-4 ">
+    <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-5 space-y-4 ">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--color-border)] pb-3">
         <div className="flex items-center gap-2.5">
           <div className="p-2 rounded-lg bg-[var(--color-primary-600)]/15 text-[var(--color-primary-600)] border border-[var(--color-primary-600)]/30">

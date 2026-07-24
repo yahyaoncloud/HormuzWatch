@@ -34,6 +34,7 @@ const ADMIN_NAV = [
   { label: 'User Roster', href: '/admin/users', icon: Users, badge: 'Pending', badgeColor: 'danger' as const },
   { label: 'Dataset Pipeline', href: '/admin/datasets', icon: Database },
   { label: 'Analytics & Reports', href: '/admin/analytics', icon: BarChart3 },
+  { label: 'Dataset Analysis', href: '/admin/analysis', icon: BarChart3 },
   { label: 'Audit Trail', href: '/admin/audit', icon: FileSearch },
   { label: 'Site Settings', href: '/admin/settings', icon: Settings },
 ];
@@ -54,7 +55,7 @@ export function AdminDashboardLayout() {
   if (!user || !isAdminEmail) {
     return (
       <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-[var(--color-bg)] text-[var(--color-fg)] p-6 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--color-danger)]/20 text-[var(--color-danger)] border border-[var(--color-danger)]/30">
+        <div className="flex h-12 w-12 items-center justify-center rounded-md bg-[var(--color-danger)]/20 text-[var(--color-danger)] border border-[var(--color-danger)]/30">
           <Lock className="h-6 w-6" />
         </div>
         <h1 className="font-display text-2xl font-bold">Admin Portal Access Restricted</h1>
@@ -76,7 +77,7 @@ export function AdminDashboardLayout() {
   if (isAdminEmail && !isVerified) {
     return (
       <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-[var(--color-bg)] text-[var(--color-fg)] p-6 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-500 border border-amber-500/30">
+        <div className="flex h-12 w-12 items-center justify-center rounded-md bg-amber-500/20 text-amber-500 border border-amber-500/30">
           <AlertTriangle className="h-6 w-6" />
         </div>
         <h1 className="font-display text-2xl font-bold">Admin Verification Required</h1>
@@ -124,7 +125,7 @@ export function AdminDashboardLayout() {
       {/* Main Workspace */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         {/* Admin Command Header */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)]/80 px-6 backdrop-blur-md z-20">
+        <header className="flex h-12 shrink-0 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)]/80 px-6 backdrop-blur-md z-20">
           <div className="flex items-center gap-3 flex-1 max-w-md">
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-fg-muted)]" />
@@ -133,7 +134,7 @@ export function AdminDashboardLayout() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Admin Search: users, system settings, or dataset logs..."
-                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] pl-9 pr-4 py-1.5 text-xs font-ui text-[var(--color-fg)] placeholder:text-[var(--color-fg-muted)] focus:border-[var(--color-primary-600)] focus:outline-none"
+                className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg)] pl-9 pr-4 py-1.5 text-xs font-ui text-[var(--color-fg)] placeholder:text-[var(--color-fg-muted)] focus:border-[var(--color-primary-600)] focus:outline-none"
               />
             </div>
           </div>

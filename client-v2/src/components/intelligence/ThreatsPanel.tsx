@@ -33,46 +33,42 @@ export function ThreatsPanel({
   onHoverThreat,
 }: ThreatsPanelProps) {
   return (
-    <aside className="hidden lg:block w-80 flex-shrink-0 p-4">
-      <div className="glass-card rounded-xl border border-[var(--color-border)]/50 flex flex-col max-h-[calc(100vh-8rem)]">
-        {/* Header — fixed */}
-        <div className="shrink-0 px-4 pt-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-display text-sm font-semibold text-[var(--color-fg)] flex items-center gap-2">
+    <aside className="hidden lg:block w-full flex-shrink-0">
+      <div className="border-l border-[var(--color-border)] bg-[var(--color-bg)]/70 flex flex-col h-full">
+        {/* Header */}
+        <div className="shrink-0 px-3 py-2.5 border-b border-[var(--color-border)]">
+          <div className="flex items-center justify-between">
+            <h3 className="font-display text-[13px] font-semibold text-[var(--color-fg)] flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-[var(--color-danger)]" />
-              Threat Intelligence
+              Threat Intel
             </h3>
-            <span className="font-data text-[11px] font-medium text-[var(--color-fg-muted)] bg-[var(--color-bg-elevated)] px-2 py-0.5 rounded-full">
-              {totalThreats} reports
+            <span className="font-mono text-[10px] font-medium text-[var(--color-fg-muted)] bg-[var(--color-bg-elevated)] px-1.5 py-0.5 border border-[var(--color-border)]">
+              {totalThreats}
             </span>
           </div>
 
-          {/* Severity summary bar */}
-          <div className="mb-3 flex gap-1.5">
-            <div className="flex-1 rounded-md bg-[var(--color-danger-muted)]/50 border border-[var(--color-danger)]/20 p-2 text-center">
-              <div className="font-data text-sm font-bold text-[var(--color-danger)]">
-                {criticalCount}
-              </div>
-              <div className="font-ui text-[10px] text-[var(--color-fg-muted)]">Critical</div>
+          {/* Severity strip */}
+          <div className="mt-2 flex gap-1">
+            <div className="flex-1 bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 p-1.5 text-center">
+              <div className="font-mono text-xs font-bold text-[var(--color-danger)]">{criticalCount}</div>
+              <div className="text-[9px] text-[var(--color-fg-muted)] uppercase">Critical</div>
             </div>
-            <div className="flex-1 rounded-md bg-[var(--color-warning-muted)]/50 border border-[var(--color-warning)]/20 p-2 text-center">
-              <div className="font-data text-sm font-bold text-[var(--color-warning)]">
-                {highCount}
-              </div>
-              <div className="font-ui text-[10px] text-[var(--color-fg-muted)]">High</div>
+            <div className="flex-1 bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/20 p-1.5 text-center">
+              <div className="font-mono text-xs font-bold text-[var(--color-warning)]">{highCount}</div>
+              <div className="text-[9px] text-[var(--color-fg-muted)] uppercase">High</div>
             </div>
-            <div className="flex-1 rounded-md bg-[var(--color-info-muted)]/50 border border-[var(--color-info)]/20 p-2 text-center">
-              <div className="font-data text-sm font-bold text-[var(--color-info)]">
+            <div className="flex-1 bg-[var(--color-info)]/10 border border-[var(--color-info)]/20 p-1.5 text-center">
+              <div className="font-mono text-xs font-bold text-[var(--color-info)]">
                 {totalThreats - criticalCount - highCount}
               </div>
-              <div className="font-ui text-[10px] text-[var(--color-fg-muted)]">Other</div>
+              <div className="text-[9px] text-[var(--color-fg-muted)] uppercase">Other</div>
             </div>
           </div>
         </div>
 
-        {/* Scrollable threat list */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-2 space-y-2.5">
-          {topThreats.slice(0, 8).map((threat, i) => (
+        {/* Threat list */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {topThreats.slice(0, 10).map((threat, i) => (
             <div
               key={threat.id || `threat-${i}`}
               onClick={() => setSelectedThreat(threat)}
@@ -82,85 +78,67 @@ export function ThreatsPanel({
               role="button"
               tabIndex={0}
               className={cn(
-                'group relative rounded-lg p-3 border transition-all cursor-pointer',
-                threat.severity === 'critical' &&
-                  'border-[var(--color-danger)]/40 bg-[var(--color-danger)]/5',
-                threat.severity === 'high' &&
-                  'border-[var(--color-warning)]/40 bg-[var(--color-warning)]/5',
-                threat.severity === 'medium' &&
-                  'border-[var(--color-info)]/30 bg-[var(--color-bg-card)]',
-                threat.severity === 'low' &&
-                  'border-[var(--color-border)] bg-[var(--color-bg-card)]',
-                threat.score > 0 && 'hover:border-[var(--color-primary-400)]/40'
+                'group flex items-start gap-2 px-3 py-2 border-b border-[var(--color-border)] transition-colors cursor-pointer',
+                threat.severity === 'critical' && 'border-l-2 border-l-[var(--color-danger)] bg-[var(--color-danger)]/[0.02]',
+                threat.severity === 'high' && 'bg-[var(--color-warning)]/[0.02]',
+                'hover:bg-[var(--color-bg-elevated)]'
               )}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-data text-xs font-bold text-[var(--color-fg-muted)]">
-                      #{i + 1}
-                    </span>
-                    <h4 className="font-ui text-xs font-semibold text-[var(--color-fg)] leading-snug line-clamp-2">
-                      {threat.title}
-                    </h4>
-                  </div>
-                  <p className="font-ui text-[11px] text-[var(--color-fg-muted)] line-clamp-2 mt-0.5">
-                    {threat.description}
-                  </p>
+              {/* Severity dot */}
+              <span
+                className={cn(
+                  'mt-1 w-1.5 h-1.5 rounded-full shrink-0',
+                  threat.severity === 'critical' && 'bg-[var(--color-danger)]',
+                  threat.severity === 'high' && 'bg-[var(--color-warning)]',
+                  threat.severity === 'medium' && 'bg-[var(--color-info)]',
+                  threat.severity === 'low' && 'bg-[var(--color-success)]'
+                )}
+              />
+
+              <div className="flex-1 min-w-0">
+                {/* Title + score */}
+                <div className="flex items-start justify-between gap-1">
+                  <h4 className="font-ui text-[11px] font-semibold text-[var(--color-fg)] leading-tight line-clamp-2">
+                    {threat.title}
+                  </h4>
+                  {threat.score > 0 && (
+                    <span className={cn(
+                      'font-mono text-[10px] font-bold shrink-0',
+                      threat.score > 80 ? 'text-[var(--color-danger)]' : threat.score > 50 ? 'text-[var(--color-warning)]' : 'text-[var(--color-fg-muted)]'
+                    )}>{threat.score.toFixed(0)}</span>
+                  )}
                 </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <span
-                    className={cn(
-                      'h-2 w-2 rounded-full',
-                      threat.severity === 'critical' && 'bg-[var(--color-danger)]',
-                      threat.severity === 'high' && 'bg-[var(--color-warning)]',
-                      threat.severity === 'medium' && 'bg-[var(--color-info)]',
-                      threat.severity === 'low' && 'bg-[var(--color-success)]'
-                    )}
-                  />
-                  <span
-                    className={cn(
-                      'font-data text-[10px] font-semibold uppercase',
-                      threat.severity === 'critical' && 'text-[var(--color-danger)]',
-                      threat.severity === 'high' && 'text-[var(--color-warning)]',
-                      threat.severity === 'medium' && 'text-[var(--color-info)]',
-                      threat.severity === 'low' && 'text-[var(--color-success)]'
-                    )}
-                  >
-                    {threat.severity}
+
+                {/* Meta row */}
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[10px] text-[var(--color-fg-muted)] font-mono">
+                    {threat.region}
+                  </span>
+                  <span className="text-[10px] text-[var(--color-fg-muted)]">
+                    {threat.time}
                   </span>
                 </div>
-              </div>
 
-              <div className="mt-2.5 pt-2 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
-                <span className="font-data text-[10px] text-[var(--color-fg-muted)]">
-                  {threat.region} • {threat.time}
-                </span>
+                {/* Actions */}
                 {threat.trackId && (
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onHoverThreat?.(threat);
-                      }}
-                      className="px-2 py-1 rounded bg-[var(--color-bg-elevated)] hover:bg-[var(--color-primary-600)] hover:text-white border border-[var(--color-border)] text-[10px] font-semibold text-[var(--color-fg-muted)] flex items-center gap-1 transition-all"
+                      onClick={(e) => { e.stopPropagation(); onHoverThreat?.(threat); }}
+                      className="px-1.5 py-0.5 bg-[var(--color-bg-elevated)] hover:bg-[var(--color-primary-600)] hover:text-white border border-[var(--color-border)] text-[10px] font-medium text-[var(--color-fg-muted)] flex items-center gap-0.5 transition-colors"
                       title="Focus on Map"
                     >
-                      <LocateFixed className="h-3 w-3" />
-                      Locate
+                      <LocateFixed className="h-2.5 w-2.5" />
+                      Focus
                     </button>
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedThreat(threat);
-                      }}
-                      className="px-2 py-1 rounded bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] text-white text-[10px] font-semibold flex items-center gap-1 transition-all"
-                      title="View Intel Details"
+                      onClick={(e) => { e.stopPropagation(); setSelectedThreat(threat); }}
+                      className="px-2 py-0.5 bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] text-white text-[10px] font-medium flex items-center gap-0.5 transition-colors"
+                      title="View Details"
                     >
-                      <Eye className="h-3 w-3" />
-                      Intel
+                      <Eye className="h-2.5 w-2.5" />
+                      View
                     </button>
                   </div>
                 )}
@@ -169,13 +147,13 @@ export function ThreatsPanel({
           ))}
         </div>
 
-        {/* Footer — fixed */}
-        <div className="shrink-0 px-4 pb-4 pt-2 border-t border-[var(--color-border)]">
+        {/* Footer */}
+        <div className="shrink-0 px-3 py-2 border-t border-[var(--color-border)] bg-[var(--color-bg-elevated)]/50">
           <Link
             to="/intelligence"
-            className="block text-center font-ui text-sm text-[var(--color-primary-700)] hover:underline transition-colors"
+            className="block text-center font-ui text-[11px] text-[var(--color-primary-600)] hover:underline transition-colors"
           >
-            View full intelligence record →
+            Open Intelligence Center →
           </Link>
         </div>
       </div>
@@ -194,145 +172,90 @@ export function ThreatDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-overlay-enter"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
       onClick={onClose}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') onClose();
-      }}
+      onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
       role="dialog"
       aria-modal="true"
       aria-label="Threat Intelligence Detail"
     >
       <div
-        className="glass-card rounded-2xl border border-[var(--color-border)] max-w-lg w-full max-h-[85vh] overflow-y-auto  animate-dropdown-enter"
+        className="border border-[var(--color-border)] bg-[var(--color-bg-card)] max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between p-5 pb-3">
-          <div className="flex-1 min-w-0 mr-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span
-                className={cn(
-                  'h-2.5 w-2.5 rounded-full shrink-0',
-                  selectedThreat.severity === 'critical' && 'bg-[var(--color-danger)]',
-                  selectedThreat.severity === 'high' && 'bg-[var(--color-warning)]',
-                  selectedThreat.severity === 'medium' && 'bg-[var(--color-info)]',
-                  selectedThreat.severity === 'low' && 'bg-[var(--color-success)]'
-                )}
-              />
-              <span
-                className={cn(
-                  'font-data text-[11px] font-semibold uppercase tracking-wider',
-                  selectedThreat.severity === 'critical' && 'text-[var(--color-danger)]',
-                  selectedThreat.severity === 'high' && 'text-[var(--color-warning)]',
-                  selectedThreat.severity === 'medium' && 'text-[var(--color-info)]',
-                  selectedThreat.severity === 'low' && 'text-[var(--color-success)]'
-                )}
-              >
+        <div className="flex items-start justify-between p-4 pb-2 border-b border-[var(--color-border)]">
+          <div className="flex-1 min-w-0 mr-3">
+            <div className="flex items-center gap-2 mb-1">
+              <span className={cn(
+                'h-2 w-2 rounded-full shrink-0',
+                selectedThreat.severity === 'critical' && 'bg-[var(--color-danger)]',
+                selectedThreat.severity === 'high' && 'bg-[var(--color-warning)]',
+                selectedThreat.severity === 'medium' && 'bg-[var(--color-info)]',
+                selectedThreat.severity === 'low' && 'bg-[var(--color-success)]'
+              )} />
+              <span className={cn(
+                'text-[10px] font-semibold uppercase tracking-wider',
+                selectedThreat.severity === 'critical' && 'text-[var(--color-danger)]',
+                selectedThreat.severity === 'high' && 'text-[var(--color-warning)]',
+                selectedThreat.severity === 'medium' && 'text-[var(--color-info)]',
+                selectedThreat.severity === 'low' && 'text-[var(--color-success)]'
+              )}>
                 {selectedThreat.severity}
               </span>
             </div>
-            <h3 className="font-display text-lg font-semibold text-[var(--color-fg)] leading-snug">
+            <h3 className="font-display text-base font-semibold text-[var(--color-fg)] leading-snug">
               {selectedThreat.title}
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="shrink-0 rounded-lg p-1.5 text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:bg-[var(--color-bg-elevated)] transition-colors"
-            aria-label="Close detail"
+            className="p-1 text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:bg-[var(--color-bg-elevated)] transition-colors shrink-0"
+            aria-label="Close"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="px-5 pb-5 space-y-4">
-          <p className="font-ui text-sm text-[var(--color-fg-muted)] leading-relaxed">
+        <div className="p-4 space-y-3">
+          <p className="font-ui text-[13px] text-[var(--color-fg-muted)] leading-relaxed">
             {selectedThreat.description}
           </p>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-[var(--color-bg-elevated)] rounded-lg p-3">
-              <div className="font-ui text-[11px] text-[var(--color-fg-muted)] mb-0.5">
-                Region
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: 'Region', value: selectedThreat.region },
+              { label: 'Anomaly Score', value: `${selectedThreat.score.toFixed(0)}/100` },
+              { label: 'Track ID', value: selectedThreat.trackId || 'N/A' },
+              { label: 'Asset', value: selectedThreat.assetName },
+              { label: 'Detected', value: selectedThreat.time },
+              { label: 'Level', value: selectedThreat.severity },
+            ].map((f) => (
+              <div key={f.label} className="bg-[var(--color-bg)] border border-[var(--color-border)] p-2">
+                <div className="text-[10px] text-[var(--color-fg-muted)] uppercase">{f.label}</div>
+                <div className="text-[13px] font-semibold text-[var(--color-fg)] mt-0.5">{f.value}</div>
               </div>
-              <div className="font-data text-sm font-semibold text-[var(--color-fg)]">
-                {selectedThreat.region}
-              </div>
-            </div>
-            <div className="bg-[var(--color-bg-elevated)] rounded-lg p-3">
-              <div className="font-ui text-[11px] text-[var(--color-fg-muted)] mb-0.5">
-                Anomaly Score
-              </div>
-              <div className="font-data text-sm font-semibold text-[var(--color-primary-600)]">
-                {selectedThreat.score.toFixed(0)}
-                <span className="text-[var(--color-fg-muted)] font-normal">/100</span>
-              </div>
-            </div>
-            <div className="bg-[var(--color-bg-elevated)] rounded-lg p-3">
-              <div className="font-ui text-[11px] text-[var(--color-fg-muted)] mb-0.5">
-                Track ID
-              </div>
-              <div
-                className="font-data text-sm font-semibold text-[var(--color-fg)] font-mono text-xs truncate"
-                title={selectedThreat.trackId}
-              >
-                {selectedThreat.trackId || 'N/A'}
-              </div>
-            </div>
-            <div className="bg-[var(--color-bg-elevated)] rounded-lg p-3">
-              <div className="font-ui text-[11px] text-[var(--color-fg-muted)] mb-0.5">
-                Asset
-              </div>
-              <div className="font-data text-sm font-semibold text-[var(--color-fg)]">
-                {selectedThreat.assetName}
-              </div>
-            </div>
-            <div className="bg-[var(--color-bg-elevated)] rounded-lg p-3">
-              <div className="font-ui text-[11px] text-[var(--color-fg-muted)] mb-0.5">
-                Detected
-              </div>
-              <div className="font-data text-sm font-semibold text-[var(--color-fg)]">
-                {selectedThreat.time}
-              </div>
-            </div>
-            <div className="bg-[var(--color-bg-elevated)] rounded-lg p-3">
-              <div className="font-ui text-[11px] text-[var(--color-fg-muted)] mb-0.5">
-                Threat Level
-              </div>
-              <div className="font-data text-sm font-semibold capitalize text-[var(--color-fg)]">
-                {selectedThreat.severity}
-              </div>
-            </div>
+            ))}
           </div>
 
           {selectedThreat.score > 80 && (
-            <div className="bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/30 rounded-lg p-3 flex items-start gap-2">
+            <div className="bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/30 p-3 flex items-start gap-2">
               <AlertTriangle className="h-4 w-4 text-[var(--color-danger)] shrink-0 mt-0.5" />
               <div>
-                <div className="font-ui text-xs font-semibold text-[var(--color-danger)]">
-                  Escalation Warning
-                </div>
-                <p className="font-ui text-[11px] text-[var(--color-fg-muted)] mt-0.5">
-                  Anomaly score exceeds 80/100. This asset requires immediate attention.
-                  Consider notifying coalition command or flagging for watchlist monitoring.
+                <div className="text-xs font-semibold text-[var(--color-danger)]">Escalation Warning</div>
+                <p className="text-[11px] text-[var(--color-fg-muted)] mt-0.5">
+                  Anomaly score exceeds 80/100. Requires immediate attention.
                 </p>
               </div>
             </div>
           )}
 
-          <div className="pt-3 border-t border-[var(--color-border)] flex gap-2">
-            <button
-              onClick={onClose}
-              className="flex-1 rounded-lg border border-[var(--color-border)] px-4 py-2.5 font-ui text-sm font-medium text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-elevated)] transition-colors"
-            >
+          <div className="pt-2 border-t border-[var(--color-border)] flex gap-2">
+            <button onClick={onClose} className="flex-1 border border-[var(--color-border)] px-3 py-2 text-xs font-medium text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-elevated)] transition-colors">
               Close
             </button>
-            <Link
-              to="/intelligence"
-              onClick={onClose}
-              className="flex-1 rounded-lg bg-[var(--color-primary-600)] px-4 py-2.5 font-ui text-sm font-medium text-white text-center hover:bg-[var(--color-primary-700)] transition-colors"
-            >
+            <Link to="/intelligence" onClick={onClose} className="flex-1 bg-[var(--color-primary-600)] px-3 py-2 text-xs font-medium text-white text-center hover:bg-[var(--color-primary-700)] transition-colors">
               Open Intelligence →
             </Link>
           </div>

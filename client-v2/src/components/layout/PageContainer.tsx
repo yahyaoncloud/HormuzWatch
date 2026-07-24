@@ -30,7 +30,7 @@ export function PageContainer({
 
           {/* Table of Contents Sidebar (Navbar-matching highlight style) */}
           <aside className="hidden lg:block w-56 shrink-0">
-            <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto py-2">
+            <div className="sticky top-14 max-h-[calc(100vh-5rem)] overflow-y-auto py-2">
               <h3 className="mb-3 font-ui text-xs font-semibold uppercase tracking-wider text-[var(--color-fg-muted)] px-3">
                 On This Page
               </h3>
@@ -64,7 +64,7 @@ export function PageContainer({
   }
 
   return (
-    <div className={cn('mx-auto px-5 py-12 sm:px-8 sm:py-16', wide ? 'max-w-7xl' : 'max-w-5xl', className)}>
+    <div className={cn('mx-auto px-5 py-8 sm:px-8 sm:py-10', wide ? 'max-w-7xl' : 'max-w-5xl', className)}>
       {children}
     </div>
   );

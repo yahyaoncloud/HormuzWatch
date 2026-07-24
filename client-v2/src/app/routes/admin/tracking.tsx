@@ -35,78 +35,6 @@ const TRACKING_TODOS: TodoItem[] = [
   { id: "t4", title: "Watchlist Radial Pulsing Ring Overlay", category: "UI & UX", completed: true, notes: "Highlights watchlisted targets with pulsing red aura on map and target roster" },
 ];
 
-const FALLBACK_TRACKS: ActiveTrack[] = [
-  {
-    trackId: "IMO-9283741",
-    assetName: "AL-MUTANABBI",
-    timestamp: new Date().toISOString(),
-    lat: 26.56,
-    lon: 56.25,
-    speed: 14.2,
-    heading: 128,
-    anomalyScore: 89,
-    severity: "critical",
-    lastUpdated: "Just now",
-    objectType: "vessel",
-  },
-  {
-    trackId: "IMO-9812739",
-    assetName: "PERSIAN GULF STAR",
-    timestamp: new Date().toISOString(),
-    lat: 25.82,
-    lon: 55.40,
-    speed: 11.8,
-    heading: 45,
-    anomalyScore: 64,
-    severity: "high",
-    lastUpdated: "2m ago",
-    objectType: "vessel",
-  },
-  {
-    trackId: "ICAO-73019F",
-    assetName: "IRAF-801",
-    timestamp: new Date().toISOString(),
-    lat: 26.90,
-    lon: 56.80,
-    speed: 420.0,
-    heading: 210,
-    anomalyScore: 94,
-    severity: "critical",
-    lastUpdated: "Just now",
-    altitude: 18500,
-    squawk: "7700",
-    objectType: "aircraft",
-  },
-  {
-    trackId: "IMO-9128374",
-    assetName: "GULF SUPPLIER IV",
-    timestamp: new Date().toISOString(),
-    lat: 24.95,
-    lon: 54.20,
-    speed: 0.2,
-    heading: 310,
-    anomalyScore: 22,
-    severity: "low",
-    lastUpdated: "5m ago",
-    objectType: "vessel",
-  },
-  {
-    trackId: "ICAO-40012A",
-    assetName: "USAF-C17",
-    timestamp: new Date().toISOString(),
-    lat: 25.10,
-    lon: 57.10,
-    speed: 380.0,
-    heading: 155,
-    anomalyScore: 15,
-    severity: "low",
-    lastUpdated: "1m ago",
-    altitude: 28000,
-    squawk: "1200",
-    objectType: "aircraft",
-  },
-];
-
 export default function AdminTracking() {
   const queryClient = useQueryClient();
 
@@ -138,11 +66,9 @@ export default function AdminTracking() {
     return new Set<string>(arr);
   }, [watchlistData]);
 
-  // Combine live data with fallback data
+  // Live data only — no fallback dummy vessels
   const tracksList: ActiveTrack[] = useMemo(() => {
-    const live = tracksData?.data ?? [];
-    if (live.length > 0) return live;
-    return FALLBACK_TRACKS;
+    return tracksData?.data ?? [];
   }, [tracksData]);
 
   useEffect(() => {
@@ -205,7 +131,7 @@ export default function AdminTracking() {
     });
   }, [tracksList, filterType, searchQuery]);
 
-  const currentSelected = selectedTrack || filteredTracks[0] || FALLBACK_TRACKS[0];
+  const currentSelected = selectedTrack || filteredTracks[0] || null;
   const isSelectedWatchlisted = watchlistSet.has(currentSelected?.trackId ?? "");
 
   const isCurrentAircraft =

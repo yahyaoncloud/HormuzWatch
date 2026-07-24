@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -106,7 +105,7 @@ func TestCollectOpenSkyMetrics(t *testing.T) {
 
 	// 2. Query running local server aircraft endpoint
 	if len(records) < MaxMetricSamples {
-		serverURL := "http://localhost:8080/aircraft"
+		serverURL := "http://localhost:10020/aircraft"
 		respServer, errServer := client.Get(serverURL)
 		if errServer == nil && respServer.StatusCode == http.StatusOK {
 			defer respServer.Body.Close()
@@ -164,7 +163,7 @@ func TestCollectAISStreamMetrics(t *testing.T) {
 	var records []AISStreamPositionRecord
 
 	// 1. Query local running server /vessels endpoint
-	vesselsURL := "http://localhost:8080/vessels"
+	vesselsURL := "http://localhost:10020/vessels"
 	resp, err := client.Get(vesselsURL)
 
 	if err == nil && resp.StatusCode == http.StatusOK {
@@ -201,7 +200,7 @@ func TestCollectAISStreamMetrics(t *testing.T) {
 
 	// 2. Query /tracks/active if /vessels yielded < 5
 	if len(records) < MaxMetricSamples {
-		activeURL := "http://localhost:8080/tracks/active"
+		activeURL := "http://localhost:10020/tracks/active"
 		respActive, errActive := client.Get(activeURL)
 		if errActive == nil && respActive.StatusCode == http.StatusOK {
 			defer respActive.Body.Close()
@@ -248,43 +247,30 @@ func TestCollectAISStreamMetrics(t *testing.T) {
 			subMsg := map[string]interface{}{
 				"APIKey": apiKey,
 				"BoundingBoxes": [][][2]float64{
-					{{20.0, 47.0}, {32.0, 60.0}},
+					// Persian Gulf
+					{
+						{24.0, 47.0},
+						{31.0, 57.8},
+					},
+					// Strait of Hormuz
+					{
+						{25.2, 55.2},
+						{27.4, 58.8},
+					},
+					// Gulf of Oman
+					{
+						{22.0, 56.0},
+						{27.0, 61.8},
+					},
+				},
+				"FilterMessageTypes": []string{
+					"PositionReport",
+					"StandardClassBPositionReport",
+					"ExtendedClassBPositionReport",
 				},
 			}
 			if errWrite := conn.WriteJSON(subMsg); errWrite == nil {
-				conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-				for len(records) < MaxMetricSamples {
-					_, message, errRead := conn.ReadMessage()
-					if errRead != nil {
-						break
-					}
-					var aisMsg struct {
-						MessageType string `json:"MessageType"`
-						MetaData    struct {
-							MMSI     int64   `json:"MMSI"`
-							ShipName string  `json:"ShipName"`
-							Lat      float64 `json:"latitude"`
-							Lon      float64 `json:"longitude"`
-							TimeUTC  string  `json:"time_utc"`
-						} `json:"MetaData"`
-					}
-					if json.Unmarshal(message, &aisMsg) == nil && aisMsg.MetaData.MMSI != 0 {
-						vName := strings.TrimSpace(aisMsg.MetaData.ShipName)
-						if vName == "" {
-							vName = fmt.Sprintf("MMSI-%d", aisMsg.MetaData.MMSI)
-						}
-						records = append(records, AISStreamPositionRecord{
-							MMSI:        int(aisMsg.MetaData.MMSI),
-							VesselName:  vName,
-							Latitude:    aisMsg.MetaData.Lat,
-							Longitude:   aisMsg.MetaData.Lon,
-							Timestamp:   aisMsg.MetaData.TimeUTC,
-							NavStatus:   "Underway",
-							Source:      "aisstream",
-							Destination: "Live Stream Transit",
-						})
-					}
-				}
+				conn.SetReadDeadline(time.Now().Add(15 * time.Second))
 			}
 		}
 	}

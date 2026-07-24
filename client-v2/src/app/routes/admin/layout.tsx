@@ -33,7 +33,7 @@ export default function AdminRouteGuard() {
   if (initializing) {
     return (
       <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-[#0a0d14] text-[var(--color-fg)] p-6 text-center font-ui selection:bg-[var(--color-primary-600)] selection:text-white">
-        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-primary-600)]/15 text-[var(--color-primary-600)] border border-[var(--color-primary-600)]/30">
+        <div className="relative flex h-14 w-14 items-center justify-center rounded-md bg-[var(--color-primary-600)]/15 text-[var(--color-primary-600)] border border-[var(--color-primary-600)]/30">
           <div className="animate-spin h-8 w-8 border-2 border-[var(--color-primary-600)] border-t-transparent rounded-full" />
         </div>
         <div className="space-y-1">

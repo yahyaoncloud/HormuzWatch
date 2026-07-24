@@ -14,6 +14,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"log"
+	"strings"
 	"time"
 
 	"Geospatial-harmuz-watch/server/internal/db"

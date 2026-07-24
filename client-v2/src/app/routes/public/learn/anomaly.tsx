@@ -6,199 +6,7 @@ import { cn } from '@/utils/cn';
 
 // ─── Sample anomalies ─────────────────────────────────────────────────────────
 
-const SAMPLE_INCIDENTS: Incident[] = [
-  {
-    id: 'a-001',
-    type: 'anomaly',
-    severity: 'critical',
-    title: 'AIS Dark Period — Unnamed Tanker',
-    description: 'Transponder silent 6h in Hormuz chokepoint. Last position: 26.1°N 56.3°E',
-    region: 'Hormuz Strait',
-    timestamp: Date.now() - 900_000,
-    status: 'investigating',
-    tags: ['dark-period', 'tanker'],
-  },
-  {
-    id: 'a-002',
-    type: 'security',
-    severity: 'critical',
-    title: 'Sanctions List Match — Vessel IRN3312',
-    description: 'MMSI 422012345 matches OFAC SDN list. Flag: Iran (Islamic Republic of).',
-    region: 'Persian Gulf',
-    timestamp: Date.now() - 1_800_000,
-    status: 'open',
-    tags: ['sanctions', 'iran'],
-  },
-  {
-    id: 'a-003',
-    type: 'anomaly',
-    severity: 'high',
-    title: 'Suspected Rendezvous — 2 Vessels',
-    description: 'PACIFIC QUEEN and unnamed vessel station-keeping for 3h in open water.',
-    region: 'Gulf of Oman',
-    timestamp: Date.now() - 3_600_000,
-    status: 'investigating',
-    tags: ['rendezvous', 'ship-to-ship'],
-  },
-  {
-    id: 'a-004',
-    type: 'anomaly',
-    severity: 'high',
-    title: 'Route Deviation — Container Vessel',
-    description:
-      'Vessel departed declared route by 47nm. New course consistent with Bandar Abbas approach.',
-    region: 'Arabian Sea',
-    timestamp: Date.now() - 5_400_000,
-    status: 'open',
-    tags: ['route-deviation'],
-  },
-  {
-    id: 'a-005',
-    type: 'anomaly',
-    severity: 'medium',
-    title: 'Loitering Detected — 4 Vessels',
-    description: 'Cluster of 4 small craft station-keeping near Bab-el-Mandeb chokepoint.',
-    region: 'Bab-el-Mandeb',
-    timestamp: Date.now() - 7_200_000,
-    status: 'open',
-    tags: ['loitering'],
-  },
-  {
-    id: 'a-006',
-    type: 'anomaly',
-    severity: 'medium',
-    title: 'Speed Anomaly — Bulk Carrier',
-    description: 'Vessel decelerated from 14kt to 0.2kt without anchor status change.',
-    region: 'Red Sea',
-    timestamp: Date.now() - 10_800_000,
-    status: 'open',
-    tags: ['speed-anomaly'],
-  },
-  {
-    id: 'a-007',
-    type: 'alert',
-    severity: 'low',
-    title: 'Flag Switch Detected',
-    description:
-      'Vessel re-flagged from Liberia to Comoros within 24h. Common sanctions evasion tactic.',
-    region: 'Indian Ocean',
-    timestamp: Date.now() - 14_400_000,
-    status: 'resolved',
-    tags: ['flag-switch'],
-  },
-];
-
-const anomalyCategories = [
-  {
-    id: 'dark-period',
-    name: 'Dark Period',
-    severity: 'critical' as const,
-    icon: '🕳️',
-    definition: 'AIS transponder disabled for > 2 hours within a monitored zone.',
-    indicators: [
-      'No position updates in AIS stream',
-      'Last known position in monitored area',
-      'Vessel class mandated to transmit',
-    ],
-    count: 5,
-    color: 'danger',
-    riskScore: 94,
-  },
-  {
-    id: 'sanctions-evasion',
-    name: 'Sanctions Evasion',
-    severity: 'critical' as const,
-    icon: '🔒',
-    definition: 'MMSI, IMO, or vessel name matches sanctioned entity list (OFAC, UN, EU).',
-    indicators: ['MMSI on SDN list', 'IMO on OFAC list', 'Flag state sanctioned'],
-    count: 2,
-    color: 'danger',
-    riskScore: 98,
-  },
-  {
-    id: 'rendezvous',
-    name: 'Rendezvous',
-    severity: 'critical' as const,
-    icon: '🤝',
-    definition:
-      'Two or more vessels converge and station-keep in an unexpected location for > 30 minutes.',
-    indicators: [
-      'Convergent courses',
-      'Speed drops to < 1kt',
-      'Duration > 30 min',
-      'Open-water location',
-    ],
-    count: 3,
-    color: 'danger',
-    riskScore: 88,
-  },
-  {
-    id: 'route-deviation',
-    name: 'Route Deviation',
-    severity: 'high' as const,
-    icon: '📐',
-    definition:
-      'Vessel departs declared destination route by > 5 nautical miles without evident reason.',
-    indicators: ['Cross-track error > 5nm', 'Waypoint mismatch', 'Unreported destination'],
-    count: 12,
-    color: 'warning',
-    riskScore: 72,
-  },
-  {
-    id: 'loitering',
-    name: 'Loitering',
-    severity: 'medium' as const,
-    icon: '⏸️',
-    definition: 'Station-keeping in an unexpected area with no declared anchor status.',
-    indicators: ['SOG < 1kt', 'No anchor status', 'Duration > 60 min', 'Unusual location'],
-    count: 18,
-    color: 'warning',
-    riskScore: 61,
-  },
-  {
-    id: 'speed-anomaly',
-    name: 'Speed Anomaly',
-    severity: 'medium' as const,
-    icon: '⚡',
-    definition: 'Speed change inconsistent with vessel class and operating conditions.',
-    indicators: ['SOG > vessel class max', 'Sudden deceleration', 'SOG inconsistent with status'],
-    count: 23,
-    color: 'info',
-    riskScore: 45,
-  },
-  {
-    id: 'flag-switch',
-    name: 'Flag Switch',
-    severity: 'medium' as const,
-    icon: '🏴',
-    definition:
-      'Vessel changes flag state within a short period — common tactic to obscure sanctioned ownership.',
-    indicators: [
-      'Flag state change in < 7 days',
-      'New flag is common evasion jurisdiction',
-      'MMSI unchanged',
-    ],
-    count: 7,
-    color: 'info',
-    riskScore: 55,
-  },
-  {
-    id: 'pattern-match',
-    name: 'Threat Pattern Match',
-    severity: 'high' as const,
-    icon: '🎯',
-    definition:
-      'Vessel behavior matches a known threat actor playbook from historical intelligence.',
-    indicators: [
-      'Route matches known smuggling lane',
-      'Timing matches known transfer schedule',
-      'Behavioral signature match > 80%',
-    ],
-    count: 6,
-    color: 'warning',
-    riskScore: 81,
-  },
-];
+const SAMPLE_INCIDENTS: Incident[] = [];
 
 export default function LearnAnomaly() {
   return (
@@ -210,9 +18,9 @@ export default function LearnAnomaly() {
         subtitle="A comprehensive classification of maritime anomalies detected by HormuzWatch"
         level={1}
         badges={[
-          { label: 'types', value: '8', color: 'primary' },
-          { label: 'active now', value: '76', color: 'danger' },
-          { label: 'false positive rate', value: '2.3%', color: 'success' },
+          { label: 'types', value: '—', color: 'primary' },
+          { label: 'active now', value: '—', color: 'danger' },
+          { label: 'false positive rate', value: '—', color: 'success' },
         ]}
       >
         <DocParagraph>
@@ -241,7 +49,7 @@ export default function LearnAnomaly() {
         id="live-map"
         title="Live Anomaly Map"
         subtitle="Active anomalies — updated every 30 seconds"
-        badges={[{ label: 'active anomalies', value: '76', color: 'danger' }]}
+        badges={[{ label: 'active anomalies', value: '—', color: 'danger' }]}
       >
         <div className="relative aspect-[16/9] rounded-xl overflow-hidden glass-card border border-border/50">
           <EditorialMap
@@ -278,74 +86,10 @@ export default function LearnAnomaly() {
         title="Anomaly Classification Taxonomy"
         subtitle="Definitions, indicators, and risk scores for each category"
       >
-        <div className="space-y-4">
-          {anomalyCategories.map((cat) => (
-            <article
-              key={cat.id}
-              className={cn(
-                'glass-card rounded-xl p-6 border border-border/50 hover:border-primary/30 transition-all',
-                cat.color === 'danger' && cat.riskScore > 85 && 'border-danger/20 bg-danger/5'
-              )}
-            >
-              <div className="flex flex-col md:flex-row md:items-start gap-4">
-                {/* Icon + name */}
-                <div className="flex items-center gap-3 md:w-52 md:shrink-0">
-                  <span className="text-3xl" aria-hidden>
-                    {cat.icon}
-                  </span>
-                  <div>
-                    <h3 className="font-display text-heading-sm text-fg">{cat.name}</h3>
-                    <span
-                      className={cn(
-                        'inline-block mt-1 px-2 py-0.5 rounded text-caption font-medium',
-                        cat.color === 'danger' && 'bg-danger/15 text-danger',
-                        cat.color === 'warning' && 'bg-warning/15 text-warning',
-                        cat.color === 'info' && 'bg-info/15 text-info'
-                      )}
-                    >
-                      {cat.severity}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Definition + indicators */}
-                <div className="flex-1">
-                  <p className="font-ui text-body-sm text-fg-muted mb-3">{cat.definition}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {cat.indicators.map((ind) => (
-                      <span
-                        key={ind}
-                        className="px-2 py-0.5 bg-background-elevated border border-border/50 rounded text-caption text-fg-muted"
-                      >
-                        {ind}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Stats */}
-                <div className="flex md:flex-col items-center md:items-end gap-4 md:gap-1 md:w-24 md:shrink-0">
-                  <div className="text-center">
-                    <div
-                      className={cn(
-                        'font-data text-data-lg font-bold',
-                        cat.color === 'danger' && 'text-danger',
-                        cat.color === 'warning' && 'text-warning',
-                        cat.color === 'info' && 'text-info'
-                      )}
-                    >
-                      {cat.riskScore}
-                    </div>
-                    <div className="font-ui text-caption text-fg-muted">risk score</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-data text-data font-bold text-fg">{cat.count}</div>
-                    <div className="font-ui text-caption text-fg-muted">active</div>
-                  </div>
-                </div>
-              </div>
-            </article>
-          ))}
+        <div className="glass-card rounded-xl p-6 border border-border/50 text-center">
+          <p className="font-ui text-body text-fg-muted">
+            Anomaly classification taxonomy will be available when connected to a live data source.
+          </p>
         </div>
       </DocumentationBlock>
 
@@ -486,21 +230,6 @@ anomalies = requests.get(
 ).json()['anomalies']`,
             },
           ]}
-          sampleResponse={`{
-  "anomalies": [
-    {
-      "id": "anom_8f3k2",
-      "type": "dark_period",
-      "severity": "critical",
-      "score": 94.2,
-      "vessel": { "imo": "9123456", "name": "UNKNOWN", "last_known": [56.2, 26.1] },
-      "detected_at": "2026-07-20T03:32:11Z",
-      "confidence": 0.91,
-      "status": "investigating"
-    }
-  ],
-  "pagination": { "total": 23, "page": 1, "limit": 50 }
-}`}
         />
       </DocumentationBlock>
     </>

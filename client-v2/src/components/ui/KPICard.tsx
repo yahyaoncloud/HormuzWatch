@@ -35,7 +35,7 @@ export function KPICard({
   return (
     <div
       className={cn(
-        'glass-card rounded-xl p-5 border border-[var(--color-border)] flex items-center justify-between transition-all',
+        'glass-card rounded-md p-5 border border-[var(--color-border)] flex items-center justify-between transition-all',
         onClick && 'cursor-pointer hover:border-[var(--color-primary-600)]/50',
         className
       )}

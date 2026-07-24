@@ -5,7 +5,7 @@ export function ReportProgressModal({ show }: { show: boolean }) {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[var(--color-bg)]/80 backdrop-blur-md transition-opacity">
-      <div className="flex flex-col items-center gap-4 max-w-sm rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-8 shadow-2xl text-center">
+      <div className="flex flex-col items-center gap-4 max-w-sm rounded-md border border-[var(--color-border)] bg-[var(--color-bg-card)] p-8 shadow-2xl text-center">
         <div className="relative flex items-center justify-center">
           <Loader2 className="h-10 w-10 animate-spin text-[var(--color-primary-600)]" />
           <div className="absolute inset-0 h-10 w-10 animate-ping rounded-full bg-[var(--color-primary-600)]/20" />

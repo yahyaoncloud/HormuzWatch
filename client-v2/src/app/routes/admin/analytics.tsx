@@ -1,5 +1,16 @@
-import { TrendingUp, FileText, Download, PieChart, Activity } from "lucide-react";
+import {
+  TrendingUp,
+  Ship,
+  Plane,
+  Anchor,
+  Gauge,
+  AlertTriangle,
+  Radio,
+  Layers,
+} from "lucide-react";
 import { PageTodoList, type TodoItem } from "@/components/ui/PageTodoList";
+import { useRealtimeStore } from "@/stores";
+import { cn } from "@/utils/cn";
 
 const ANALYTICS_TODOS: TodoItem[] = [
   { id: "y1", title: "Regional Threat Density & Category Charts", category: "UI & UX", completed: true, notes: "Visual progress bar density & category article distribution" },
@@ -8,116 +19,279 @@ const ANALYTICS_TODOS: TodoItem[] = [
   { id: "y4", title: "Choropleth Threat Heatmap Integration", category: "UI & UX", completed: false, notes: "Shaded country map visualization reflecting real-time threat scores" },
 ];
 
+function formatNumber(n: number): string {
+  return n.toLocaleString();
+}
+
+function formatPct(n: number): string {
+  return `${n.toFixed(1)}%`;
+}
+
 export default function AdminAnalytics() {
+  // Single source of truth: Zustand realtime store (fed by WebSocket)
+  const stats = useRealtimeStore((s) => s.stats);
+  const wsStatus = useRealtimeStore((s) => s.wsStatus);
+  const connected = wsStatus === 'connected';
+  const isLoading = !stats;
+
+  // ── Derived values ──────────────────────────────────────────────────────
+  const totalTracks = stats?.totalTracks ?? 0;
+  const anomalyPct = totalTracks > 0 ? ((stats?.totalAnomalies ?? 0) / totalTracks) * 100 : 0;
+  const maritimePct = totalTracks > 0 ? ((stats?.maritimeCount ?? 0) / totalTracks) * 100 : 0;
+  const aviationPct = totalTracks > 0 ? ((stats?.aviationCount ?? 0) / totalTracks) * 100 : 0;
+
+  // Vessel state percentages
+  const anchoredPct = totalTracks > 0 ? ((stats?.anchoredCount ?? 0) / totalTracks) * 100 : 0;
+  const slowPct = totalTracks > 0 ? ((stats?.slowCount ?? 0) / totalTracks) * 100 : 0;
+  const maneuveringPct = totalTracks > 0 ? ((stats?.maneuveringCount ?? 0) / totalTracks) * 100 : 0;
+  const transitingPct = totalTracks > 0 ? ((stats?.transitingCount ?? 0) / totalTracks) * 100 : 0;
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl font-bold text-[var(--color-fg)]">Analytics & Strategic Reports</h1>
           <p className="font-ui text-sm text-[var(--color-fg-muted)] mt-1">
-            Regional threat trends, anomaly detection metrics, and OSINT source reliability analytics.
+            Live pipeline telemetry — computed in-memory from active track state. Pushed via WebSocket every 1s.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {}}
-          className="px-3 py-2 bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] text-white text-xs font-ui font-semibold rounded-lg flex items-center gap-1.5 self-start sm:self-auto transition-colors"
-        >
-          <Download className="h-4 w-4" /> Export Briefing PDF
-        </button>
+        <div className="flex items-center gap-2">
+          <span className={cn(
+            "px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border flex items-center gap-1.5",
+            connected
+              ? "bg-[var(--color-primary-600)]/15 text-[var(--color-primary-600)] border-[var(--color-primary-600)]/30"
+              : "bg-[var(--color-warning)]/15 text-[var(--color-warning)] border-[var(--color-warning)]/30"
+          )}>
+            <span className={cn(
+              "w-1.5 h-1.5 rounded-full animate-pulse",
+              connected ? "bg-[var(--color-primary-600)]" : "bg-[var(--color-warning)]"
+            )} />
+            {connected ? "LIVE WS" : wsStatus === 'connecting' ? "CONNECTING" : "DISCONNECTED"}
+          </span>
+        </div>
       </div>
 
-      {/* KPI Stats */}
+      {/* KPI Stats — Live via WebSocket → Zustand */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Avg EWMA Deviation */}
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-4 space-y-1">
           <div className="flex items-center justify-between text-xs text-[var(--color-fg-muted)] font-ui">
-            <span>24h Threat Score Avg</span>
-            <TrendingUp className="h-4 w-4 text-[var(--color-warning)]" />
+            <span>Avg EWMA Deviation</span>
+            <TrendingUp className={cn(
+              "h-4 w-4",
+              (stats?.avgEWMA ?? 0) > 2 ? "text-red-500" : (stats?.avgEWMA ?? 0) > 1 ? "text-[var(--color-warning)]" : "text-[var(--color-success)]"
+            )} />
           </div>
-          <p className="font-display text-2xl font-bold text-[var(--color-fg)]">74.2 / 100</p>
-          <p className="text-[11px] font-mono text-[var(--color-warning)]">+4.8% from yesterday</p>
+          {isLoading ? (
+            <div className="h-8 bg-[var(--color-bg)]/60 rounded animate-pulse" />
+          ) : (
+            <>
+              <p className={cn(
+                "font-display text-2xl font-bold",
+                (stats?.avgEWMA ?? 0) > 2 ? "text-red-500" : (stats?.avgEWMA ?? 0) > 1 ? "text-[var(--color-warning)]" : "text-[var(--color-fg)]"
+              )}>
+                {(stats?.avgEWMA ?? 0).toFixed(2)}
+              </p>
+              <p className="text-[11px] font-mono text-[var(--color-fg-muted)]">
+                {stats?.highAnomalyCount ?? 0} high-anomaly vectors
+              </p>
+            </>
+          )}
         </div>
 
+        {/* Active Tracks */}
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-4 space-y-1">
           <div className="flex items-center justify-between text-xs text-[var(--color-fg-muted)] font-ui">
-            <span>Ingested OSINT Articles</span>
-            <FileText className="h-4 w-4 text-[var(--color-primary-600)]" />
+            <span>Active Tracks</span>
+            <Radio className="h-4 w-4 text-[var(--color-primary-600)]" />
           </div>
-          <p className="font-display text-2xl font-bold text-[var(--color-fg)]">1,420</p>
-          <p className="text-[11px] font-mono text-[var(--color-success)]">98.4% parse success</p>
+          {isLoading ? (
+            <div className="h-8 bg-[var(--color-bg)]/60 rounded animate-pulse" />
+          ) : (
+            <>
+              <p className="font-display text-2xl font-bold text-[var(--color-fg)]">{formatNumber(totalTracks)}</p>
+              <p className="text-[11px] font-mono text-[var(--color-fg-muted)]">
+                {stats?.maritimeCount ?? 0} maritime · {stats?.aviationCount ?? 0} aviation
+              </p>
+            </>
+          )}
         </div>
 
+        {/* Anomalies Flagged */}
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-4 space-y-1">
           <div className="flex items-center justify-between text-xs text-[var(--color-fg-muted)] font-ui">
-            <span>AIS / ADS-B Anomalies</span>
-            <Activity className="h-4 w-4 text-red-500" />
+            <span>Anomalies Detected</span>
+            <AlertTriangle className={cn(
+              "h-4 w-4",
+              (stats?.totalAnomalies ?? 0) > 10 ? "text-red-500" : "text-[var(--color-warning)]"
+            )} />
           </div>
-          <p className="font-display text-2xl font-bold text-[var(--color-fg)]">38 Flagged</p>
-          <p className="text-[11px] font-mono text-red-500">12 High Anomaly Vectors</p>
+          {isLoading ? (
+            <div className="h-8 bg-[var(--color-bg)]/60 rounded animate-pulse" />
+          ) : (
+            <>
+              <p className={cn(
+                "font-display text-2xl font-bold",
+                (stats?.totalAnomalies ?? 0) > 10 ? "text-red-500" : "text-[var(--color-fg)]"
+              )}>
+                {stats?.totalAnomalies ?? 0} Flagged
+              </p>
+              <p className="text-[11px] font-mono text-[var(--color-fg-muted)]">{formatPct(anomalyPct)} of all tracks</p>
+            </>
+          )}
         </div>
 
+        {/* Queue Pipeline Health */}
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-4 space-y-1">
           <div className="flex items-center justify-between text-xs text-[var(--color-fg-muted)] font-ui">
-            <span>Source Reliability</span>
-            <PieChart className="h-4 w-4 text-emerald-400" />
+            <span>Pipeline Queue</span>
+            <Layers className={cn(
+              "h-4 w-4",
+              (stats?.queueDropped ?? 0) > 0 ? "text-[var(--color-warning)]" : "text-[var(--color-success)]"
+            )} />
           </div>
-          <p className="font-display text-2xl font-bold text-[var(--color-fg)]">92.1%</p>
-          <p className="text-[11px] font-mono text-[var(--color-fg-muted)]">Across 24 active feeds</p>
+          {isLoading ? (
+            <div className="h-8 bg-[var(--color-bg)]/60 rounded animate-pulse" />
+          ) : (
+            <>
+              <p className="font-display text-2xl font-bold text-[var(--color-fg)]">
+                {formatNumber(stats?.queueProcessed ?? 0)}
+              </p>
+              <p className="text-[11px] font-mono text-[var(--color-fg-muted)]">
+                {stats?.queueDropped ?? 0} drops · depth {stats?.queueDepth ?? 0}
+              </p>
+            </>
+          )}
         </div>
       </div>
 
       {/* Visual Analytics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Regional Threat Density Distribution */}
+        {/* Vessel State Distribution */}
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6 space-y-4">
           <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-            <h3 className="font-display text-base font-bold text-[var(--color-fg)]">Regional Threat Density</h3>
-            <span className="font-mono text-xs text-[var(--color-fg-muted)]">LAST 7 DAYS</span>
+            <h3 className="font-display text-base font-bold text-[var(--color-fg)]">Vessel State Distribution</h3>
+            <span className="font-mono text-xs text-[var(--color-fg-muted)]">SPEED-BASED</span>
           </div>
-          <div className="space-y-3 pt-2">
-            {[
-              { label: "Strait of Hormuz (North)", val: "84%", color: "bg-red-500" },
-              { label: "Gulf of Oman (East)", val: "62%", color: "bg-amber-500" },
-              { label: "Bandar Abbas Sector", val: "48%", color: "bg-blue-500" },
-              { label: "Persian Gulf Central", val: "25%", color: "bg-emerald-500" },
-            ].map(item => (
-              <div key={item.label} className="space-y-1">
-                <div className="flex justify-between text-xs font-ui">
-                  <span className="text-[var(--color-fg)] font-semibold">{item.label}</span>
-                  <span className="font-mono text-[var(--color-fg-muted)]">{item.val}</span>
+          {isLoading ? (
+            <div className="space-y-3 pt-2">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-10 bg-[var(--color-bg)]/60 rounded animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3 pt-2">
+              {[
+                { label: "Anchored (<0.5 kn)", count: stats?.anchoredCount ?? 0, pct: anchoredPct, color: "bg-slate-500", icon: Anchor },
+                { label: "Slow (0.5–3 kn)", count: stats?.slowCount ?? 0, pct: slowPct, color: "bg-amber-500", icon: Gauge },
+                { label: "Maneuvering (3–8 kn)", count: stats?.maneuveringCount ?? 0, pct: maneuveringPct, color: "bg-blue-500", icon: Ship },
+                { label: "Transiting (>8 kn)", count: stats?.transitingCount ?? 0, pct: transitingPct, color: "bg-emerald-500", icon: Ship },
+              ].map((item) => (
+                <div key={item.label} className="space-y-1">
+                  <div className="flex justify-between text-xs font-ui">
+                    <span className="text-[var(--color-fg)] font-semibold flex items-center gap-1.5">
+                      <item.icon className="h-3 w-3 text-[var(--color-fg-muted)]" />
+                      {item.label}
+                    </span>
+                    <span className="font-mono text-[var(--color-fg-muted)]">
+                      {item.count} · {formatPct(item.pct)}
+                    </span>
+                  </div>
+                  <div className="w-full bg-[var(--color-bg)] h-2 rounded-full overflow-hidden border border-[var(--color-border)]">
+                    <div
+                      className={`${item.color} h-full rounded-full transition-all duration-500`}
+                      style={{ width: `${Math.min(item.pct, 100)}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full bg-[var(--color-bg)] h-2 rounded-full overflow-hidden border border-[var(--color-border)]">
-                  <div className={`${item.color} h-full rounded-full`} style={{ width: item.val }} />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Intelligence Category Breakdown */}
+        {/* Track Type Breakdown */}
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6 space-y-4">
           <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-            <h3 className="font-display text-base font-bold text-[var(--color-fg)]">Intelligence Category Breakdown</h3>
-            <span className="font-mono text-xs text-[var(--color-fg-muted)]">ARTICLES</span>
+            <h3 className="font-display text-base font-bold text-[var(--color-fg)]">Track Type Breakdown</h3>
+            <span className="font-mono text-xs text-[var(--color-fg-muted)]">TOTAL: {totalTracks}</span>
           </div>
-          <div className="space-y-3 pt-2">
-            {[
-              { label: "Naval / Maritime Operations", count: "482 articles", pct: "34%" },
-              { label: "Geopolitical & Diplomatic", count: "390 articles", pct: "27%" },
-              { label: "Sanctions & Maritime Law", count: "310 articles", pct: "22%" },
-              { label: "Airspace Surveillance", count: "238 articles", pct: "17%" },
-            ].map(cat => (
-              <div key={cat.label} className="flex items-center justify-between p-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] text-xs font-ui">
-                <span className="font-semibold text-[var(--color-fg)]">{cat.label}</span>
-                <div className="text-right">
-                  <span className="font-mono text-[var(--color-primary-600)] font-bold">{cat.pct}</span>
-                  <span className="text-[10px] font-mono text-[var(--color-fg-muted)] block">{cat.count}</span>
+          {isLoading ? (
+            <div className="space-y-3 pt-2">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-14 bg-[var(--color-bg)]/60 rounded animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3 pt-2">
+              {[
+                {
+                  label: "Maritime Vessels",
+                  count: stats?.maritimeCount ?? 0,
+                  pct: formatPct(maritimePct),
+                  icon: Ship,
+                  color: "text-sky-400",
+                  borderColor: "border-sky-500/30",
+                  bg: "bg-sky-500/10",
+                },
+                {
+                  label: "Aviation / ADS-B",
+                  count: stats?.aviationCount ?? 0,
+                  pct: formatPct(aviationPct),
+                  icon: Plane,
+                  color: "text-indigo-400",
+                  borderColor: "border-indigo-500/30",
+                  bg: "bg-indigo-500/10",
+                },
+                {
+                  label: "High Anomaly Vectors",
+                  count: stats?.highAnomalyCount ?? 0,
+                  pct: totalTracks > 0 ? formatPct(((stats?.highAnomalyCount ?? 0) / totalTracks) * 100) : "0.0%",
+                  icon: AlertTriangle,
+                  color: "text-red-400",
+                  borderColor: "border-red-500/30",
+                  bg: "bg-red-500/10",
+                },
+                {
+                  label: "Avg Speed (kn)",
+                  count: Math.round(stats?.avgSpeed ?? 0),
+                  pct: `${(stats?.avgSpeed ?? 0).toFixed(1)} kn`,
+                  icon: Gauge,
+                  color: "text-emerald-400",
+                  borderColor: "border-emerald-500/30",
+                  bg: "bg-emerald-500/10",
+                },
+              ].map((cat) => (
+                <div
+                  key={cat.label}
+                  className={cn(
+                    "flex items-center justify-between p-3 rounded-lg border bg-[var(--color-bg)]/40 text-xs font-ui",
+                    cat.borderColor,
+                    cat.bg,
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <cat.icon className={cn("h-4 w-4", cat.color)} />
+                    <span className="font-semibold text-[var(--color-fg)]">{cat.label}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className={cn("font-mono font-bold", cat.color)}>{cat.pct}</span>
+                    <span className="text-[10px] font-mono text-[var(--color-fg-muted)] block">
+                      {cat.count}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Last Updated */}
+      {stats?.updatedAt && (
+        <div className="text-center text-[10px] font-mono text-[var(--color-fg-muted)]">
+          Last push: {new Date(stats.updatedAt).toLocaleTimeString()} · WebSocket → Zustand · Every 1s
+        </div>
+      )}
 
       {/* TODO List Component */}
       <PageTodoList pageTitle="Analytics & Strategic Reports" items={ANALYTICS_TODOS} />

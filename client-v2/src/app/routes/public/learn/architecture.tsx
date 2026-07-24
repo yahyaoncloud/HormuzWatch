@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { Section } from '@/components/layout/Section';
-import { MetricGrid, PLATFORM_METRICS } from '@/components/data/MetricGrid';
+import { LivePlatformMetrics } from '@/components/data/MetricGrid';
 
 const architectureLayers = [
   {
@@ -87,7 +87,7 @@ export default function LearnArchitecture() {
         subtitle="Current platform health"
         className="mb-4"
       >
-        <MetricGrid metrics={PLATFORM_METRICS} columns={4} />
+        <LivePlatformMetrics columns={4} />
       </Section>
 
       {/* Architecture Layers */}

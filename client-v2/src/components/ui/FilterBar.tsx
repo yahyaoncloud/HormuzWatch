@@ -48,7 +48,7 @@ export function SearchFilter({
           value={searchValue}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={searchPlaceholder}
-          className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] pl-9 pr-4 py-2 text-xs font-ui text-[var(--color-fg)] placeholder:text-[var(--color-fg-muted)] focus:border-[var(--color-primary-600)] focus:outline-none"
+          className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-card)] pl-9 pr-4 py-2 text-xs font-ui text-[var(--color-fg)] placeholder:text-[var(--color-fg-muted)] focus:border-[var(--color-primary-600)] focus:outline-none"
         />
         {searchValue && (
           <button
@@ -137,7 +137,7 @@ function FilterSelect({ label, options, value, onChange, placeholder, showLabel 
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-xs font-ui text-[var(--color-fg)] focus:border-[var(--color-primary-600)] focus:outline-none appearance-none bg-no-repeat bg-right"
+        className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-xs font-ui text-[var(--color-fg)] focus:border-[var(--color-primary-600)] focus:outline-none appearance-none bg-no-repeat bg-right"
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundPosition: 'right 8px center', backgroundSize: '12px' }}
       >
         {placeholder && <option value="" disabled>{placeholder}</option>}
@@ -235,7 +235,7 @@ export function SortSelector({ value, onChange, options, className }: SortSelect
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className={cn(
-        'rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-xs font-ui text-[var(--color-fg)] focus:border-[var(--color-primary-600)] focus:outline-none font-mono',
+        'rounded-md border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-xs font-ui text-[var(--color-fg)] focus:border-[var(--color-primary-600)] focus:outline-none font-mono',
         className
       )}
     >

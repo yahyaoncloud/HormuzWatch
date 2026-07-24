@@ -303,7 +303,43 @@ func InitDB() error {
 	_, _ = DB.Exec(`ALTER TABLE tracks ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'webapp'`)
 	_, _ = DB.Exec(`ALTER TABLE articles ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION`)
 	_, _ = DB.Exec(`ALTER TABLE articles ADD COLUMN IF NOT EXISTS lon DOUBLE PRECISION`)
+	_, _ = DB.Exec(`ALTER TABLE telemetry_observations ADD COLUMN IF NOT EXISTS ship_type INTEGER`)
+	_, _ = DB.Exec(`ALTER TABLE telemetry_observations ADD COLUMN IF NOT EXISTS flag TEXT`)
+	_, _ = DB.Exec(`ALTER TABLE telemetry_observations ADD COLUMN IF NOT EXISTS destination TEXT`)
+	_, _ = DB.Exec(`ALTER TABLE tracks ADD COLUMN IF NOT EXISTS flag TEXT`)
+	_, _ = DB.Exec(`ALTER TABLE tracks ADD COLUMN IF NOT EXISTS destination TEXT`)
 	_, _ = DB.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_supabase_uid ON users(supabase_uid) WHERE supabase_uid IS NOT NULL`)
+
+	// ── Transit & Analytics tables ─────────────────────────────────
+	_, _ = DB.Exec(`
+		CREATE TABLE IF NOT EXISTS transit_events (
+			id BIGSERIAL PRIMARY KEY,
+			mmsi BIGINT NOT NULL,
+			gate_name TEXT NOT NULL,
+			direction TEXT NOT NULL CHECK (direction IN ('INBOUND', 'OUTBOUND')),
+			crossed_at TIMESTAMPTZ NOT NULL,
+			latitude DOUBLE PRECISION,
+			longitude DOUBLE PRECISION,
+			speed REAL,
+			ship_name TEXT,
+			ship_type INTEGER,
+			flag TEXT,
+			destination TEXT,
+			created_at TIMESTAMPTZ DEFAULT NOW()
+		)
+	`)
+	_, _ = DB.Exec(`CREATE INDEX IF NOT EXISTS idx_transit_crossed_at ON transit_events(crossed_at)`)
+	_, _ = DB.Exec(`CREATE INDEX IF NOT EXISTS idx_transit_mmsi ON transit_events(mmsi)`)
+	_, _ = DB.Exec(`CREATE INDEX IF NOT EXISTS idx_transit_gate ON transit_events(gate_name)`)
+	_, _ = DB.Exec(`CREATE INDEX IF NOT EXISTS idx_transit_dedup ON transit_events(mmsi, gate_name, crossed_at)`)
+
+	_, _ = DB.Exec(`
+		CREATE TABLE IF NOT EXISTS analytics_state (
+			key TEXT PRIMARY KEY,
+			value TEXT NOT NULL,
+			updated_at TIMESTAMPTZ DEFAULT NOW()
+		)
+	`)
 
 	defaultSettings := map[string]string{
 		"retention_days":           "30",

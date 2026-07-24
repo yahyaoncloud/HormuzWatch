@@ -52,7 +52,7 @@ export default function RegisterPage() {
         style={{ backgroundImage: `url(${loginBg})` }}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-zinc-900/95 via-zinc-900/80 to-zinc-800/60 pointer-events-none" />
-        <Card className="relative z-10 w-full max-w-md rounded-2xl border border-[var(--color-border)]/60 bg-[var(--color-bg-card)]/95 shadow-2xl backdrop-blur-xl">
+        <Card className="relative z-10 w-full max-w-md rounded-md border border-[var(--color-border)]/60 bg-[var(--color-bg-card)]/95 shadow-2xl backdrop-blur-xl">
           <CardHeader className="pb-4 text-center">
             <CardTitle className="font-display text-xl font-semibold text-[var(--color-fg)]">Check your email</CardTitle>
             <CardDescription className="font-ui text-sm text-[var(--color-fg-muted)]">
@@ -80,7 +80,7 @@ export default function RegisterPage() {
       {/* Dark gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-zinc-900/95 via-zinc-900/80 to-zinc-800/60 pointer-events-none" />
 
-      <Card className="relative z-10 w-full max-w-md rounded-2xl border border-[var(--color-border)]/60 bg-[var(--color-bg-card)]/95 shadow-2xl backdrop-blur-xl">
+      <Card className="relative z-10 w-full max-w-md rounded-md border border-[var(--color-border)]/60 bg-[var(--color-bg-card)]/95 shadow-2xl backdrop-blur-xl">
         <CardHeader className="pb-4 text-center">
           <Link to="/" className="inline-flex items-center gap-2 mb-6" aria-label="HormuzWatch Home">
             <svg className="w-8 h-8 text-[var(--color-primary-600)]" viewBox="0 0 32 32" fill="none" aria-hidden="true">

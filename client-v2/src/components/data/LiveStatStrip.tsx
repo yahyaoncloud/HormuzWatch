@@ -75,7 +75,7 @@ export function LiveStatStrip({
 
   if (isLoading) {
     return (
-      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-border)] sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-border)] sm:grid-cols-4">
         {stats.map((s) => (
           <div key={s.key} className="animate-pulse bg-[var(--color-bg-card)] p-4">
             <dt className="font-ui text-xs text-[var(--color-fg-muted)]">{s.label}</dt>
@@ -87,7 +87,7 @@ export function LiveStatStrip({
   }
 
   return (
-    <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-border)] sm:grid-cols-4">
+    <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-border)] sm:grid-cols-4">
       {stats.map((s) => (
         <button
           key={s.key}

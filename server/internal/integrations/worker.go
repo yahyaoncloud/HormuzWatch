@@ -9,7 +9,8 @@ import (
 )
 
 // StartWorkers initializes and runs all background data ingestion goroutines.
-func StartWorkers(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *intelligence.MLClient) {
+// Returns the Pipeline so the caller can defer its Shutdown on exit.
+func StartWorkers(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *intelligence.MLClient) *intelligence.Pipeline {
 	log.Println("Starting background integration workers...")
 
 	pipeline := intelligence.NewPipeline(h, tsm, mlClient)
@@ -28,7 +29,6 @@ func StartWorkers(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *int
 	// 5. Start FIRMS integration
 	go StartFIRMS(h)
 
-
 	// Periodic stale track purge
 	go func() {
 		ticker := time.NewTicker(10 * time.Minute)
@@ -42,4 +42,5 @@ func StartWorkers(h *hub.Hub, tsm *intelligence.TrackStateManager, mlClient *int
 	}()
 
 	log.Println("All background integration workers dispatched.")
+	return pipeline
 }

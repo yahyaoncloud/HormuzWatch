@@ -1,5 +1,5 @@
 import { Section } from '@/components/layout/Section';
-import { AVIATION_METRICS, MetricGrid } from '@/components/data/MetricGrid';
+import { LiveAviationMetrics } from '@/components/data/MetricGrid';
 import { APIExampleBlock } from '@/components/docs/APIExampleBlock';
 import {
   DocCallout,
@@ -176,7 +176,7 @@ export default function LearnADSB() {
             </div>
           </div>
         </div>
-        <MetricGrid metrics={AVIATION_METRICS} columns={4} className="mt-4" />
+        <LiveAviationMetrics columns={4} className="mt-4" />
       </Section>
 
       {/* Message Format */}

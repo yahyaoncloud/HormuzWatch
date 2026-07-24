@@ -18,6 +18,9 @@ xgboost>=2.0.0
 requests>=2.31.0
 pandas>=2.2.0
 
+# Dataset analysis & charting (admin portal)
+matplotlib>=3.8.0
+
 # Dev / offline training / tests (not required at runtime):
 #   pip install pandas pytest
 # grpcio-tools==1.65.1   # required to regenerate ml_service_pb2*.py

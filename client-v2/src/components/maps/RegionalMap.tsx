@@ -274,7 +274,7 @@ export function RegionalMap({
 
   return (
     <MapContainer
-      className={cn('rounded-xl overflow-hidden', className)}
+      className={cn('rounded-md overflow-hidden', className)}
       mapStyle={style}
       center={[mapCenter[0], mapCenter[1]]}
       zoom={mapZoom}
@@ -361,7 +361,7 @@ export function GISLayerSelector({ layers = [], className }: GISLayerSelectorPro
   }, [layers]);
 
   return (
-    <div className={cn('glass-card rounded-xl p-4 border border-border/50', className)}>
+    <div className={cn('glass-card rounded-md p-4 border border-border/50', className)}>
       <h4 className="font-display text-heading-sm text-fg mb-4">Map Layers</h4>
       <div className="space-y-4 max-h-[60vh] overflow-y-auto">
         {Object.entries(groups).map(([groupName, groupLayers]) => (

@@ -1,6 +1,8 @@
 package api
 
 import (
+	"Geospatial-harmuz-watch/server/internal/db"
+	"Geospatial-harmuz-watch/server/internal/websocket/hub"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -18,20 +20,20 @@ import (
 
 // ConflictEvent is a single conflict/intelligence event with geospatial data.
 type ConflictEvent struct {
-	ID            string  `json:"id"`
-	Title         string  `json:"title"`
-	Description   string  `json:"description"`
-	Lat           float64 `json:"lat"`
-	Lon           float64 `json:"lon"`
-	ConflictType  string  `json:"conflictType"`  // naval, air, ground, cyber, infrastructure, piracy, diplomatic
-	Severity      string  `json:"severity"`       // critical, high, medium, low
-	Region        string  `json:"region"`
-	AffectedAssets string `json:"affectedAssets"` // comma-separated vessel/aircraft types
-	Casualties    string  `json:"casualties"`
-	Source        string  `json:"source"`
-	SourceType    string  `json:"sourceType"` // osint, military, maritime, aviation, diplomatic
-	Timestamp     string  `json:"timestamp"`
-	Verified      bool    `json:"verified"`
+	ID             string  `json:"id"`
+	Title          string  `json:"title"`
+	Description    string  `json:"description"`
+	Lat            float64 `json:"lat"`
+	Lon            float64 `json:"lon"`
+	ConflictType   string  `json:"conflictType"` // naval, air, ground, cyber, infrastructure, piracy, diplomatic
+	Severity       string  `json:"severity"`     // critical, high, medium, low
+	Region         string  `json:"region"`
+	AffectedAssets string  `json:"affectedAssets"` // comma-separated vessel/aircraft types
+	Casualties     string  `json:"casualties"`
+	Source         string  `json:"source"`
+	SourceType     string  `json:"sourceType"` // osint, military, maritime, aviation, diplomatic
+	Timestamp      string  `json:"timestamp"`
+	Verified       bool    `json:"verified"`
 }
 
 // ConflictFeedResponse is the full API response.
@@ -160,6 +162,77 @@ Return ONLY the JSON array with no additional text.`
 	}, nil
 }
 
+// mapConflictType maps the conflict feed event types to the database event_type enum values.
+func mapConflictType(ct string) string {
+	switch ct {
+	case "naval":
+		return "maritime"
+	case "air":
+		return "aviation"
+	case "ground":
+		return "military"
+	case "cyber":
+		return "cyber"
+	case "infrastructure":
+		return "technology"
+	case "piracy":
+		return "maritime"
+	case "diplomatic":
+		return "diplomacy"
+	case "hybrid":
+		return "military"
+	default:
+		return "military"
+	}
+}
+
+// extractCountryFromRegion attempts to extract a country code from the region string.
+func extractCountryFromRegion(region string) string {
+	region = strings.ToLower(region)
+	switch {
+	case strings.Contains(region, "iran"):
+		return "IR"
+	case strings.Contains(region, "saudi") || strings.Contains(region, "arabia"):
+		return "SA"
+	case strings.Contains(region, "emirat") || strings.Contains(region, "uae") || strings.Contains(region, "dubai") || strings.Contains(region, "abu dhabi"):
+		return "AE"
+	case strings.Contains(region, "qatar"):
+		return "QA"
+	case strings.Contains(region, "kuwait"):
+		return "KW"
+	case strings.Contains(region, "bahrain"):
+		return "BH"
+	case strings.Contains(region, "oman"):
+		return "OM"
+	case strings.Contains(region, "iraq"):
+		return "IQ"
+	case strings.Contains(region, "yemen"):
+		return "YE"
+	case strings.Contains(region, "jordan"):
+		return "JO"
+	case strings.Contains(region, "israel"):
+		return "IL"
+	case strings.Contains(region, "syria"):
+		return "SY"
+	case strings.Contains(region, "lebanon"):
+		return "LB"
+	case strings.Contains(region, "egypt"):
+		return "EG"
+	case strings.Contains(region, "red sea") || strings.Contains(region, "bab-el-mandeb"):
+		return "YE" // Red Sea/Yemen area
+	case strings.Contains(region, "persian gulf"):
+		return "IR" // Default to Iran for Persian Gulf
+	case strings.Contains(region, "strait of hormuz"):
+		return "IR"
+	case strings.Contains(region, "gulf of oman"):
+		return "OM"
+	case strings.Contains(region, "arabian sea"):
+		return "OM"
+	default:
+		return "IR" // Default fallback
+	}
+}
+
 // ── Database Persistence & Query ─────────────────────────────────────────────
 
 func SaveConflictEventsToDB(conflicts []ConflictEvent) {
@@ -168,6 +241,10 @@ func SaveConflictEventsToDB(conflicts []ConflictEvent) {
 		if err != nil {
 			ts = time.Now()
 		}
+		eventType := mapConflictType(c.ConflictType)
+		country := extractCountryFromRegion(c.Region)
+		sourceArticleIDs := "[\"" + c.ID + "\"]"
+
 		_, _ = db.Exec(`
 			INSERT INTO events (id, title, description, event_type, severity, lat, lon, country, start_time, source_article_ids)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -177,8 +254,11 @@ func SaveConflictEventsToDB(conflicts []ConflictEvent) {
 				event_type = EXCLUDED.event_type,
 				severity = EXCLUDED.severity,
 				lat = EXCLUDED.lat,
-				lon = EXCLUDED.lon;
-		`, c.ID, c.Title, c.Description, c.ConflictType, c.Severity, c.Lat, c.Lon, c.Region, ts, "[\""+c.ID+"\"]")
+				lon = EXCLUDED.lon,
+				country = EXCLUDED.country,
+				start_time = EXCLUDED.start_time,
+				source_article_ids = EXCLUDED.source_article_ids;
+		`, c.ID, c.Title, c.Description, eventType, c.Severity, c.Lat, c.Lon, country, ts, sourceArticleIDs)
 	}
 }
 
@@ -217,6 +297,32 @@ func getDatabaseConflicts() *ConflictFeedResponse {
 		Source:      "database",
 		Count:       len(conflicts),
 		Message:     fmt.Sprintf("Live intelligence — %d real conflict events loaded from PostgreSQL database", len(conflicts)),
+	}
+}
+
+// ── WebSocket Broadcast ───────────────────────────────────────────────────────
+
+// BroadcastConflictFeed fetches the latest conflict feed and broadcasts it via
+// the WebSocket hub. Called periodically by a goroutine in main.go.
+func BroadcastConflictFeed(h *hub.Hub) {
+	feed, err := callOpenRouterForConflicts()
+	if err != nil || len(feed.Conflicts) < 5 {
+		feed = getDatabaseConflicts()
+	}
+
+	// Update the REST cache as well
+	conflictCacheMu.Lock()
+	conflictCache = feed
+	conflictCacheUntil = time.Now().Add(conflictCacheTTL)
+	conflictCacheMu.Unlock()
+
+	if feed != nil && len(feed.Conflicts) > 0 {
+		for _, c := range feed.Conflicts {
+			h.Publish(hub.Message{
+				Type: "conflict",
+				Data: c,
+			})
+		}
 	}
 }
 

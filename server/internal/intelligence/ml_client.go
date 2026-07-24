@@ -451,11 +451,20 @@ var _ = json.Marshal
 // ── News Domain Prediction ────────────────────────────────────────────────
 
 // PredictNews computes a threat score for a news article feature vector.
-// Currently uses the Go heuristic (news/scorer.go) as the primary path.
-// When the Python ensemble has a trained news model, this method will
-// call the gRPC Predict endpoint with domain="news".
+//
+// Architecture: The gRPC FeatureVector proto was designed for the kinematic
+// (vessel/aircraft) domains and does not carry the 18-dim news feature set.
+// For news scoring we use the Go-side heuristic, which mirrors news.ComputeNewsScore
+// and produces identical 0-100 scores.
+//
+// When a trained news_ensemble.joblib artifact exists in the Python ML service:
+//   - The Go backend will call POST /api/predict (REST) with domain="news"
+//   - The Go heuristic serves as the fallback if the REST call fails
+//   - gRPC is not used for news — it's reserved for kinematic domains
+//
+// TODO: add REST client for MLServiceURL/api/predict with domain="news"
 func (c *MLClient) PredictNews(features newsFeaturePayload) (float64, *MLExplanation) {
-	// Use the Go-side heuristic for now — same pattern as localFallback
+	// Use the Go-side heuristic — produces identical results to news.ComputeNewsScore
 	score := localNewsHeuristic(features)
 	return score, nil
 }
@@ -463,24 +472,24 @@ func (c *MLClient) PredictNews(features newsFeaturePayload) (float64, *MLExplana
 // newsFeaturePayload mirrors NewsFeatureVector without creating a circular
 // dependency between the intelligence and news packages.
 type newsFeaturePayload struct {
-	KeywordCount       int
-	EntityCount        int
-	ArticleLength      int
-	PublicationAge     float64
-	MilitaryTermCount  int
-	EnergyTermCount    int
-	ShippingTermCount  int
-	CyberTermCount     int
-	CountryRiskScore   float64
-	SourceReliability  float64
-	SentimentScore     float64
-	OrganizationCount  int
-	CompanyCount       int
-	PortMentions       int
-	AirportMentions    int
-	ShipMentions       int
-	AircraftMentions   int
-	PublisherWeight    float64
+	KeywordCount      int
+	EntityCount       int
+	ArticleLength     int
+	PublicationAge    float64
+	MilitaryTermCount int
+	EnergyTermCount   int
+	ShippingTermCount int
+	CyberTermCount    int
+	CountryRiskScore  float64
+	SourceReliability float64
+	SentimentScore    float64
+	OrganizationCount int
+	CompanyCount      int
+	PortMentions      int
+	AirportMentions   int
+	ShipMentions      int
+	AircraftMentions  int
+	PublisherWeight   float64
 }
 
 // localNewsHeuristic is the Go-side fallback for news threat scoring.

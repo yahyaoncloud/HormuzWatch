@@ -15,7 +15,7 @@ import { env } from "@/environments/environment";
 // ============================================================
 
 import { getSupabase, isSupabaseAvailable } from '@/lib/supabase';
-import { useAdminStore } from '@/stores';
+import { useAdminStore, useRealtimeStore } from '@/stores';
 
 export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const setSession = useAdminStore((s) => s.setSession);
@@ -51,6 +51,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
 import type {
   AnomalyPayload,
+  StatsPayload,
   TelemetryPayload,
   TracesPayload,
   WSMessage,
@@ -63,6 +64,7 @@ interface WebSocketContextValue {
   telemetry: TelemetryPayload | null;
   anomaly: AnomalyPayload | null;
   traces: TracesPayload | null;
+  stats: StatsPayload | null;
   send: (message: unknown) => void;
   subscribe: (type: WSMessageType, callback: (payload: unknown) => void) => () => void;
   reconnect: () => void;
@@ -114,6 +116,15 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const subscriptionsRef = useRef(new Map<WSMessage['type'], Set<(payload: unknown) => void>>());
   const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Zustand realtime store — single source of truth
+  const rtSetStats = useRealtimeStore((s) => s.setStats);
+  const rtSetTelemetry = useRealtimeStore((s) => s.setTelemetry);
+  const rtSetAnomaly = useRealtimeStore((s) => s.setAnomaly);
+  const rtSetTraces = useRealtimeStore((s) => s.setTraces);
+  const rtAddConflict = useRealtimeStore((s) => s.addConflict);
+  const rtSetWsStatus = useRealtimeStore((s) => s.setWsStatus);
+  const rtClearAll = useRealtimeStore((s) => s.clearAll);
 
   const connectWS = useCallback(async () => {
     // Don't attempt connection if not configured for local development
@@ -169,13 +180,14 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
       socket.onopen = () => {
         setStatus('connected');
+        rtSetWsStatus('connected');
         setReconnectAttempt(0);
         if (env.isDev) {
           console.log('[WS] Telemetry WebSocket connected');
         }
 
         // Subscribe to telemetry and anomaly channels
-        socket.send(JSON.stringify({ type: 'subscribe', channels: ['telemetry', 'anomaly'] }));
+        socket.send(JSON.stringify({ type: 'subscribe', channels: ['telemetry', 'anomaly', 'conflict'] }));
       };
 
       socket.onmessage = (event) => {
@@ -185,17 +197,25 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           const message = { ...rawMessage, payload } as WSMessage;
           setLastMessage(message);
 
-          // Update typed state
+          // Push to Zustand realtime store (single source of truth)
           switch (message.type) {
             case 'telemetry':
               setTelemetry(message.payload as TelemetryPayload);
+              rtSetTelemetry(message.payload as TelemetryPayload);
               break;
             case 'anomaly':
               setAnomaly(message.payload as AnomalyPayload);
+              rtSetAnomaly(message.payload as AnomalyPayload);
+              break;
+            case 'stats':
+              rtSetStats(message.payload as StatsPayload);
+              break;
+            case 'conflict':
+              rtAddConflict(message.payload as any);
               break;
           }
 
-          // Route to subscribers
+          // Route to subscribers (backwards compat)
           const subscribers = subscriptionsRef.current.get(message.type);
           if (subscribers) {
             subscribers.forEach((cb) => cb(message.payload));
@@ -209,6 +229,9 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
       socket.onclose = () => {
         setStatus('reconnecting');
+        // Clear realtime data on disconnect — no stale metrics
+        rtClearAll();
+        rtSetWsStatus('disconnected');
 
         // Nullify handlers to prevent duplicate events on old sockets
         socket.onopen = null;
@@ -295,6 +318,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       try {
         const payload = JSON.parse(event.data) as TracesPayload;
         setTraces(payload);
+        rtSetTraces(payload);
 
         const subscribers = subscriptionsRef.current.get('traces');
         if (subscribers) {
@@ -397,6 +421,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     telemetry,
     anomaly,
     traces,
+    stats: useRealtimeStore.getState().stats, // from Zustand
     send,
     subscribe,
     reconnect,

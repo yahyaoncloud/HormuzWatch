@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { Section } from '@/components/layout/Section';
-import { MetricGrid, PLATFORM_METRICS } from '@/components/data/MetricGrid';
+import { LivePlatformMetrics } from '@/components/data/MetricGrid';
 import { cn } from '@/utils/cn';
 
 const researchCategories = [
@@ -34,39 +34,6 @@ const researchCategories = [
   },
 ];
 
-const featuredResearch = [
-  {
-    title: 'Behavioral Anomaly Detection in Maritime AIS Data: A Deep Learning Approach',
-    authors: ['A. Rahmani', 'M. Haddad', 'S. Karimi'],
-    year: 2025,
-    abstract:
-      'We present a novel transformer-based architecture for detecting behavioral anomalies in AIS trajectories. Our model achieves 94.2% accuracy on a labeled dataset of 1.2M vessel tracks, outperforming rule-based baselines by 18%.',
-    tags: ['AIS', 'Deep Learning', 'Anomaly Detection'],
-    citations: 42,
-    pdfUrl: '#',
-  },
-  {
-    title: 'Multi-Source Fusion for Vessel Track Correlation in Denied Environments',
-    authors: ['J. Smith', 'K. Tanaka', 'L. Petrov'],
-    year: 2024,
-    abstract:
-      'This paper introduces a graph-based fusion framework that correlates AIS, ADS-B, and radar tracks with 98.7% accuracy even when individual sources are intermittent or spoofed.',
-    tags: ['Fusion', 'Tracking', 'Radar'],
-    citations: 28,
-    pdfUrl: '#',
-  },
-  {
-    title: 'Geospatial Risk Modeling for Strategic Chokepoints: Hormuz Case Study',
-    authors: ['R. Al-Mansoori', 'D. Cohen'],
-    year: 2025,
-    abstract:
-      'We develop a spatio-temporal risk model for the Strait of Hormuz using historical incident data, vessel density, and geopolitical indicators. The model predicts escalation risk 72 hours in advance with AUC 0.89.',
-    tags: ['Risk Modeling', 'Geospatial', 'Hormuz'],
-    citations: 15,
-    pdfUrl: '#',
-  },
-];
-
 export default function ResearchIndex() {
   return (
     <PageContainer>
@@ -91,7 +58,7 @@ export default function ResearchIndex() {
         subtitle="Quantified academic contribution"
         className="mb-4"
       >
-        <MetricGrid metrics={PLATFORM_METRICS} columns={4} />
+        <LivePlatformMetrics columns={4} />
       </Section>
 
       <Section
@@ -145,50 +112,13 @@ export default function ResearchIndex() {
       <Section
         id="featured"
         title="Featured Publications"
-        subtitle="Most cited recent work"
+        subtitle="Stay tuned for published research"
         className="mb-4"
       >
-        <div className="space-y-4">
-          {featuredResearch.map((paper) => (
-            <article
-              key={paper.title}
-              className="glass-card rounded-xl p-6 border border-border/50 hover:border-primary/30 transition-all"
-            >
-              <div className="flex flex-col lg:flex-row gap-4">
-                <div className="flex-1">
-                  <h3 className="font-display text-heading-md text-fg mb-2">{paper.title}</h3>
-                  <p className="font-ui text-body-sm text-fg-muted mb-3">
-                    {paper.authors.join(', ')} · {paper.year}
-                  </p>
-                  <p className="font-ui text-body text-fg-muted mb-4 line-clamp-3">
-                    {paper.abstract}
-                  </p>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {paper.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-2 py-1 bg-background-elevated border border-border/50 rounded text-caption text-fg-muted"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="lg:w-32 lg:shrink-0 flex flex-col items-center justify-center gap-3">
-                  <div className="text-center">
-                    <div className="font-data text-data-lg text-primary">{paper.citations}</div>
-                    <div className="font-ui text-caption text-fg-muted">citations</div>
-                  </div>
-                  <a
-                    href={paper.pdfUrl}
-                    className="px-4 py-2 bg-primary/10 text-primary rounded-lg font-ui font-medium text-body-sm hover:bg-primary/20 transition-colors"
-                  >
-                    Download PDF
-                  </a>
-                </div>
-              </div>
-            </article>
-          ))}
+        <div className="glass-card rounded-xl p-6 border border-border/50 text-center">
+          <p className="font-ui text-body text-fg-muted">
+            Featured research publications coming soon.
+          </p>
         </div>
       </Section>
 

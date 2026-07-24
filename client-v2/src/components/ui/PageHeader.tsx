@@ -54,7 +54,7 @@ export function PageHeaderAction({
   className,
   'aria-label': ariaLabel,
 }: PageHeaderActionProps) {
-  const baseStyles = 'inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-semibold transition-all';
+  const baseStyles = 'inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-mono font-semibold transition-all';
   const variants = {
     primary: 'bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] hover:border-[var(--color-primary-700)] ',
     secondary: 'bg-[var(--color-bg-card)] border-[var(--color-border)] text-[var(--color-fg)] hover:bg-[var(--color-bg-elevated)]',

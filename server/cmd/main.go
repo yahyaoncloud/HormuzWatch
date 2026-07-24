@@ -153,7 +153,53 @@ func main() {
 	datasetHandlers := api.DatasetHandlers(datasetSvc)
 
 	// Start background data integration workers (AISStream, OpenSky, GDELT)
-	integrations.StartWorkers(hub, tsm, mlClient)
+	pipeline := integrations.StartWorkers(hub, tsm, mlClient)
+
+	// Periodic real-time pipeline stats broadcast via WebSocket (every 1s).
+	// Combines TSM in-memory state + queue health for end-to-end observability.
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			stats := tsm.GetStats()
+			qm := intelligence.QueueMetrics()
+			hub.Publish(websocket.Message{
+				Type: "stats",
+				Data: map[string]interface{}{
+					"totalTracks":      stats.TotalTracks,
+					"maritimeCount":    stats.MaritimeCount,
+					"aviationCount":    stats.AviationCount,
+					"anchoredCount":    stats.AnchoredCount,
+					"slowCount":        stats.SlowCount,
+					"maneuveringCount": stats.ManeuveringCount,
+					"transitingCount":  stats.TransitingCount,
+					"avgSpeed":         stats.AvgSpeed,
+					"highAnomalyCount": stats.HighAnomalyCount,
+					"totalAnomalies":   stats.TotalAnomalies,
+					"avgEWMA":          stats.AvgEWMA,
+					"updatedAt":        stats.UpdatedAt,
+					// Queue health (atomic counters, no DB)
+					"queueEnqueued":  qm["enqueued"],
+					"queueDropped":   qm["dropped"],
+					"queueProcessed": qm["processed"],
+					"queueDepth":     qm["depth"],
+				},
+			})
+		}
+	}()
+
+	// Periodic conflict feed broadcast via WebSocket (every 5 min).
+	// Uses the same OpenRouter/DB source as the REST endpoint.
+	go func() {
+		// Initial broadcast after a short delay to let everything start
+		time.Sleep(30 * time.Second)
+		api.BroadcastConflictFeed(hub)
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			api.BroadcastConflictFeed(hub)
+		}
+	}()
 
 	// Training requires a durable feature snapshot and a real offline trainer.
 	// Keep it explicitly opt-in until the training job is wired to that pipeline.
@@ -168,6 +214,18 @@ func main() {
 
 	// Start data retention cleanup routine
 	integrations.StartRetentionWorker()
+
+	// ── Hormuz Ship Tracker Integration ───────────────────────────────
+	// Initialize land mask filter from Natural Earth data
+	geo.InitLandMask("")
+
+	// Start periodic transit detection (every 5 minutes)
+	ctx, transitCancel := context.WithCancel(context.Background())
+	intelligence.StartTransitDetectionLoop(ctx, 300) // 5-min interval
+
+	// Defer cleanup for graceful shutdown
+	defer transitCancel()
+	defer pipeline.Shutdown(10 * time.Second)
 
 	// ── News Intelligence Pipeline ────────────────────────────────────
 	// Seed countries table with Gulf-region defaults
@@ -215,7 +273,7 @@ func main() {
 	router.Use(api.RateLimiterMiddleware())
 
 	// Initialize API handlers
-	handlers := api.NewHandlers(hub)
+	handlers := api.NewHandlers(hub, tsm)
 
 	// Root showcase endpoint
 	router.GET("/", func(c *gin.Context) {
@@ -271,6 +329,11 @@ func main() {
 	router.GET("/public/heatmap", cache30s, handlers.GetHeatmap)
 	router.GET("/public/history/attacks", cache30s, api.GetHistoricalAttacks)
 	router.GET("/public/zones/restricted", cache30s, api.GetRestrictedZones)
+
+	// Public vessel/track endpoints (for dashboard, no auth)
+	router.GET("/public/vessels", cache30s, api.GetActiveVessels)
+	router.GET("/public/aircraft", cache30s, api.GetActiveAircraft)
+	router.GET("/public/tracks/active", cache30s, api.GetAllActiveTracks)
 	router.GET("/public/news", api.GetNews)
 	router.GET("/public/news/latest", cache30s, api.GetLatestNews)
 	router.GET("/public/news/trending", cache30s, api.GetTrendingNews)
@@ -283,6 +346,21 @@ func main() {
 	router.GET("/public/sources", cache30s, api.GetSources)
 	router.GET("/public/countries", cache30s, api.GetCountries)
 	router.GET("/public/categories", cache30s, api.GetCategories)
+
+	// Analytics endpoints (transit, blockade, vessel states)
+	router.GET("/public/analytics/transits", cache30s, api.GetTransits)
+	router.GET("/public/analytics/transit-ships", cache30s, api.GetTransitShips)
+	router.GET("/public/analytics/hourly", cache30s, api.GetHourlyTransits)
+	router.GET("/public/analytics/states", cache30s, api.GetVesselStates)
+	router.GET("/public/analytics/blockade", cache30s, api.GetBlockadeIndicators)
+	router.GET("/public/analytics/flags", cache30s, api.GetFlagDistribution)
+	router.GET("/public/analytics/destinations", cache30s, api.GetDestinationDistribution)
+	router.GET("/public/analytics/gate", cache30s, api.GetGateInfo)
+	router.GET("/public/analytics/data-quality", cache30s, api.GetDataQuality)
+	router.GET("/public/analytics/summary", cache30s, api.GetDailySummary)
+	router.GET("/public/analytics/stats", handlers.GetRealtimeStats)
+	router.GET("/admin/stats/realtime", handlers.GetRealtimeStats)
+	router.GET("/api/stats/realtime", handlers.GetRealtimeStats)
 
 	// Unauthenticated routes for testing (can be removed in production)
 	if isAuthDisabled {
@@ -346,6 +424,24 @@ func main() {
 		router.GET("/tracks/active", api.GetAllActiveTracks)
 		router.GET("/vessels", api.GetActiveVessels)
 		router.GET("/aircraft", api.GetActiveAircraft)
+
+		// Analytics endpoints
+		router.GET("/analytics/transits", api.GetTransits)
+		router.GET("/analytics/transit-ships", api.GetTransitShips)
+		router.GET("/analytics/hourly", api.GetHourlyTransits)
+		router.GET("/analytics/states", api.GetVesselStates)
+		router.GET("/analytics/blockade", api.GetBlockadeIndicators)
+		router.GET("/analytics/flags", api.GetFlagDistribution)
+		router.GET("/analytics/destinations", api.GetDestinationDistribution)
+		router.GET("/analytics/gate", api.GetGateInfo)
+		router.GET("/analytics/data-quality", api.GetDataQuality)
+		router.GET("/analytics/summary", api.GetDailySummary)
+
+		// Admin dataset export (auth-disabled mode)
+		router.POST("/api/admin/datasets/export", api.AdminExportDataset)
+		router.GET("/api/admin/datasets/exports", api.AdminListExports)
+		router.GET("/api/admin/datasets/download/:filename", api.AdminDownloadExport)
+		router.DELETE("/api/admin/datasets/download/:filename", api.AdminDeleteExport)
 	} else {
 		// Authenticated routes using JWT middleware
 		authMiddleware := auth.JWTMiddleware()
@@ -405,6 +501,24 @@ func main() {
 		router.GET("/tracks/active", authMiddleware, api.GetAllActiveTracks)
 		router.GET("/vessels", authMiddleware, api.GetActiveVessels)
 		router.GET("/aircraft", authMiddleware, api.GetActiveAircraft)
+
+		// Analytics endpoints (authenticated)
+		router.GET("/analytics/transits", authMiddleware, api.GetTransits)
+		router.GET("/analytics/transit-ships", authMiddleware, api.GetTransitShips)
+		router.GET("/analytics/hourly", authMiddleware, api.GetHourlyTransits)
+		router.GET("/analytics/states", authMiddleware, api.GetVesselStates)
+		router.GET("/analytics/blockade", authMiddleware, api.GetBlockadeIndicators)
+		router.GET("/analytics/flags", authMiddleware, api.GetFlagDistribution)
+		router.GET("/analytics/destinations", authMiddleware, api.GetDestinationDistribution)
+		router.GET("/analytics/gate", authMiddleware, api.GetGateInfo)
+		router.GET("/analytics/data-quality", authMiddleware, api.GetDataQuality)
+		router.GET("/analytics/summary", authMiddleware, api.GetDailySummary)
+
+		// Admin dataset export (JWT + AdminOnly protected)
+		router.POST("/api/admin/datasets/export", authMiddleware, adminMiddleware, api.AdminExportDataset)
+		router.GET("/api/admin/datasets/exports", authMiddleware, adminMiddleware, api.AdminListExports)
+		router.GET("/api/admin/datasets/download/:filename", authMiddleware, adminMiddleware, api.AdminDownloadExport)
+		router.DELETE("/api/admin/datasets/download/:filename", authMiddleware, adminMiddleware, api.AdminDeleteExport)
 	}
 
 	// Token refresh — requires a valid existing token, re-issues a fresh one.

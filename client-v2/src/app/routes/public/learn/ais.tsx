@@ -1,5 +1,5 @@
 import { Section } from '@/components/layout/Section';
-import { MARITIME_METRICS, MetricGrid } from '@/components/data/MetricGrid';
+import { LiveMaritimeMetrics } from '@/components/data/MetricGrid';
 import { APIExampleBlock } from '@/components/docs/APIExampleBlock';
 import {
   DocCallout,
@@ -147,7 +147,7 @@ export default function LearnAIS() {
             </div>
           </div>
         </div>
-        <MetricGrid metrics={MARITIME_METRICS} columns={4} className="mt-4" />
+        <LiveMaritimeMetrics columns={4} className="mt-4" />
       </Section>
 
       {/* Message Format */}

@@ -380,7 +380,7 @@ export function KPICard({
   return (
     <article
       className={cn(
-        'glass-card rounded-xl p-5 transition-all duration-200',
+        'glass-card rounded-md p-5 transition-all duration-200',
         'hover:border-[var(--color-primary-300)] hover:border-border-strong',
         statusClass,
         className

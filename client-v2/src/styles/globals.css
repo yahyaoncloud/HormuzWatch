@@ -465,13 +465,13 @@
     /* Component specific tokens from variables.css */
     /* Button */
     --btn-height-sm: 2rem;
-    --btn-height: 2.5rem;
-    --btn-height-lg: 3rem;
-    --btn-height-xl: 3.5rem;
-    --btn-padding-x: 1rem;
-    --btn-padding-x-sm: 0.75rem;
-    --btn-padding-x-lg: 1.5rem;
-    --btn-radius: var(--radius-md);
+    --btn-height: 2.25rem;
+    --btn-height-lg: 2.5rem;
+    --btn-height-xl: 3rem;
+    --btn-padding-x: 0.875rem;
+    --btn-padding-x-sm: 0.625rem;
+    --btn-padding-x-lg: 1.25rem;
+    --btn-radius: var(--radius-sm);
     --btn-font-size: var(--text-sm);
     --btn-font-weight: var(--font-weight-medium);
 
@@ -479,22 +479,22 @@
     --input-height: var(--btn-height);
     --input-height-sm: var(--btn-height-sm);
     --input-height-lg: var(--btn-height-lg);
-    --input-padding-x: 0.875rem;
-    --input-radius: var(--radius-md);
+    --input-padding-x: 0.75rem;
+    --input-radius: var(--radius-sm);
     --input-font-size: var(--text-sm);
     --input-border-width: 1px;
-    --input-transition: 100ms cubic-bezier(0, 0, 0.2, 1);
+    --input-transition: 120ms cubic-bezier(0, 0, 0.2, 1);
 
-    /* Card */
-    --card-padding: var(--space-6);
-    --card-padding-sm: var(--space-4);
-    --card-padding-lg: var(--space-8);
-    --card-radius: var(--radius-lg);
+    /* Card / Panel */
+    --card-padding: var(--space-4);
+    --card-padding-sm: var(--space-3);
+    --card-padding-lg: var(--space-6);
+    --card-radius: var(--radius-md);
     --card-border-width: 1px;
 
     /* Modal */
-    --modal-radius: var(--radius-xl);
-    --modal-padding: var(--space-6);
+    --modal-radius: var(--radius-md);
+    --modal-padding: var(--space-4);
     --modal-max-width: 32rem;
     --modal-max-width-lg: 48rem;
     --modal-max-width-xl: 64rem;
@@ -502,28 +502,33 @@
 
     /* Tooltip */
     --tooltip-font-size: var(--text-xs);
-    --tooltip-padding: var(--space-2) var(--space-3);
+    --tooltip-padding: var(--space-1-5) var(--space-3);
     --tooltip-radius: var(--radius-sm);
-    --tooltip-gap: var(--space-2);
+    --tooltip-gap: var(--space-1-5);
 
     /* Toast */
-    --toast-radius: var(--radius-md);
-    --toast-padding: var(--space-4);
-    --toast-gap: var(--space-3);
-    --toast-max-width: 24rem;
+    --toast-radius: var(--radius-sm);
+    --toast-padding: var(--space-3);
+    --toast-gap: var(--space-2);
+    --toast-max-width: 22rem;
 
     /* Command Palette */
     --cmdk-height: 60vh;
-    --cmdk-width: 48rem;
-    --cmdk-radius: var(--radius-xl);
-    --cmdk-item-height: 2.75rem;
-    --cmdk-item-padding: 0 var(--space-4);
+    --cmdk-width: 40rem;
+    --cmdk-radius: var(--radius-md);
+    --cmdk-item-height: 2.5rem;
+    --cmdk-item-padding: 0 var(--space-3);
 
     /* Table */
-    --table-cell-padding: var(--space-3) var(--space-4);
-    --table-header-padding: var(--space-3) var(--space-4);
-    --table-row-height: 2.75rem;
+    --table-cell-padding: var(--space-2) var(--space-3);
+    --table-header-padding: var(--space-2) var(--space-3);
+    --table-row-height: 2.5rem;
     --table-border-width: 1px;
+
+    /* Animation */
+    --anim-fast: 120ms cubic-bezier(0, 0, 0.2, 1);
+    --anim-normal: 150ms cubic-bezier(0, 0, 0.2, 1);
+    --anim-slow: 180ms cubic-bezier(0, 0, 0.2, 1);
 
     /* Heatmap color stops */
     --heatmap-0: transparent;

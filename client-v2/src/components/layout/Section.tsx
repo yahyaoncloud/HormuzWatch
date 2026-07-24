@@ -45,7 +45,7 @@ export function Section({
           <p className="mt-3 font-ui text-lg text-[var(--color-fg-muted)]">{subtitle}</p>
         )}
       </div>
-      <div className={cn('prose-body mt-6', wide ? 'w-full' : 'max-w-3xl', containerClassName)}>
+      <div className={cn('prose-body mt-4', wide ? 'w-full' : 'max-w-3xl', containerClassName)}>
         {children}
       </div>
     </section>

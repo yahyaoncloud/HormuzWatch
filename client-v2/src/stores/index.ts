@@ -248,87 +248,124 @@ export const useMapStore = create<MapState>()(
 );
 
 // ============================================================
-// Metric Store (Real-time metrics)
+// Realtime Store — single source of truth for all WebSocket data.
+// NEVER persisted to localStorage. Clears on disconnect.
 // ============================================================
 
-interface MetricData {
-  id: string;
-  label: string;
-  value: number | string;
-  unit?: string;
-  trend?: 'up' | 'down' | 'stable';
-  change?: number;
-  sparkline?: number[];
-  threshold?: { warn: number; critical: number };
-  format?: (v: number) => string;
-  realtime: boolean;
-  lastUpdated: number;
+import type {
+  StatsPayload,
+  TelemetryPayload,
+  AnomalyPayload,
+  TracesPayload,
+  TopTrace,
+  ConflictEvent,
+} from '@/types/websocket';
+
+type WSStatus = 'disconnected' | 'connecting' | 'connected';
+
+interface RealtimeState {
+  // Connection
+  wsStatus: WSStatus;
+  setWsStatus: (s: WSStatus) => void;
+
+  // Pipeline stats (WS "stats" message, every 1s)
+  stats: StatsPayload | null;
+  setStats: (s: StatsPayload | null) => void;
+
+  // Latest telemetry positions (WS "telemetry" messages)
+  telemetry: TelemetryPayload | null;
+  setTelemetry: (t: TelemetryPayload | null) => void;
+
+  // Latest anomaly detection (WS "anomaly" messages)
+  anomaly: AnomalyPayload | null;
+  setAnomaly: (a: AnomalyPayload | null) => void;
+
+  // SSE traces stream
+  traces: TracesPayload | null;
+  setTraces: (t: TracesPayload | null) => void;
+
+  // Conflict events (WS "conflict" messages, every 5 min)
+  conflicts: ConflictEvent[];
+  setConflicts: (c: ConflictEvent[]) => void;
+  addConflict: (c: ConflictEvent) => void;
+
+  // Map track positions (accumulated from telemetry WS)
+  trackMap: Map<string, TopTrace>;
+  upsertTrack: (t: TopTrace) => void;
+  clearTracks: () => void;
+
+  // Full reset on disconnect — no stale data
+  clearAll: () => void;
 }
 
-interface MetricState {
-  metrics: Record<string, MetricData>;
-  setMetric: (metric: MetricData) => void;
-  updateMetric: (id: string, updates: Partial<MetricData>) => void;
-  removeMetric: (id: string) => void;
-  getMetric: (id: string) => MetricData | undefined;
-  getAllMetrics: () => MetricData[];
-
-  // Subscriptions for real-time updates
-  subscriptions: Record<string, Set<(metric: MetricData) => void>>;
-  subscribe: (id: string, callback: (metric: MetricData) => void) => () => void;
-}
-
-export const useMetricStore = create<MetricState>()(
+export const useRealtimeStore = create<RealtimeState>()(
   subscribeWithSelector(
-    immer((set, get) => ({
-      metrics: {},
-      subscriptions: {},
-
-      setMetric: (metric) =>
-        set((state) => {
-          state.metrics[metric.id] = metric;
+    immer((set) => ({
+      wsStatus: 'disconnected',
+      setWsStatus: (status) =>
+        set((s) => {
+          s.wsStatus = status;
         }),
 
-      updateMetric: (id, updates) =>
-        set((state) => {
-          if (state.metrics[id]) {
-            Object.assign(state.metrics[id], updates, { lastUpdated: Date.now() });
+      stats: null,
+      setStats: (stats) =>
+        set((s) => {
+          s.stats = stats;
+        }),
 
-            // Notify subscribers
-            const subs = state.subscriptions[id];
-            if (subs) {
-              subs.forEach((cb) => cb(state.metrics[id]!));
-            }
+      telemetry: null,
+      setTelemetry: (t) =>
+        set((s) => {
+          s.telemetry = t;
+        }),
+
+      anomaly: null,
+      setAnomaly: (a) =>
+        set((s) => {
+          s.anomaly = a;
+        }),
+
+      traces: null,
+      setTraces: (t) =>
+        set((s) => {
+          s.traces = t;
+        }),
+
+      conflicts: [],
+      setConflicts: (c) =>
+        set((s) => {
+          s.conflicts = c;
+        }),
+      addConflict: (c) =>
+        set((s) => {
+          const existing = s.conflicts.findIndex((x) => x.id === c.id);
+          if (existing >= 0) {
+            s.conflicts[existing] = c;
+          } else {
+            s.conflicts.push(c);
           }
         }),
 
-      removeMetric: (id) =>
-        set((state) => {
-          delete state.metrics[id];
-          delete state.subscriptions[id];
+      trackMap: new Map(),
+      upsertTrack: (track) =>
+        set((s) => {
+          s.trackMap.set(track.trackId, track);
+        }),
+      clearTracks: () =>
+        set((s) => {
+          s.trackMap.clear();
         }),
 
-      getMetric: (id) => get().metrics[id],
-      getAllMetrics: () => Object.values(get().metrics),
-
-      subscribe: (id, callback) => {
-        set((state) => {
-          if (!state.subscriptions[id]) {
-            state.subscriptions[id] = new Set();
-          }
-          state.subscriptions[id].add(callback);
-        });
-
-        // Return unsubscribe function
-        return () => {
-          set((state) => {
-            state.subscriptions[id]?.delete(callback);
-            if (state.subscriptions[id]?.size === 0) {
-              delete state.subscriptions[id];
-            }
-          });
-        };
-      },
+      clearAll: () =>
+        set((s) => {
+          s.wsStatus = 'disconnected';
+          s.stats = null;
+          s.telemetry = null;
+          s.anomaly = null;
+          s.traces = null;
+          s.conflicts = [];
+          s.trackMap.clear();
+        }),
     }))
   )
 );
@@ -606,6 +643,76 @@ const defaultSettings = {
   autoRefresh: true,
   refreshInterval: 30,
 };
+
+// ============================================================
+// Notification Store (Push notifications — shared across layout + pages)
+// ============================================================
+
+interface PushNotification {
+  id: string;
+  title: string;
+  body: string;
+  type: 'critical' | 'warning' | 'info' | 'transit';
+  timestamp: number;
+  read: boolean;
+}
+
+interface NotificationState {
+  notifs: PushNotification[];
+  showPanel: boolean;
+
+  addNotification: (n: Omit<PushNotification, 'id' | 'timestamp' | 'read'>) => void;
+  markRead: (id: string) => void;
+  clearAll: () => void;
+  setShowPanel: (show: boolean) => void;
+  togglePanel: () => void;
+}
+
+let notifCounter = 0;
+
+export const useNotificationStore = create<NotificationState>()(
+  persist(
+    subscribeWithSelector(
+      immer((set) => ({
+        notifs: [],
+        showPanel: false,
+
+        addNotification: (n) => {
+          const id = `n${Date.now()}_${++notifCounter}`;
+          const entry: PushNotification = { ...n, id, timestamp: Date.now(), read: false };
+          set((state) => {
+            state.notifs.unshift(entry);
+            if (state.notifs.length > 200) state.notifs = state.notifs.slice(0, 200);
+          });
+        },
+
+        markRead: (id) =>
+          set((state) => {
+            const found = state.notifs.find((n) => n.id === id);
+            if (found) found.read = true;
+          }),
+
+        clearAll: () =>
+          set((state) => {
+            state.notifs = [];
+          }),
+
+        setShowPanel: (show) =>
+          set((state) => {
+            state.showPanel = show;
+          }),
+        togglePanel: () =>
+          set((state) => {
+            state.showPanel = !state.showPanel;
+          }),
+      }))
+    ),
+    {
+      name: 'hw_notifications',
+      partialize: (state) => ({ notifs: state.notifs }),
+    }
+  )
+);
 
 export const useSettingsStore = create<SettingsState>()(
   persist(

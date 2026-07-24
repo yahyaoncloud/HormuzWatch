@@ -20,6 +20,7 @@ export default [
     route("tracking", "routes/admin/tracking.tsx"),
     route("watchlist", "routes/admin/watchlist.tsx"),
     route("analytics", "routes/admin/analytics.tsx"),
+    route("analysis", "routes/admin/analysis.tsx"),
   ]),
 
   // ── Public routes (root level — / is home) ───────────────────
@@ -38,7 +39,6 @@ export default [
       route("learn/architecture", "routes/public/learn/architecture.tsx"),
       route("learn/detection", "routes/public/learn/detection.tsx"),
     ]),
-    route("api", "routes/public/api.tsx"),
     route("research", "routes/public/research.tsx"),
     route("deploy", "routes/public/deploy.tsx"),
     route("about", "routes/public/about.tsx"),

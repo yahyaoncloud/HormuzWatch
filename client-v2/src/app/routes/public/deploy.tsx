@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { Section } from '@/components/layout/Section';
-import { MetricGrid, PLATFORM_METRICS } from '@/components/data/MetricGrid';
+import { LivePlatformMetrics } from '@/components/data/MetricGrid';
 import { cn } from '@/utils/cn';
 
 const deployOptions = [
@@ -67,7 +67,7 @@ export default function DeployIndex() {
         subtitle="Current production metrics"
         className="mb-4"
       >
-        <MetricGrid metrics={PLATFORM_METRICS} columns={4} />
+        <LivePlatformMetrics columns={4} />
       </Section>
 
       <Section
