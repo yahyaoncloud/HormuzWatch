@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"Geospatial-harmuz-watch/server/internal/mlgrpc"
+	"Geospatial-harmuz-watch/server/internal/observability"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -61,6 +62,7 @@ type circuitBreaker struct {
 	state            CircuitState
 	consecutiveFails int
 	threshold        int
+	baseTimeout      time.Duration
 	resetTimeout     time.Duration
 	lastFailureTime  time.Time
 }
@@ -69,6 +71,7 @@ func newCircuitBreaker(threshold int, resetTimeout time.Duration) *circuitBreake
 	return &circuitBreaker{
 		state:        StateClosed,
 		threshold:    threshold,
+		baseTimeout:  resetTimeout,
 		resetTimeout: resetTimeout,
 	}
 }
@@ -83,7 +86,7 @@ func (cb *circuitBreaker) Allow() bool {
 	if cb.state == StateOpen {
 		if time.Since(cb.lastFailureTime) > cb.resetTimeout {
 			cb.state = StateHalfOpen
-			log.Println("[CircuitBreaker] Transitioning to HALF-OPEN, attempting canary probe")
+			log.Printf("[CircuitBreaker] Transitioning to HALF-OPEN, attempting canary probe (timeout was %v)", cb.resetTimeout)
 			return true
 		}
 		return false
@@ -100,6 +103,7 @@ func (cb *circuitBreaker) ReportSuccess() {
 	}
 	cb.state = StateClosed
 	cb.consecutiveFails = 0
+	cb.resetTimeout = cb.baseTimeout
 }
 
 func (cb *circuitBreaker) ReportFailure() {
@@ -107,9 +111,23 @@ func (cb *circuitBreaker) ReportFailure() {
 	defer cb.mu.Unlock()
 	cb.consecutiveFails++
 	cb.lastFailureTime = time.Now()
+
+	// Calculate exponential backoff with jitter
+	shift := cb.consecutiveFails - cb.threshold
+	if shift < 0 {
+		shift = 0
+	}
+	if shift > 5 {
+		shift = 5
+	}
+	multiplier := 1 << shift
+	// Add pseudo-jitter (up to 20% variance)
+	jitter := time.Duration(float64(cb.baseTimeout) * 0.2 * (float64(time.Now().UnixNano()%100) / 100.0))
+	cb.resetTimeout = (cb.baseTimeout * time.Duration(multiplier)) + jitter
+
 	if cb.state == StateHalfOpen || cb.consecutiveFails >= cb.threshold {
 		if cb.state != StateOpen {
-			log.Printf("[CircuitBreaker] Threshold reached (%d failures), tripping to OPEN. Fallback activated.", cb.consecutiveFails)
+			log.Printf("[CircuitBreaker] CRITICAL SRE ALERT: Threshold reached (%d failures), tripping to OPEN. Fallback activated. Next probe in %v.", cb.consecutiveFails, cb.resetTimeout)
 		}
 		cb.state = StateOpen
 	}
@@ -156,19 +174,20 @@ func NewMLClient() *MLClient {
 		addr:     addr,
 		useTLS:   useTLS,
 		dialOpts: dialOpts,
-		breaker:  newCircuitBreaker(5, 10*time.Second),
+		breaker:  newCircuitBreaker(5, 5*time.Second),
 		cache:    make(map[string]mlResultCache),
 	}
 }
 
-// buildDialOptions constructs gRPC dial options for the configured transport.
+// buildDialOptions constructs modern non-deprecated gRPC dial options.
 func buildDialOptions(addr string, useTLS bool) []grpc.DialOption {
-	// TLS is opt-in so an internal Docker service can use plaintext without
-	// accidentally attempting a TLS handshake against its gRPC port.
+	// Configure modern service config for client-side round-robin load balancing
+	serviceConfig := `{"loadBalancingConfig": [{"round_robin":{}}]}`
+
 	if !useTLS {
 		return []grpc.DialOption{
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			grpc.WithBlock(),
+			grpc.WithDefaultServiceConfig(serviceConfig),
 		}
 	}
 
@@ -201,7 +220,7 @@ func buildDialOptions(addr string, useTLS bool) []grpc.DialOption {
 
 	return []grpc.DialOption{
 		grpc.WithTransportCredentials(creds),
-		grpc.WithBlock(),
+		grpc.WithDefaultServiceConfig(serviceConfig),
 	}
 }
 
@@ -343,6 +362,8 @@ func featureCacheKey(features FeatureVector) string {
 
 // grpcPredict performs the unary gRPC Predict call with graceful degradation and circuit breaking.
 func (c *MLClient) grpcPredict(req *mlgrpc.PredictRequest) (float64, *MLExplanation) {
+	observability.MLPredictionsTotal.Add(1)
+
 	if !c.breaker.Allow() {
 		return c.localFallback(req), nil
 	}
@@ -381,6 +402,7 @@ func (c *MLClient) CircuitState() string {
 
 // localFallback maps a gRPC request back to a FeatureVector for the heuristic.
 func (c *MLClient) localFallback(req *mlgrpc.PredictRequest) float64 {
+	observability.MLPredictionsFallback.Add(1)
 	f := FeatureVector{}
 	if req.GetFeatures() != nil {
 		fv := req.GetFeatures()

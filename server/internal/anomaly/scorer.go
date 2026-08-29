@@ -67,70 +67,71 @@ func SeverityLevel(score int) string {
 	}
 }
 
-// GetReasons returns the list of reasons for the anomaly score
+// GetReasons returns the list of reasons for the anomaly score, maintaining clear
+// distinction between kinematic/continuity anomalies and confirmed hostile intent.
 func GetReasons(score int, courseDelta, aisGapMinutes, speed, previousSpeed, distToZone float64, inRestrictedZone bool, nearHistoricalAttack bool, restrictedZoneName string) []string {
 	var reasons []string
 
 	if courseDelta > 10 {
-		reasons = append(reasons, fmt.Sprintf("Course deviation: %.1f° (> 10° threshold)", courseDelta))
+		reasons = append(reasons, fmt.Sprintf("Kinematic course deviation: %.1f° change (> 10° threshold)", courseDelta))
 	}
 
 	if aisGapMinutes > 5 {
-		reasons = append(reasons, fmt.Sprintf("Stale AIS data: %.0f minutes old (> 5 min threshold)", aisGapMinutes))
+		reasons = append(reasons, fmt.Sprintf("AIS continuity anomaly: %.0f min gap (evaluating VHF propagation shadow vs dark period)", aisGapMinutes))
 	}
 
 	speedDrop := previousSpeed - speed
 	if speedDrop > 2 {
-		reasons = append(reasons, fmt.Sprintf("Abrupt deceleration: from %.1f to %.1f knots (delta: %.1f)", previousSpeed, speed, speedDrop))
+		reasons = append(reasons, fmt.Sprintf("Kinematic speed transition: deceleration from %.1f to %.1f kts (delta: %.1f)", previousSpeed, speed, speedDrop))
 	}
 
 	if speed > 25 {
-		reasons = append(reasons, fmt.Sprintf("Excessive speed: %.1f knots (> 25 kts)", speed))
+		reasons = append(reasons, fmt.Sprintf("High-speed kinematic indicator: %.1f kts (> 25 kts in transit corridor)", speed))
 	}
 
 	if inRestrictedZone {
-		reasons = append(reasons, fmt.Sprintf("Inside Restricted Zone: %s", restrictedZoneName))
+		reasons = append(reasons, fmt.Sprintf("Geofence boundary breach: inside %s", restrictedZoneName))
 	} else if distToZone < 0.3 {
-		reasons = append(reasons, fmt.Sprintf("Approaching Restricted Zone: %.2f° away", distToZone))
+		reasons = append(reasons, fmt.Sprintf("Geofence proximity indicator: %.2f° from restricted zone", distToZone))
 	}
 
 	if nearHistoricalAttack {
-		reasons = append(reasons, "Proximity to historical attack site")
+		reasons = append(reasons, "Geospatial proximity indicator: near historical incident location")
 	}
 
 	if len(reasons) == 0 && score > 0 {
-		reasons = append(reasons, "Minor anomalies detected below individual reporting thresholds")
+		reasons = append(reasons, "Sub-threshold multi-factor kinematic variation")
 	}
 
 	return reasons
 }
 
-// GetActions returns recommended actions based on severity level
+// GetActions returns recommended operational actions based on anomaly score severity.
+// Note: Anomaly indications require cross-sensor validation (radar, visual, VHF) before establishing intent.
 func GetActions(severity string) []string {
 	switch severity {
 	case "critical":
 		return []string{
-			"Immediate escalation to duty officer",
-			"Request vessel MMSI verification",
-			"Prepare intercept vectors",
-			"Notify regional command",
+			"Escalate track for multi-sensor radar/optical cross-validation",
+			"Query coastal AIS station logs for VHF slot collision or terrain masking",
+			"Attempt VHF voice contact on Channel 16 / regional traffic management",
+			"Notify watch officer and log track for situational review",
 		}
 	case "high":
 		return []string{
-			"Alert operations team",
-			"Monitor vessel communications",
-			"Request AIS update refresh",
-			"Log for situational awareness",
+			"Flag track for continuous trajectory monitoring",
+			"Cross-reference satellite SAR and terrestrial AIS feeds",
+			"Evaluate historical pattern of life for MMSI",
+			"Log telemetry continuity status",
 		}
 	case "medium":
 		return []string{
-			"Add to watchlist",
-			"Cross-reference with intelligence",
-			"Monitor for pattern changes",
+			"Add to active operational watchlist",
+			"Monitor for persistent course or speed divergence",
 		}
 	default:
 		return []string{
-			"Continue routine monitoring",
+			"Maintain routine baseline tracking",
 		}
 	}
 }

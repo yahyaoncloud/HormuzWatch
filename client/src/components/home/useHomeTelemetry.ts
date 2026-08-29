@@ -2,11 +2,13 @@ import { useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   getTopTraces,
+  getPublicTracks,
   getNews,
   getBlockadeIndicators,
   getTransits,
   getPublicMetrics,
   type PublicMetricsResponse,
+  type TracksResponse,
   type TopTracesResponse,
   type NewsResponse,
   type BlockadeIndicators,
@@ -21,6 +23,7 @@ import type { ThreatItem } from '@/types/threats';
 
 export interface UseHomeTelemetryProps {
   initialMetrics?: PublicMetricsResponse;
+  initialTracks?: TracksResponse;
   initialTraces?: TopTracesResponse;
   initialNews?: NewsResponse;
   severityFilter?: string;
@@ -35,6 +38,7 @@ export interface UseHomeTelemetryProps {
 
 export function useHomeTelemetry({
   initialMetrics,
+  initialTracks,
   initialTraces,
   initialNews,
   severityFilter: severityFilterProp,
@@ -66,6 +70,15 @@ export function useHomeTelemetry({
     staleTime: 5000,
   });
 
+  // Query for all active tracks (vessels + flights)
+  const { data: publicTracksData } = useQuery<TracksResponse>({
+    queryKey: ['public-tracks-home'],
+    queryFn: getPublicTracks,
+    initialData: initialTracks ?? undefined,
+    refetchInterval: 20000,
+    staleTime: 10000,
+  });
+
   // Queries for background intelligence feeds
   const { data: tracesData } = useQuery({
     queryKey: ['public-traces-home'],
@@ -94,8 +107,27 @@ export function useHomeTelemetry({
     refetchInterval: 60000,
   });
 
+  // Merge initial REST tracks and traces to seed live telemetry
+  const seedTracks = useMemo(() => {
+    const map = new Map<string, any>();
+    if (publicTracksData?.data) {
+      for (const t of publicTracksData.data) {
+        if (t.trackId) map.set(t.trackId, t);
+      }
+    }
+    if (tracesData?.traces) {
+      for (const t of tracesData.traces) {
+        if (t.trackId) {
+          const existing = map.get(t.trackId) || {};
+          map.set(t.trackId, { ...existing, ...t });
+        }
+      }
+    }
+    return Array.from(map.values());
+  }, [publicTracksData?.data, tracesData?.traces]);
+
   // Live WebSocket streams
-  const { tracks: allLiveTraces, wsStatus } = useLiveTelemetry(tracesData?.traces ?? []);
+  const { tracks: allLiveTraces, wsStatus } = useLiveTelemetry(seedTracks);
   const liveStats = useRealtimeStore((s) => s.stats);
   const newsItems = newsData?.news ?? [];
 
@@ -131,13 +163,11 @@ export function useHomeTelemetry({
     const baseVesselCount =
       liveStats?.maritimeCount ??
       rawMetrics?.maritimeCount ??
-      allLiveTraces.filter((t) => !String(t.trackId || '').startsWith('FLIGHT')).length ??
-      18;
+      allLiveTraces.filter((t) => !String(t.trackId || '').startsWith('FLIGHT')).length;
     const baseAircraftCount =
       liveStats?.aviationCount ??
       rawMetrics?.aviationCount ??
-      allLiveTraces.filter((t) => String(t.trackId || '').startsWith('FLIGHT')).length ??
-      8;
+      allLiveTraces.filter((t) => String(t.trackId || '').startsWith('FLIGHT')).length;
 
     const effectiveVessels = showVessels ? baseVesselCount : 0;
     const effectiveAircraft = showAircraft ? baseAircraftCount : 0;
@@ -161,7 +191,7 @@ export function useHomeTelemetry({
         ? Math.round(
             activeVisibleTraces.reduce((acc, t) => acc + (t.score || 0), 0) / activeVisibleTraces.length
           )
-        : (rawMetrics?.avgScore ?? 12);
+        : (rawMetrics?.avgScore ?? 0);
 
     return {
       maritimeCount: effectiveVessels,
@@ -172,7 +202,7 @@ export function useHomeTelemetry({
       mediumCount: medium,
       lowCount: low,
       avgScore,
-      activeRegions: rawMetrics?.activeRegions ?? 4,
+      activeRegions: rawMetrics?.activeRegions ?? 0,
       timestamp: new Date().toISOString(),
     };
   }, [metricsData, liveStats, allLiveTraces, activeVisibleTraces, showVessels, showAircraft, showConflicts]);
@@ -243,5 +273,7 @@ export function useHomeTelemetry({
     showVessels,
     showAircraft,
     showConflicts,
+    tracks: allLiveTraces,
+    visibleTracks: activeVisibleTraces,
   };
 }

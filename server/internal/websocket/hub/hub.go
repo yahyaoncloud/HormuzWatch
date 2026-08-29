@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"Geospatial-harmuz-watch/server/internal/observability"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -97,16 +99,20 @@ func (h *Hub) Run() {
 		case client := <-h.Register:
 			h.mu.Lock()
 			h.Clients[client] = true
+			active := len(h.Clients)
 			h.mu.Unlock()
-			log.Printf("[Hub] Client registered. Total clients: %d", len(h.Clients))
+			observability.WebSocketClientsActive.Store(int64(active))
+			log.Printf("[Hub] Client registered. Total clients: %d", active)
 
 		case client := <-h.Unregister:
 			h.mu.Lock()
 			if _, ok := h.Clients[client]; ok {
 				delete(h.Clients, client)
 				close(client.Send)
+				active := len(h.Clients)
 				h.mu.Unlock()
-				log.Printf("[Hub] Client unregistered. Total clients: %d", len(h.Clients))
+				observability.WebSocketClientsActive.Store(int64(active))
+				log.Printf("[Hub] Client unregistered. Total clients: %d", active)
 			} else {
 				h.mu.Unlock()
 			}
@@ -118,12 +124,14 @@ func (h *Hub) Run() {
 				case client.Send <- message:
 				default:
 					// Client's send buffer is full — drop and unregister
-					log.Printf("[Hub] Client send buffer full. Dropping client.")
+					log.Printf("[Hub] Client send buffer full. Dropping slow client.")
 					go func(c *Client) {
 						h.mu.Lock()
 						if _, ok := h.Clients[c]; ok {
 							delete(h.Clients, c)
 							close(c.Send)
+							active := len(h.Clients)
+							observability.WebSocketClientsActive.Store(int64(active))
 						}
 						h.mu.Unlock()
 					}(client)

@@ -5,6 +5,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"Geospatial-harmuz-watch/server/internal/geo"
 )
 
 const (
@@ -33,12 +35,30 @@ type TrackState struct {
 	History     []Observation // Ring buffer, most recent last
 	LastUpdated time.Time
 
-	// EWMA baseline for anomaly detection (per-track adaptive baseline)
-	EWMACourse   float64 // EWMA of course delta
-	EWMAHeading  float64 // EWMA of heading delta
-	EWMASpeed    float64 // EWMA of speed delta
-	EWMAVariance float64 // EWMA of speed variance
-	EWMACount    int     // Number of observations incorporated into EWMA
+	// EWMA adaptive baselines (first moments μ and second moments σ²)
+	// Course delta moments
+	MeanCourseDelta float64
+	VarCourseDelta  float64
+
+	// Speed delta moments
+	MeanSpeedDelta float64
+	VarSpeedDelta  float64
+
+	// Speed moments
+	MeanSpeed float64
+	VarSpeed  float64
+
+	// Circular directional statistics for absolute heading on S¹ torus:
+	// Tracks unit vector components (cos θ, sin θ) to avoid branch cut discontinuity at 359° ↔ 0°
+	CosHeadingMean float64
+	SinHeadingMean float64
+
+	// Legacy fields maintained for stats aggregation
+	EWMACourse   float64 // Running mean of course delta
+	EWMAHeading  float64 // Running mean of heading delta
+	EWMASpeed    float64 // Running mean of speed delta
+	EWMAVariance float64 // Running variance of speed
+	EWMACount    int     // Number of observations incorporated into moments
 }
 
 // TrackStateManager is a thread-safe, in-memory track state store.
@@ -56,16 +76,20 @@ func NewTrackStateManager() *TrackStateManager {
 
 // ComputedDeltas is the output of the state manager — raw material for scoring.
 type ComputedDeltas struct {
-	CourseDelta   float64 // Absolute heading change since last observation (degrees)
-	HeadingDelta  float64 // Signed heading change
-	SpeedDelta    float64 // speed_current - speed_previous (knots)
-	PreviousSpeed float64 // Speed at last observation
-	AverageSpeed  float64 // Mean speed over the window
-	SpeedVariance float64 // Variance of speed over the window
-	AISGapMinutes float64 // Minutes since last observation
-	IsFirstReport bool    // True if this is the first observation for this track
-	// EWMA deviation: z-score of current kinematic state vs per-track EWMA baseline
+	CourseDelta        float64 // Absolute shortest-arc heading/course change (degrees, 0-180)
+	HeadingDelta       float64 // Signed shortest-arc heading change (-180 to +180)
+	SpeedDelta         float64 // speed_current - speed_previous (knots)
+	PreviousSpeed      float64 // Speed at last observation (knots)
+	AverageSpeed       float64 // Mean speed over the sliding window
+	SpeedVariance      float64 // Variance of speed over the sliding window
+	AISGapMinutes      float64 // Minutes since last observation
+	IsFirstReport      bool    // True if this is the first observation for this track
+	CircularMeanHeading float64 // Directional circular mean heading [0, 360) on S¹
+	// EWMADeviation is the true Multi-Dimensional Standardized Residual (Z-score)
+	// computed against the adaptive running moments (μ_t, σ²_t) with variance stabilization.
 	EWMADeviation float64
+	// RelativeDeviation is the normalized fractional error (x - μ) / max(μ, ε)
+	RelativeDeviation float64
 }
 
 // Update ingests a new observation and returns the computed deltas.
@@ -111,36 +135,47 @@ func (m *TrackStateManager) computeDeltas(state *TrackState, current Observation
 	if len(state.History) == 0 {
 		d.IsFirstReport = true
 		d.AverageSpeed = current.Speed
-		// Initialize EWMA with first observation
+		d.CircularMeanHeading = current.Heading
+
+		// Initialize moments with first observation
+		state.MeanCourseDelta = 0
+		state.VarCourseDelta = 1.0 // Prior variance to avoid zero-variance on cold start
+		state.MeanSpeedDelta = 0
+		state.VarSpeedDelta = 1.0
+		state.MeanSpeed = current.Speed
+		state.VarSpeed = 1.0
+
+		// Circular directional initialization on unit circle
+		rad := current.Heading * geo.DegToRad
+		state.CosHeadingMean = math.Cos(rad)
+		state.SinHeadingMean = math.Sin(rad)
+
 		state.EWMACourse = 0
 		state.EWMAHeading = 0
 		state.EWMASpeed = 0
 		state.EWMAVariance = 0
 		state.EWMACount = 1
 		d.EWMADeviation = 0
+		d.RelativeDeviation = 0
 		return d
 	}
 
 	prev := state.History[len(state.History)-1]
 
-	// Course delta: shortest angular distance
-	rawDelta := current.Heading - prev.Heading
-	if rawDelta > 180 {
-		rawDelta -= 360
-	} else if rawDelta < -180 {
-		rawDelta += 360
-	}
-	d.HeadingDelta = rawDelta
-	d.CourseDelta = math.Abs(rawDelta)
+	// ── 1. Shortest-arc Angular Delta Calculation ──────────────────────────
+	// Standardized modular difference across branch cut [359° ↔ 1°]
+	signedDelta := geo.ShortestArcDeg(prev.Heading, current.Heading)
+	d.HeadingDelta = signedDelta
+	d.CourseDelta = math.Abs(signedDelta)
 
-	// Speed delta
+	// ── 2. Speed Delta ───────────────────────────────────────────────────
 	d.PreviousSpeed = prev.Speed
 	d.SpeedDelta = current.Speed - prev.Speed
 
-	// AIS gap
+	// ── 3. AIS Gap ───────────────────────────────────────────────────────
 	d.AISGapMinutes = current.Timestamp.Sub(prev.Timestamp).Minutes()
 
-	// Compute average speed and variance over the full window (including current)
+	// ── 4. Sliding Window Speed Mean & Variance ──────────────────────────
 	allSpeeds := make([]float64, 0, len(state.History)+1)
 	for _, obs := range state.History {
 		allSpeeds = append(allSpeeds, obs.Speed)
@@ -159,48 +194,58 @@ func (m *TrackStateManager) computeDeltas(state *TrackState, current Observation
 	}
 	d.SpeedVariance = varSum / float64(len(allSpeeds))
 
-	// ── EWMA Update ─────────────────────────────────────────────────────
-	// Update per-track EWMA baseline with current deltas
+	// ── 5. Circular Directional Statistics (Absolute Heading on S¹) ───────
 	alpha := EWMAAlpha
-	if state.EWMACount == 0 {
-		// First update after initialization
-		state.EWMACourse = d.CourseDelta
-		state.EWMAHeading = math.Abs(d.HeadingDelta)
-		state.EWMASpeed = math.Abs(d.SpeedDelta)
-		state.EWMAVariance = d.SpeedVariance
-		state.EWMACount = 1
-	} else {
-		state.EWMACourse = alpha*d.CourseDelta + (1-alpha)*state.EWMACourse
-		state.EWMAHeading = alpha*math.Abs(d.HeadingDelta) + (1-alpha)*state.EWMAHeading
-		state.EWMASpeed = alpha*math.Abs(d.SpeedDelta) + (1-alpha)*state.EWMASpeed
-		state.EWMAVariance = alpha*d.SpeedVariance + (1-alpha)*state.EWMAVariance
-		state.EWMACount++
-	}
+	curRad := current.Heading * geo.DegToRad
+	curCos := math.Cos(curRad)
+	curSin := math.Sin(curRad)
 
-	// Compute EWMA deviation as z-score of current kinematic state vs baseline
-	// We combine normalized deviations across course, heading, speed, and variance
-	courseDev := 0.0
-	headingDev := 0.0
-	speedDev := 0.0
-	varianceDev := 0.0
+	state.CosHeadingMean = alpha*curCos + (1-alpha)*state.CosHeadingMean
+	state.SinHeadingMean = alpha*curSin + (1-alpha)*state.SinHeadingMean
+	meanHeadingRad := math.Atan2(state.SinHeadingMean, state.CosHeadingMean)
+	d.CircularMeanHeading = math.Mod(meanHeadingRad*geo.RadToDeg+360.0, 360.0)
 
-	if state.EWMACourse > 0 {
-		courseDev = (d.CourseDelta - state.EWMACourse) / state.EWMACourse
-	}
-	if state.EWMAHeading > 0 {
-		headingDev = (math.Abs(d.HeadingDelta) - state.EWMAHeading) / state.EWMAHeading
-	}
-	if state.EWMASpeed > 0 {
-		speedDev = (math.Abs(d.SpeedDelta) - state.EWMASpeed) / state.EWMASpeed
-	}
-	if state.EWMAVariance > 0 {
-		varianceDev = (d.SpeedVariance - state.EWMAVariance) / state.EWMAVariance
-	}
+	// ── 6. Adaptive Moment Updates (Mean μ_t and Running Variance σ²_t) ───
+	// Course delta moments
+	state.MeanCourseDelta = alpha*d.CourseDelta + (1-alpha)*state.MeanCourseDelta
+	courseResid := d.CourseDelta - state.MeanCourseDelta
+	state.VarCourseDelta = alpha*(courseResid*courseResid) + (1-alpha)*state.VarCourseDelta
 
-	// RMS of normalized deviations → dimensionless z-score
-	d.EWMADeviation = math.Sqrt(
-		(courseDev*courseDev + headingDev*headingDev + speedDev*speedDev + varianceDev*varianceDev) / 4.0,
-	)
+	// Speed delta moments
+	absSpeedDelta := math.Abs(d.SpeedDelta)
+	state.MeanSpeedDelta = alpha*absSpeedDelta + (1-alpha)*state.MeanSpeedDelta
+	speedDeltaResid := absSpeedDelta - state.MeanSpeedDelta
+	state.VarSpeedDelta = alpha*(speedDeltaResid*speedDeltaResid) + (1-alpha)*state.VarSpeedDelta
+
+	// Speed moments
+	state.MeanSpeed = alpha*current.Speed + (1-alpha)*state.MeanSpeed
+	speedResid := current.Speed - state.MeanSpeed
+	state.VarSpeed = alpha*(speedResid*speedResid) + (1-alpha)*state.VarSpeed
+
+	// Legacy fields for backward compatibility
+	state.EWMACourse = state.MeanCourseDelta
+	state.EWMAHeading = alpha*math.Abs(d.HeadingDelta) + (1-alpha)*state.EWMAHeading
+	state.EWMASpeed = state.MeanSpeedDelta
+	state.EWMAVariance = state.VarSpeed
+	state.EWMACount++
+
+	// ── 7. True Standardized Residual Z-Score Formulation ────────────────
+	// Standardize each residual by dividing by the running standard deviation sqrt(σ² + ε)
+	// ε = 1e-4 protects against division by zero in steady-state straight cruising.
+	const epsilonVar = 1e-4
+
+	zCourse := (d.CourseDelta - state.MeanCourseDelta) / math.Sqrt(state.VarCourseDelta+epsilonVar)
+	zSpeedDelta := (absSpeedDelta - state.MeanSpeedDelta) / math.Sqrt(state.VarSpeedDelta+epsilonVar)
+	zSpeed := (current.Speed - state.MeanSpeed) / math.Sqrt(state.VarSpeed+epsilonVar)
+
+	// Multi-dimensional RMS Composite Standardized Residual
+	d.EWMADeviation = math.Sqrt((zCourse*zCourse + zSpeedDelta*zSpeedDelta + zSpeed*zSpeed) / 3.0)
+
+	// Relative Fractional Deviation (safe division with floor baseline)
+	const epsBase = 0.5
+	courseRel := d.CourseDelta / math.Max(state.MeanCourseDelta, epsBase)
+	speedRel := absSpeedDelta / math.Max(state.MeanSpeedDelta, epsBase)
+	d.RelativeDeviation = math.Sqrt((courseRel*courseRel + speedRel*speedRel) / 2.0)
 
 	return d
 }
@@ -227,6 +272,13 @@ func (m *TrackStateManager) TrackCount() int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return len(m.tracks)
+}
+
+// GetState returns the current track state for a given trackID, or nil if absent.
+func (m *TrackStateManager) GetState(trackID string) *TrackState {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.tracks[trackID]
 }
 
 // RealtimeStats holds live in-memory statistics computed from the track state.

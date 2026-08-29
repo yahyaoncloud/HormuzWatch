@@ -20,22 +20,27 @@ case "$command" in
   health)
     echo -e "${C_BOLD}${C_CYAN}==> HormuzWatch SRE Health Check...${C_RESET}"
     cd "$SCRIPT_DIR"
-    go run main.go health "$@"
+    go run . health "$@"
+    ;;
+  capacity)
+    echo -e "${C_BOLD}${C_CYAN}==> Calculating Network Capacity Model...${C_RESET}"
+    cd "$SCRIPT_DIR"
+    go run . capacity "${@:2}"
     ;;
   tolerance|bench)
     echo -e "${C_BOLD}${C_CYAN}==> Running Fault-Tolerance & Load Benchmark...${C_RESET}"
     cd "$SCRIPT_DIR"
-    go run main.go tolerance "${@:2}"
+    go run . tolerance "${@:2}"
     ;;
   logs)
     echo -e "${C_BOLD}${C_CYAN}==> Streaming Multi-Container Color Logs...${C_RESET}"
-    cd "$ROOT_DIR"
-    docker compose logs -f --tail=50 server ml client
+    cd "$SCRIPT_DIR"
+    go run . logs "${@:2}"
     ;;
   monitor|top)
     echo -e "${C_BOLD}${C_CYAN}==> Launching Real-time SRE Monitor...${C_RESET}"
     cd "$SCRIPT_DIR"
-    go run main.go monitor "${@:2}"
+    go run . monitor "${@:2}"
     ;;
   obs-up|stack-up)
     echo -e "${C_BOLD}${C_CYAN}==> Starting Prometheus & Grafana Observability Layer...${C_RESET}"

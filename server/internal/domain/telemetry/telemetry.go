@@ -16,6 +16,12 @@ const (
 	SourceOpenSky    = "opensky"
 	SourceKystverket = "kystverket"
 	SourceSimulator  = "simulator"
+
+	// HeadingUnavailable is the standard AIS sentinel value (511°) indicating heading is unavailable.
+	HeadingUnavailable = 511.0
+
+	// COGUnavailable is the sentinel value indicating Course Over Ground is unavailable (>= 360.0°).
+	COGUnavailable = 360.0
 )
 
 // Observation is one position update flowing through HormuzWatch.
@@ -29,8 +35,9 @@ type Observation struct {
 	Lon               float64 `json:"lon" binding:"required"`
 	Speed             float64 `json:"speed"`
 	PreviousSpeed     float64 `json:"previousSpeed"`
-	Heading           float64 `json:"heading"`
-	CourseDelta       float64 `json:"courseDelta"`
+	COG               float64 `json:"cog,omitempty"`     // Course Over Ground (degrees 0-359.9)
+	Heading           float64 `json:"heading"`           // True Heading / Vessel Orientation (degrees 0-359 or 511 if unavailable)
+	CourseDelta       float64 `json:"courseDelta"`       // Shortest-arc change in COG / motion course (degrees)
 	AisAgeMinutes     int     `json:"aisAgeMinutes"`
 	HotZoneDistanceNm float64 `json:"hotZoneDistanceNm"`
 	Altitude          float64 `json:"altitude,omitempty"`
@@ -38,6 +45,16 @@ type Observation struct {
 	OnGround          bool    `json:"onGround,omitempty"`
 	ObjectType        string  `json:"objectType,omitempty"`
 	Source            string  `json:"source,omitempty"`
+}
+
+// HasValidHeading returns true if the heading is available and within valid physical bounds [0, 360).
+func (o Observation) HasValidHeading() bool {
+	return o.Heading >= 0 && o.Heading < 360.0
+}
+
+// HasValidCOG returns true if Course Over Ground is available and within valid bounds [0, 360).
+func (o Observation) HasValidCOG() bool {
+	return o.COG >= 0 && o.COG < 360.0
 }
 
 // Domain returns the curation domain derived from the stable object type.

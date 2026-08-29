@@ -18,11 +18,13 @@ import { HudMetricBadge, type HudMetricConfig } from './HudMetricBadge';
 import { LayerToggleGroup } from './LayerToggleGroup';
 import type { SystemMetricLogs } from '@/types/health';
 
+export type HomeTabId = 'map' | 'intelligence' | 'feed' | 'about';
+
 export interface HomeTopBarProps {
   // Tab state
-  tabs: Array<{ id: 'map' | 'intelligence' | 'feed'; label: string; icon: any }>;
-  activeTab: 'map' | 'intelligence' | 'feed';
-  onTabChange: (tab: 'map' | 'intelligence' | 'feed') => void;
+  tabs: Array<{ id: HomeTabId; label: string; icon: any }>;
+  activeTab: HomeTabId;
+  onTabChange: (tab: HomeTabId) => void;
 
   // Timeline & Filters
   timelineOptions: readonly string[];
@@ -100,7 +102,10 @@ export const HomeTopBar: React.FC<HomeTopBarProps> = ({
   wsStatus,
   latestLogs,
 }) => {
-  const isHealthy = systemHealth?.status === 'healthy';
+  const isHealthy =
+    systemHealth?.status === 'healthy' ||
+    systemHealth?.status === 'ready' ||
+    systemHealth?.status === 'ok';
   const isDegraded = systemHealth?.status === 'degraded';
   const dbHealth = systemHealth?.components?.database;
   const mlHealth = systemHealth?.components?.ml_service;

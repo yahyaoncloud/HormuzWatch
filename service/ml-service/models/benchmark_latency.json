@@ -1,0 +1,35 @@
+{
+  "hardware": {
+    "system": "Linux",
+    "machine": "x86_64",
+    "processor": "",
+    "python_version": "3.12.13"
+  },
+  "fast_path_ms": {
+    "iterations": 1000,
+    "mean": 4.674,
+    "p50": 4.592,
+    "p90": 4.936,
+    "p95": 5.157,
+    "p99": 6.865,
+    "min": 4.159,
+    "max": 13.312
+  },
+  "explain_path_ms": {
+    "iterations": 200,
+    "mean": 838.921,
+    "p50": 823.403,
+    "p90": 872.692,
+    "p95": 929.591,
+    "p99": 1025.402,
+    "min": 805.763,
+    "max": 1103.542
+  },
+  "stage_averages_ms": {
+    "scaling": 0.094,
+    "iforest": 3.726,
+    "lof": 0.692,
+    "calibration": 0.124,
+    "shap_attribution": 833.841
+  }
+}

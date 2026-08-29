@@ -169,7 +169,7 @@ func StartAISStream(ctx context.Context, p *intelligence.Pipeline) {
 				continue
 			}
 
-			var lat, lon, speed, heading float64
+			var lat, lon, speed, cog, heading float64
 			var userID int64
 
 			if aisMsg.Message.PositionReport != nil {
@@ -177,21 +177,36 @@ func StartAISStream(ctx context.Context, p *intelligence.Pipeline) {
 				lat = pr.Latitude
 				lon = pr.Longitude
 				speed = pr.Sog
-				heading = pr.Cog
+				cog = pr.Cog
+				if pr.TrueHeading < 360 {
+					heading = float64(pr.TrueHeading)
+				} else {
+					heading = telemetry.HeadingUnavailable
+				}
 				userID = int64(pr.UserID)
 			} else if aisMsg.Message.StandardClassBPositionReport != nil {
 				pr := aisMsg.Message.StandardClassBPositionReport
 				lat = pr.Latitude
 				lon = pr.Longitude
 				speed = pr.Sog
-				heading = pr.Cog
+				cog = pr.Cog
+				if pr.TrueHeading < 360 {
+					heading = float64(pr.TrueHeading)
+				} else {
+					heading = telemetry.HeadingUnavailable
+				}
 				userID = int64(pr.UserID)
 			} else if aisMsg.Message.ExtendedClassBPositionReport != nil {
 				pr := aisMsg.Message.ExtendedClassBPositionReport
 				lat = pr.Latitude
 				lon = pr.Longitude
 				speed = pr.Sog
-				heading = pr.Cog
+				cog = pr.Cog
+				if pr.TrueHeading < 360 {
+					heading = float64(pr.TrueHeading)
+				} else {
+					heading = telemetry.HeadingUnavailable
+				}
 				userID = int64(pr.UserID)
 			} else {
 				continue
@@ -228,6 +243,7 @@ func StartAISStream(ctx context.Context, p *intelligence.Pipeline) {
 				Lat:               lat,
 				Lon:               lon,
 				Speed:             speed,
+				COG:               cog,
 				Heading:           heading,
 				AisAgeMinutes:     0,
 				HotZoneDistanceNm: 0,

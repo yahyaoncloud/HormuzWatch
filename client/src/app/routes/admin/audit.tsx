@@ -99,14 +99,23 @@ export default function AdminAudit() {
                 <td className="px-4 py-3 font-mono text-xs font-semibold text-[var(--color-fg)]">{log.actor}</td>
                 <td className="px-4 py-3">
                   <span
-                    className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded border ${
+                    className={`inline-flex items-center gap-1.5 text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border ${
                       log.severity === "danger"
-                        ? "bg-red-500/20 text-red-500 border-red-500/30"
+                        ? "bg-rose-500/15 text-rose-400 border-rose-500/30"
                         : log.severity === "warning"
-                        ? "bg-amber-500/20 text-amber-500 border-amber-500/30"
-                        : "bg-[var(--color-primary-600)]/15 text-[var(--color-primary-600)] border-[var(--color-primary-600)]/30"
+                        ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                        : "bg-cyan-500/15 text-cyan-400 border-cyan-500/30"
                     }`}
                   >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        log.severity === "danger"
+                          ? "bg-rose-400 animate-pulse"
+                          : log.severity === "warning"
+                          ? "bg-amber-400"
+                          : "bg-cyan-400"
+                      }`}
+                    />
                     {log.action}
                   </span>
                 </td>

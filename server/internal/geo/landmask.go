@@ -52,23 +52,42 @@ func gridIndex(lat, lon float64) (int, int, bool) {
 // InitLandMask loads the land mask from the GeoJSON file and rasterizes it
 // into a boolean grid. Call once at startup.
 func InitLandMask(geojsonPath string) error {
-	if geojsonPath == "" {
-		// Default path relative to the server directory
-		_, filename, _, _ := runtime.Caller(0)
-		geoDir := filepath.Dir(filename)
-		serverDir := filepath.Dir(filepath.Dir(geoDir))
-		geojsonPath = filepath.Join(serverDir, "data", "land_mask.geojson")
+	candidatePaths := []string{}
+	if geojsonPath != "" {
+		candidatePaths = append(candidatePaths, geojsonPath)
 	}
 
-	data, err := os.ReadFile(geojsonPath)
-	if err != nil {
-		log.Printf("[landmask] Land mask GeoJSON not found at %s: %v — land filtering disabled", geojsonPath, err)
+	_, filename, _, _ := runtime.Caller(0)
+	geoDir := filepath.Dir(filename)
+	serverDir := filepath.Dir(filepath.Dir(geoDir))
+
+	candidatePaths = append(candidatePaths,
+		filepath.Join(serverDir, "data", "land_mask.geojson"),
+		"server/data/land_mask.geojson",
+		"data/land_mask.geojson",
+		"../data/land_mask.geojson",
+		"../../server/data/land_mask.geojson",
+		"/run/media/tp24/SHARED/Projects/HormuzWatch/server/data/land_mask.geojson",
+	)
+
+	var data []byte
+	var err error
+	var foundPath string
+	for _, p := range candidatePaths {
+		if data, err = os.ReadFile(p); err == nil {
+			foundPath = p
+			break
+		}
+	}
+
+	if err != nil || len(data) == 0 {
+		log.Printf("[landmask] Land mask GeoJSON not found (checked %v): %v — land filtering disabled", candidatePaths, err)
 		return err
 	}
 
 	var fc GeoJSONFeatureCollection
 	if err := json.Unmarshal(data, &fc); err != nil {
-		log.Printf("[landmask] Failed to parse land mask: %v", err)
+		log.Printf("[landmask] Failed to parse land mask (%s): %v", foundPath, err)
 		return err
 	}
 
@@ -113,10 +132,14 @@ func IsOnLand(lat, lon float64) bool {
 func rasterizePolygon(geom GeoJSONGeometry) {
 	switch geom.Type {
 	case "Polygon":
-		rasterizeRing(geom.PolygonCoords)
+		for _, ring := range geom.PolygonCoords {
+			rasterizeRing(ring)
+		}
 	case "MultiPolygon":
 		for _, poly := range geom.MultiPolygonCoords {
-			rasterizeRing(poly)
+			for _, ring := range poly {
+				rasterizeRing(ring)
+			}
 		}
 	}
 }
@@ -131,6 +154,9 @@ func rasterizeRing(ring [][]float64) {
 	minLat, maxLat := 90.0, -90.0
 	minLon, maxLon := 180.0, -180.0
 	for _, point := range ring {
+		if len(point) < 2 {
+			continue
+		}
 		lon := point[0] // GeoJSON: [lon, lat]
 		lat := point[1]
 		if lat < minLat {
@@ -186,6 +212,9 @@ func pointInPolygonGeoJSON(lat, lon float64, polygon [][]float64) bool {
 	for j := 0; j < n; j++ {
 		p1 := polygon[j]
 		p2 := polygon[(j+1)%n]
+		if len(p1) < 2 || len(p2) < 2 {
+			continue
+		}
 		// GeoJSON format: [lon, lat]
 		if ((p1[1] > lat) != (p2[1] > lat)) &&
 			(lon < (p2[0]-p1[0])*(lat-p1[1])/(p2[1]-p1[1])+p1[0]) {
@@ -208,16 +237,13 @@ type GeoJSONFeature struct {
 }
 
 type GeoJSONGeometry struct {
-	Type               string        `json:"type"`
-	Coordinates        [][]float64   `json:"coordinates,omitempty"` // Polygon: [rings][points]
-	MultiCoordinates   [][][]float64 `json:"-"`                     // MultiPolygon
-	PolygonCoords      [][]float64   `json:"-"`
-	MultiPolygonCoords [][][]float64 `json:"-"`
+	Type               string          `json:"type"`
+	PolygonCoords      [][][]float64   `json:"-"` // Polygon: [rings][points][lon, lat]
+	MultiPolygonCoords [][][][]float64 `json:"-"` // MultiPolygon: [polygons][rings][points][lon, lat]
 }
 
 // UnmarshalJSON handles both Polygon and MultiPolygon coordinate formats.
 func (g *GeoJSONGeometry) UnmarshalJSON(data []byte) error {
-	// Simple approach: decode into a raw structure first
 	type raw struct {
 		Type        string          `json:"type"`
 		Coordinates json.RawMessage `json:"coordinates"`

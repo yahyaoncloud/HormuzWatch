@@ -148,6 +148,8 @@ class MLInferenceServicer(ml_service_pb2_grpc.MLInferenceServiceServicer):
             return ml_service_pb2.PredictResponse()
 
         try:
+            features_dict = _to_feature_dict(request.features) if request.HasField("features") else {}
+            features_model = parse_features(domain, features_dict)
             feature_array = features_model.to_array()
             feature_names = DOMAIN_FEATURE_COLS[domain]
             result = score(

@@ -184,12 +184,10 @@ func (h *Handlers) ReadyHealth(c *gin.Context) {
 
 	overallHealthy := dbHealthy && h.hub != nil
 	statusCode := http.StatusOK
-	status := "ready"
+	status := "healthy"
 	if !overallHealthy {
 		statusCode = http.StatusServiceUnavailable
 		status = "unhealthy"
-	} else if !mlHealthy {
-		status = "degraded" // ML down, but fallback heuristic operational
 	}
 
 	c.JSON(statusCode, gin.H{
@@ -267,16 +265,19 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 		// We can't easily hook into that without modifying hub, so we'll use a different approach
 	}()
 
-	// Hydrate the dashboard from SQLite (async to prevent blocking the HTTP handler)
+	// Hydrate the dashboard from Database (async to prevent blocking the HTTP handler)
 	go func() {
-		// Fetch tracks updated in the last 15 minutes (fresh data only)
+		// Fetch tracks updated in the last 24 hours (with fallback to latest recorded tracks)
 		query := `
 			SELECT track_id, asset_name, timestamp, lat, lon, speed, previous_speed, heading, course_delta, ais_age_minutes, hot_zone_distance_nm 
 			FROM tracks 
-			WHERE last_updated >= NOW() - INTERVAL '15 minutes'
+			WHERE last_updated >= NOW() - INTERVAL '24 hours'
+			ORDER BY last_updated DESC
+			LIMIT 2000
 		`
 		rows, err := db.Query(query)
-		if err == nil {
+		trackCount := 0
+		if err == nil && rows != nil {
 			for rows.Next() {
 				select {
 				case <-ctx.Done():
@@ -286,6 +287,7 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 				}
 				var p TelemetryPayload
 				if err := rows.Scan(&p.TrackID, &p.AssetName, &p.Timestamp, &p.Lat, &p.Lon, &p.Speed, &p.PreviousSpeed, &p.Heading, &p.CourseDelta, &p.AisAgeMinutes, &p.HotZoneDistanceNm); err == nil {
+					trackCount++
 					select {
 					case <-ctx.Done():
 						rows.Close()
@@ -299,45 +301,117 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 				}
 			}
 			rows.Close()
-		} else {
-			log.Printf("[Hydration] Failed to fetch tracks: %v", err)
 		}
 
-		// Fetch anomalies updated in the last 15 minutes (fresh data only)
-		query = `
+		// Fallback if 24h window had 0 tracks
+		if trackCount == 0 {
+			fallbackQuery := `
+				SELECT track_id, asset_name, timestamp, lat, lon, speed, previous_speed, heading, course_delta, ais_age_minutes, hot_zone_distance_nm 
+				FROM tracks 
+				ORDER BY last_updated DESC
+				LIMIT 2000
+			`
+			fbRows, fbErr := db.Query(fallbackQuery)
+			if fbErr == nil && fbRows != nil {
+				for fbRows.Next() {
+					select {
+					case <-ctx.Done():
+						fbRows.Close()
+						return
+					default:
+					}
+					var p TelemetryPayload
+					if err := fbRows.Scan(&p.TrackID, &p.AssetName, &p.Timestamp, &p.Lat, &p.Lon, &p.Speed, &p.PreviousSpeed, &p.Heading, &p.CourseDelta, &p.AisAgeMinutes, &p.HotZoneDistanceNm); err == nil {
+						select {
+						case <-ctx.Done():
+							fbRows.Close()
+							return
+						default:
+							if !safeSendNonBlocking(client.Send, hub.Message{Type: "telemetry", Data: p}) {
+								fbRows.Close()
+								return
+							}
+						}
+					}
+				}
+				fbRows.Close()
+			}
+		}
+
+		// Fetch anomalies updated in the last 24 hours (with fallback to latest)
+		anomalyQuery := `
 			SELECT track_id, score, severity, reasons, actions 
 			FROM anomalies 
-			WHERE last_updated >= NOW() - INTERVAL '15 minutes'
+			WHERE last_updated >= NOW() - INTERVAL '24 hours'
+			ORDER BY last_updated DESC
+			LIMIT 500
 		`
-		rows, err = db.Query(query)
-		if err == nil {
-			for rows.Next() {
+		aRows, aErr := db.Query(anomalyQuery)
+		anomalyCount := 0
+		if aErr == nil && aRows != nil {
+			for aRows.Next() {
 				select {
 				case <-ctx.Done():
-					rows.Close()
+					aRows.Close()
 					return
 				default:
 				}
 				var res anomaly.Result
 				var reasonsJSON, actionsJSON string
-				if err := rows.Scan(&res.ID, &res.Score, &res.Severity, &reasonsJSON, &actionsJSON); err == nil {
+				if err := aRows.Scan(&res.ID, &res.Score, &res.Severity, &reasonsJSON, &actionsJSON); err == nil {
+					anomalyCount++
 					json.Unmarshal([]byte(reasonsJSON), &res.Reasons)
 					json.Unmarshal([]byte(actionsJSON), &res.Actions)
 					select {
 					case <-ctx.Done():
-						rows.Close()
+						aRows.Close()
 						return
 					default:
 						if !safeSendNonBlocking(client.Send, hub.Message{Type: "anomaly", Data: res}) {
-							rows.Close()
+							aRows.Close()
 							return
 						}
 					}
 				}
 			}
-			rows.Close()
-		} else {
-			log.Printf("[Hydration] Failed to fetch anomalies: %v", err)
+			aRows.Close()
+		}
+
+		if anomalyCount == 0 {
+			fbAnomalyQuery := `
+				SELECT track_id, score, severity, reasons, actions 
+				FROM anomalies 
+				ORDER BY last_updated DESC
+				LIMIT 500
+			`
+			fbARows, fbAErr := db.Query(fbAnomalyQuery)
+			if fbAErr == nil && fbARows != nil {
+				for fbARows.Next() {
+					select {
+					case <-ctx.Done():
+						fbARows.Close()
+						return
+					default:
+					}
+					var res anomaly.Result
+					var reasonsJSON, actionsJSON string
+					if err := fbARows.Scan(&res.ID, &res.Score, &res.Severity, &reasonsJSON, &actionsJSON); err == nil {
+						json.Unmarshal([]byte(reasonsJSON), &res.Reasons)
+						json.Unmarshal([]byte(actionsJSON), &res.Actions)
+						select {
+						case <-ctx.Done():
+							fbARows.Close()
+							return
+						default:
+							if !safeSendNonBlocking(client.Send, hub.Message{Type: "anomaly", Data: res}) {
+								fbARows.Close()
+								return
+							}
+						}
+					}
+				}
+				fbARows.Close()
+			}
 		}
 	}()
 

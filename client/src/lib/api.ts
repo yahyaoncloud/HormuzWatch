@@ -345,6 +345,22 @@ export async function getConflictFeed(): Promise<ConflictFeedResponse> {
   return fetchPublic<ConflictFeedResponse>('/public/conflicts');
 }
 
+/** Get all active vessel positions (public, no auth) */
+export async function getPublicVessels(): Promise<TracksResponse> {
+  return fetchPublic<TracksResponse>('/public/vessels');
+}
+
+/** Get all active aircraft positions (public, no auth) */
+export async function getPublicAircraft(): Promise<TracksResponse> {
+  return fetchPublic<TracksResponse>('/public/aircraft');
+}
+
+/** Get all active tracks — vessels + aircraft (public, no auth) */
+export async function getPublicTracks(): Promise<TracksResponse> {
+  return fetchPublic<TracksResponse>('/public/tracks/active');
+}
+
+
 /** Get heatmap data (public) */
 export async function getHeatmap(
   source: 'vessel' | 'fire' | 'geo' | 'all' = 'vessel'

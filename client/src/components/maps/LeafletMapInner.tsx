@@ -326,6 +326,7 @@ export const WATCH_ZONES = [
 
 export interface LeafletMapProps {
   className?: string;
+  tracks?: any[];
   heatmap?: boolean;
   onHeatmapChange?: (v: boolean) => void;
   showVessels?: boolean;
@@ -349,6 +350,7 @@ export interface LeafletMapProps {
 
 export default function LeafletMapInner({
   className,
+  tracks: tracksProp,
   heatmap,
   onHeatmapChange: _onHeatmapChange,
   showVessels = true,
@@ -523,11 +525,38 @@ export default function LeafletMapInner({
   const showHeatmap = heatmap ?? internalHeatmap;
   const showConflicts = showConflictsProp ?? true;
   const [searchParams, setSearchParams] = useSearchParams();
-  const [tracks, setTracks] = useState<any[]>([]);
+  const [tracks, setTracks] = useState<any[]>(tracksProp || []);
   const tracksRef = useRef<any[]>([]);
   tracksRef.current = tracks; // always latest for heatmap fallback
   const { subscribe } = useWebSocket();
   const wsConflicts = useRealtimeStore((s) => s.conflicts);
+
+  // Sync tracks from parent props whenever passed
+  useEffect(() => {
+    if (tracksProp && tracksProp.length > 0) {
+      setTracks((prev) => {
+        const trackMap = new Map(prev.map((t) => [t.id, t]));
+        for (const t of tracksProp) {
+          const id = String(t.trackId || t.id || t.mmsi || '');
+          if (!id) continue;
+          const lat = parseCoord(t.lat) ?? parseCoord((t as any).latitude);
+          const lon = parseCoord(t.lon) ?? parseCoord((t as any).longitude);
+          if (lat === null || lon === null) continue;
+          const existing = trackMap.get(id) || {};
+          trackMap.set(id, {
+            ...existing,
+            ...t,
+            id,
+            lat,
+            lon,
+            assetName: t.assetName || (t as any).vessel_name || id,
+            severity: t.severity || existing.severity || 'low',
+          });
+        }
+        return Array.from(trackMap.values());
+      });
+    }
+  }, [tracksProp]);
 
   // REST fallback for initial load before WebSocket delivers conflicts
   const { data: conflictData } = useQuery({
@@ -542,16 +571,46 @@ export default function LeafletMapInner({
     queryKey: ['active-traces-map'],
     queryFn: async () => {
       try {
+        // First try the full public tracks endpoint (all active vessels/aircraft)
+        const res = await apiMethods.getPublicTracks();
+        if (res?.data && res.data.length > 0) {
+          return res.data.map((t: any) => ({
+            ...t,
+            id: t.trackId || t.id,
+            lat: t.lat,
+            lon: t.lon,
+            assetName: t.assetName || t.trackId,
+            severity: t.severity || 'low',
+          }));
+        }
+      } catch {
+        // Fall back to public vessels
+      }
+      try {
+        const res = await apiMethods.getPublicVessels();
+        if (res?.data && res.data.length > 0) {
+          return res.data.map((t: any) => ({
+            ...t,
+            id: t.trackId || t.id,
+            lat: t.lat,
+            lon: t.lon,
+            assetName: t.assetName || t.trackId,
+            severity: t.severity || 'low',
+          }));
+        }
+      } catch {
+        // Fall back to top-traces if the public tracks endpoint is unavailable
+      }
+      try {
         const res = await apiMethods.getTopTraces();
         if (res?.traces && res.traces.length > 0) return res.traces;
       } catch {
-        // ignore fallback
+        // ignore
       }
       return [];
     },
-    // Real-time updates come via WebSocket — no need for polling
-    refetchInterval: false,
-    staleTime: 60000,
+    refetchInterval: 25000,
+    staleTime: 15000,
   });
 
   useEffect(() => {

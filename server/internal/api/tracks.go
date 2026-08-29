@@ -88,9 +88,21 @@ func queryActiveTracks(filter string) []ActiveTrack {
 		ORDER BY t.last_updated DESC
 		` + limitClause
 
+	var tracks []ActiveTrack
 	rows, err := db.DB.Query(query)
-	if err != nil || rows == nil {
-		// Fallback query without tight interval if error or empty
+	if err == nil && rows != nil {
+		for rows.Next() {
+			var t ActiveTrack
+			if err := rows.Scan(&t.TrackID, &t.AssetName, &t.Timestamp, &t.Lat, &t.Lon,
+				&t.Speed, &t.Heading, &t.AnomalyScore, &t.Severity, &t.LastUpdated); err == nil {
+				tracks = append(tracks, t)
+			}
+		}
+		rows.Close()
+	}
+
+	// If no tracks found within 24h or query errored, fallback to all available tracks
+	if len(tracks) == 0 {
 		fallbackQuery := baseQuery + `
 			FROM tracks t
 			LEFT JOIN anomalies a ON t.track_id = a.track_id
@@ -98,21 +110,19 @@ func queryActiveTracks(filter string) []ActiveTrack {
 			` + filterClause + `
 			ORDER BY t.last_updated DESC
 			` + limitClause
-		rows, err = db.DB.Query(fallbackQuery)
-		if err != nil {
-			return []ActiveTrack{}
+		fbRows, fbErr := db.DB.Query(fallbackQuery)
+		if fbErr == nil && fbRows != nil {
+			for fbRows.Next() {
+				var t ActiveTrack
+				if err := fbRows.Scan(&t.TrackID, &t.AssetName, &t.Timestamp, &t.Lat, &t.Lon,
+					&t.Speed, &t.Heading, &t.AnomalyScore, &t.Severity, &t.LastUpdated); err == nil {
+					tracks = append(tracks, t)
+				}
+			}
+			fbRows.Close()
 		}
 	}
-	defer rows.Close()
 
-	var tracks []ActiveTrack
-	for rows.Next() {
-		var t ActiveTrack
-		if err := rows.Scan(&t.TrackID, &t.AssetName, &t.Timestamp, &t.Lat, &t.Lon,
-			&t.Speed, &t.Heading, &t.AnomalyScore, &t.Severity, &t.LastUpdated); err == nil {
-			tracks = append(tracks, t)
-		}
-	}
 	if tracks == nil {
 		tracks = []ActiveTrack{}
 	}

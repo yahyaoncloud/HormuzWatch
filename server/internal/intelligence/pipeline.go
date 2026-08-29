@@ -10,52 +10,46 @@ import (
 	"Geospatial-harmuz-watch/server/internal/anomaly"
 	"Geospatial-harmuz-watch/server/internal/db"
 	"Geospatial-harmuz-watch/server/internal/domain/telemetry"
+	"Geospatial-harmuz-watch/server/internal/geo"
 	"Geospatial-harmuz-watch/server/internal/heatmap"
 	"Geospatial-harmuz-watch/server/internal/observability"
 	"Geospatial-harmuz-watch/server/internal/websocket/hub"
 )
 
-// ── Queue metrics (atomic counters, safe for concurrent access) ────────────
-var (
-	queueEnqueued  atomic.Int64
-	queueDropped   atomic.Int64
-	queueProcessed atomic.Int64
-	queueDepth     atomic.Int64 // current depth approximation
-)
+// ── Queue metrics (exposed via centralized observability package) ────────────
 
 // QueueMetrics returns a snapshot of the worker pool queue.
 func QueueMetrics() map[string]int64 {
 	return map[string]int64{
-		"enqueued":  queueEnqueued.Load(),
-		"dropped":   queueDropped.Load(),
-		"processed": queueProcessed.Load(),
-		"depth":     queueDepth.Load(),
+		"enqueued":  observability.QueueEnqueuedTotal.Load(),
+		"dropped":   observability.QueueDroppedTotal.Load(),
+		"processed": observability.QueueProcessedTotal.Load(),
+		"depth":     observability.QueueDepth.Load(),
+		"capacity":  observability.QueueCapacity.Load(),
 	}
 }
 
 // Pipeline bundles the shared references needed to execute the full
 // intelligence pipeline (kinematic deltas → features → rule + ML + geo
-// scoring → composite assessment → publish + persist).  Every integration
-// worker (AISStream, OpenSky, Kystverket, Simulator) calls ProcessObservation
-// instead of copy-pasting the same ~40 lines.
+// scoring → composite assessment → publish + persist).
 //
-// Queue-based architecture (v2.1):
+// Queue-based architecture:
 //
-//	[aisstream.io WS] → EnqueueObservation() → [buffered chan] → worker pool
-//	                                                              │
-//	                                                              ├─ gRPC → Python ML
-//	                                                              ├─ PostgreSQL INSERT
-//	                                                              └─ WebSocket broadcast
+//	[AIS / ADS-B Ingest] → EnqueueObservation() → [Bounded buffered Go channel] → worker pool
+//	                                                                               │
+//	                                                                               ├─ gRPC → Python ML
+//	                                                                               ├─ PostgreSQL INSERT
+//	                                                                               └─ WebSocket broadcast
 //
-// The decoupling shields the Python gRPC service from ingestion bursts.
-// Backpressure is handled by dropping messages when the queue is full
-// (drops are logged and counted as observable metrics).
+// Decoupling shields downstream services from ingestion spikes.
+// Overload behavior: Drop-tail backpressure when the bounded buffer channel is full,
+// incrementing observability.QueueDroppedTotal.
 type Pipeline struct {
 	Hub      *hub.Hub
 	TSM      *TrackStateManager
 	MLClient *MLClient
 
-	// ── Worker pool (bounded queue) ──────────────────────────────
+	// ── Worker pool (bounded buffered channel work queue) ────────
 	jobQueue chan *telemetry.Observation
 	ctx      context.Context
 	cancel   context.CancelFunc
@@ -63,15 +57,8 @@ type Pipeline struct {
 }
 
 // NewPipeline is the single constructor for the intelligence pipeline.
-// Creates a bounded worker pool with workerCount goroutines and queueSize
-// buffer capacity.
-//
-// Tuning guidelines:
-//
-//	workerCount = 2× vCPUs of the Python ML container
-//	queueSize   = peak burst capacity (e.g. 5× workerCount)
-//
-// Defaults: 20 workers, 5000 queue depth (handles ~5 sec of burst at 1000 msg/s).
+// Creates a bounded worker pool with workerCount goroutines and queueSize buffer capacity.
+// Defaults: 20 workers, 5000 queue depth.
 func NewPipeline(h *hub.Hub, tsm *TrackStateManager, ml *MLClient) *Pipeline {
 	return NewPipelineWithQueue(h, tsm, ml, 20, 5000)
 }
@@ -79,6 +66,8 @@ func NewPipeline(h *hub.Hub, tsm *TrackStateManager, ml *MLClient) *Pipeline {
 // NewPipelineWithQueue creates a Pipeline with explicit worker pool tuning.
 func NewPipelineWithQueue(h *hub.Hub, tsm *TrackStateManager, ml *MLClient, workerCount, queueSize int) *Pipeline {
 	ctx, cancel := context.WithCancel(context.Background())
+
+	observability.QueueCapacity.Store(int64(queueSize))
 
 	p := &Pipeline{
 		Hub:      h,
@@ -95,28 +84,26 @@ func NewPipelineWithQueue(h *hub.Hub, tsm *TrackStateManager, ml *MLClient, work
 	}
 	p.active.Store(int32(workerCount))
 
-	log.Printf("[pipeline] Worker pool started: %d workers, %d queue depth", workerCount, queueSize)
+	log.Printf("[pipeline] Worker pool started: %d workers, %d buffer queue capacity", workerCount, queueSize)
 	return p
 }
 
 // ── Public API ────────────────────────────────────────────────────────────
 
-// EnqueueObservation pushes an observation into the bounded worker queue.
-// This is non-blocking — the caller returns immediately. If the queue is
-// full, the message is dropped and the "dropped" metric is incremented.
-// This is the preferred ingestion path for high-throughput sources (AIS, ADS-B).
+// EnqueueObservation pushes an observation into the bounded buffered Go channel.
+// Non-blocking. If the queue is saturated, the observation is dropped under drop-tail backpressure.
 func (p *Pipeline) EnqueueObservation(obs *telemetry.Observation) {
-	queueEnqueued.Add(1)
+	observability.QueueEnqueuedTotal.Add(1)
 
 	select {
 	case p.jobQueue <- obs:
-		queueDepth.Add(1)
+		observability.QueueDepth.Add(1)
 	default:
-		// Queue full — backpressure. Drop the message.
-		dropped := queueDropped.Add(1)
+		// Channel saturated — drop-tail backpressure
+		dropped := observability.QueueDroppedTotal.Add(1)
 		if dropped%100 == 1 {
-			log.Printf("[pipeline] WARNING: queue full (%d drops total) — dropping message for %s. "+
-				"Consider increasing worker count or queue size.", dropped, obs.TrackID)
+			log.Printf("[pipeline] BACKPRESSURE WARNING: queue saturated (%d drops total) — dropping observation for %s",
+				dropped, obs.TrackID)
 		}
 	}
 }
@@ -163,8 +150,8 @@ func (p *Pipeline) worker(id int) {
 		case <-p.ctx.Done():
 			return
 		case obs := <-p.jobQueue:
-			queueDepth.Add(-1)
-			queueProcessed.Add(1)
+			observability.QueueDepth.Add(-1)
+			observability.QueueProcessedTotal.Add(1)
 
 			start := time.Now()
 			p.process(obs)
@@ -182,6 +169,12 @@ func (p *Pipeline) worker(id int) {
 
 func (p *Pipeline) process(payload *telemetry.Observation) ThreatAssessment {
 	observability.ObservationsProcessed.Add(1)
+
+	// Filter out impossible vessel positions on land (evaluating chart datum offset vs GPS multi-path)
+	if payload.Domain() == telemetry.DomainVessel && geo.IsOnLand(payload.Lat, payload.Lon) {
+		return ThreatAssessment{}
+	}
+
 	heatmap.AddTelemetry(payload.Lat, payload.Lon)
 
 	// ── 1. Kinematic deltas ───────────────────────────────────

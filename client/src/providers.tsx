@@ -199,14 +199,54 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
           // Push to Zustand realtime store (single source of truth)
           switch (message.type) {
-            case 'telemetry':
-              setTelemetry(message.payload as TelemetryPayload);
-              rtSetTelemetry(message.payload as TelemetryPayload);
+            case 'telemetry': {
+              const telPayload = message.payload as any;
+              setTelemetry(telPayload);
+              rtSetTelemetry(telPayload);
+              const items = Array.isArray(telPayload) ? telPayload : [telPayload];
+              for (const item of items) {
+                const id = item.trackId || item.id || item.mmsi;
+                if (id) {
+                  useRealtimeStore.getState().upsertTrack({
+                    trackId: String(id),
+                    assetName: item.assetName || item.vessel_name || String(id),
+                    timestamp: item.timestamp || new Date().toISOString(),
+                    lat: item.lat,
+                    lon: item.lon,
+                    speed: item.speed ?? 0,
+                    heading: item.heading ?? 0,
+                    score: item.anomalyScore ?? item.score ?? 0,
+                    severity: item.severity || 'low',
+                    reasons: typeof item.reasons === 'string' ? item.reasons : JSON.stringify(item.reasons || []),
+                    updatedAt: new Date().toISOString(),
+                  });
+                }
+              }
               break;
-            case 'anomaly':
-              setAnomaly(message.payload as AnomalyPayload);
-              rtSetAnomaly(message.payload as AnomalyPayload);
+            }
+            case 'anomaly': {
+              const anomPayload = message.payload as any;
+              setAnomaly(anomPayload);
+              rtSetAnomaly(anomPayload);
+              const id = anomPayload.trackId || anomPayload.id;
+              if (id) {
+                const existing = useRealtimeStore.getState().trackMap.get(String(id));
+                useRealtimeStore.getState().upsertTrack({
+                  trackId: String(id),
+                  assetName: anomPayload.assetName || existing?.assetName || String(id),
+                  timestamp: anomPayload.timestamp || existing?.timestamp || new Date().toISOString(),
+                  lat: anomPayload.lat ?? existing?.lat ?? 0,
+                  lon: anomPayload.lon ?? existing?.lon ?? 0,
+                  speed: anomPayload.speed ?? existing?.speed ?? 0,
+                  heading: anomPayload.heading ?? existing?.heading ?? 0,
+                  score: anomPayload.score ?? anomPayload.final_score ?? 0,
+                  severity: anomPayload.severity || 'medium',
+                  reasons: Array.isArray(anomPayload.reasons) ? JSON.stringify(anomPayload.reasons) : (anomPayload.reasons || '[]'),
+                  updatedAt: new Date().toISOString(),
+                });
+              }
               break;
+            }
             case 'stats':
               rtSetStats(message.payload as StatsPayload);
               break;

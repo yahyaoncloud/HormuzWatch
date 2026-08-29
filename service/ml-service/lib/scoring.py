@@ -163,16 +163,19 @@ def fitted_score_bounds(raw_scores: np.ndarray) -> tuple[float, float]:
 # ---------------------------------------------------------------------------
 # Output dataclasses
 # ---------------------------------------------------------------------------
+# Output dataclasses
+# ---------------------------------------------------------------------------
 
 
 @dataclass
 class SHAPContribution:
-    """Single feature's SHAP contribution to the IsolationForest score."""
+    """Single feature's TreeSHAP attribution to the IsolationForest path length."""
 
     feature: str
     value: float              # Input feature value (unscaled)
-    contribution: float       # SHAP value (signed; negative → anomalous direction)
+    contribution: float       # SHAP value (signed; negative in tree convention -> anomalous direction)
     direction: str            # "anomalous" | "normal"
+    scope: str = "isolation_forest"  # Explicit attribution scope
 
 
 @dataclass
@@ -184,13 +187,15 @@ class ScoringResult:
     raw_lof_score: float                      # Original LOF.score_samples output
     is_anomaly: bool                          # True when probability >= 50.0
     shap_contributions: list[SHAPContribution] = field(default_factory=list)
+    explanation_scope: str = "isolation_forest"  # Attribution scope (TreeSHAP on IF)
     inference_time_ms: float = 0.0
+    timing_breakdown: dict[str, float] = field(default_factory=dict)
     model_version: str = "unknown"
     hardware_device: str = "CPU (Vectorized SIMD Engine)"
 
 
 # ---------------------------------------------------------------------------
-# Core scoring function
+# Core scoring function (Weighted Score Blending + Isotonic Calibration)
 # ---------------------------------------------------------------------------
 
 
@@ -202,27 +207,27 @@ def score(
     explain: bool = False,
 ) -> ScoringResult:
     """
-    Run the full ensemble scoring pipeline on a pre-validated feature vector.
+    Run the weighted score blending anomaly pipeline on a pre-validated feature vector.
 
     Parameters
     ----------
     feature_array:
-        1-D NumPy array in the canonical column order for this domain
-        (as returned by ``VesselFeatures.to_array()`` etc.).
+        1-D NumPy array in the canonical column order for this domain.
     feature_names:
         Ordered list of feature names corresponding to ``feature_array``.
     bundle:
-        Model bundle dict as loaded from the .joblib artifact.  Expected keys:
+        Model bundle dict as loaded from the .joblib artifact. Expected keys:
         ``model_iforest``, ``model_lof``, ``scaler``, ``calibrator``, ``version``.
     explain:
-        When True, compute SHAP values for the IsolationForest component.
-        Adds ~50-200ms; omit for latency-sensitive paths.
+        When True, compute TreeSHAP values for the IsolationForest component.
+        Omit for sub-5ms low-latency streaming inference.
 
     Returns
     -------
     ScoringResult
     """
     t0 = time.perf_counter()
+    timings: dict[str, float] = {}
 
     model_iforest = bundle["model_iforest"]
     model_lof = bundle["model_lof"]
@@ -231,12 +236,19 @@ def score(
     version = bundle.get("version", "unknown")
 
     # ── 1. Scale features ──────────────────────────────────────────────────
+    t_stage = time.perf_counter()
     X_raw = feature_array.reshape(1, -1)
     X = scaler.transform(X_raw)
+    timings["scaling_ms"] = round((time.perf_counter() - t_stage) * 1000.0, 3)
 
     # ── 2. Raw scores ──────────────────────────────────────────────────────
+    t_stage = time.perf_counter()
     raw_if = float(model_iforest.score_samples(X)[0])
+    timings["iforest_ms"] = round((time.perf_counter() - t_stage) * 1000.0, 3)
+
+    t_stage = time.perf_counter()
     raw_lof = float(model_lof.score_samples(X)[0])
+    timings["lof_ms"] = round((time.perf_counter() - t_stage) * 1000.0, 3)
 
     # ── 3 & 4. Normalise to [0, 1] (higher = more anomalous) ──────────────
     score_bounds = bundle.get("score_bounds", {})
@@ -245,35 +257,39 @@ def score(
     norm_if = _normalize_raw_score(raw_if, *if_bounds)
     norm_lof = _normalize_raw_score(raw_lof, *lof_bounds)
 
-    # ── 5. Ensemble average ────────────────────────────────────────────────
-    ensemble_score_01 = (norm_if + norm_lof) / 2.0
+    # ── 5. Weighted Score Blending (0.55 IF + 0.45 LOF) ───────────────────
+    # Note: Heuristic weighted blending, not meta-estimator stacking.
+    ensemble_score_01 = 0.55 * norm_if + 0.45 * norm_lof
 
     # ── 6. Isotonic calibration → calibrated probability [0, 1] ───────────
+    t_stage = time.perf_counter()
     try:
-        # IsotonicRegression.predict expects a 1-D array
         calibrated_01 = float(
             calibrator.predict(np.array([ensemble_score_01]))[0]
         )
-        # Clamp for safety (calibrator may slightly overshoot on extreme inputs)
         calibrated_01 = max(0.0, min(1.0, calibrated_01))
     except Exception as exc:
         logger.warning("Calibrator prediction failed (%s); using ensemble_score_01", exc)
         calibrated_01 = ensemble_score_01
+    timings["calibration_ms"] = round((time.perf_counter() - t_stage) * 1000.0, 3)
 
     # ── 7. Scale to 0-100 ─────────────────────────────────────────────────
     probability = round(calibrated_01 * 100.0, 2)
 
-    # ── 8. SHAP (IsolationForest only; tree-based) ─────────────────────────
+    # ── 8. SHAP (IsolationForest only; tree-based attribution) ─────────────
     shap_contributions: list[SHAPContribution] = []
     if explain:
+        t_stage = time.perf_counter()
         shap_contributions = _compute_shap(
             model_iforest=model_iforest,
             X_scaled=X,
             X_raw=X_raw,
             feature_names=feature_names,
         )
+        timings["shap_attribution_ms"] = round((time.perf_counter() - t_stage) * 1000.0, 3)
 
     elapsed_ms = (time.perf_counter() - t0) * 1000.0
+    timings["total_inference_ms"] = round(elapsed_ms, 3)
     device_info = detect_hardware_device()
 
     return ScoringResult(
@@ -282,7 +298,9 @@ def score(
         raw_lof_score=raw_lof,
         is_anomaly=probability >= 50.0,
         shap_contributions=shap_contributions,
+        explanation_scope="isolation_forest",
         inference_time_ms=round(elapsed_ms, 2),
+        timing_breakdown=timings,
         model_version=version,
         hardware_device=device_info,
     )
@@ -300,24 +318,19 @@ def _compute_shap(
     feature_names: list[str],
 ) -> list[SHAPContribution]:
     """
-    Compute SHAP values for a single sample using ``shap.TreeExplainer``.
-
-    Returns a list sorted by descending absolute contribution (most influential first).
+    Compute TreeSHAP attribution values for IsolationForest path length.
 
     Notes
     -----
-    - SHAP is only applied to IsolationForest (tree-based).
-    - LOF is kernel-based and does not have a TreeExplainer; its SHAP would
-      require KernelExplainer which is 10–100× slower — skipped intentionally.
-    - A failed SHAP computation returns an empty list (graceful degradation).
+    - TreeSHAP explains tree split path length of Isolation Forest only.
+    - Does NOT explain LOF reachability density or final calibrated probability.
     """
     try:
-        import shap  # Lazy import: not needed on non-explain paths
+        import shap
 
         explainer = shap.TreeExplainer(model_iforest)
         shap_values = explainer.shap_values(X_scaled)
 
-        # shap_values may be (1, n_features) or (n_features,) depending on shap version
         sv_arr = np.array(shap_values)
         sv = sv_arr.flatten() if sv_arr.ndim == 1 else sv_arr[0]
 
@@ -329,12 +342,11 @@ def _compute_shap(
                     feature=col,
                     value=round(float(X_raw[0, i]), 5),
                     contribution=round(sv_val, 6),
-                    # Negative SHAP → contributes toward anomaly (lower IF score)
                     direction="anomalous" if sv_val < 0 else "normal",
+                    scope="isolation_forest",
                 )
             )
 
-        # Sort by descending absolute contribution
         contributions.sort(key=lambda c: abs(c.contribution), reverse=True)
         return contributions
 

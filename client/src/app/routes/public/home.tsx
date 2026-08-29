@@ -1,4 +1,4 @@
-import { BarChart3, Globe, Newspaper } from 'lucide-react';
+import { BarChart3, Globe, Newspaper, Info } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLoaderData, useSearchParams } from 'react-router';
 import { LiveStatStrip, type MetricKey } from '@/components/data/LiveStatStrip';
@@ -11,12 +11,15 @@ import { DisclaimerModal } from '@/components/ui/DisclaimerModal';
 import { DesktopOnlyOverlay } from '@/components/ui/DesktopOnlyOverlay';
 import { HomeTopBar } from '@/components/home/HomeTopBar';
 import { HomeMapLayout, HomeFeedView } from '@/components/home/HomePanels';
+import AboutPage from '@/app/routes/public/about';
+
 import { useHomeTelemetry } from '@/components/home/useHomeTelemetry';
 import {
   getDetailedReport,
   getDetailedReportPDF,
   getNews,
   getPublicMetrics,
+  getPublicTracks,
   getServerSettings,
   getTopTraces,
 } from '@/lib/api';
@@ -26,14 +29,16 @@ import { env } from "@/environments/environment";
 export async function clientLoader() {
   const timeout = (ms: number) => new Promise<null>((r) => setTimeout(() => r(null), ms));
 
-  const [metricsResponse, tracesResponse, newsResponse] = await Promise.all([
-    Promise.race([getPublicMetrics().catch(() => null), timeout(600)]),
-    Promise.race([getTopTraces().catch(() => null), timeout(600)]),
-    Promise.race([getNews().catch(() => null), timeout(600)]),
+  const [metricsResponse, tracksResponse, tracesResponse, newsResponse] = await Promise.all([
+    Promise.race([getPublicMetrics().catch(() => null), timeout(800)]),
+    Promise.race([getPublicTracks().catch(() => null), timeout(800)]),
+    Promise.race([getTopTraces().catch(() => null), timeout(800)]),
+    Promise.race([getNews().catch(() => null), timeout(800)]),
   ]);
 
   return {
     initialMetrics: metricsResponse ?? null,
+    initialTracks: tracksResponse ?? null,
     initialTraces: tracesResponse ?? null,
     initialNews: newsResponse ?? null,
   };
@@ -45,6 +50,7 @@ const TABS = [
   { id: 'map' as const, label: 'Map', icon: Globe },
   { id: 'intelligence' as const, label: 'Intelligence', icon: BarChart3 },
   { id: 'feed' as const, label: 'Feed', icon: Newspaper },
+  { id: 'about' as const, label: 'About', icon: Info },
 ];
 
 export type TimelineOption = '1hr' | '3hr' | '6hr' | '12hr' | '24hr' | 'all';
@@ -55,7 +61,7 @@ export function HomePage() {
   const [_searchParams, setSearchParams] = useSearchParams();
 
   // Tab navigation
-  const [activeTab, setActiveTab] = useState<'map' | 'intelligence' | 'feed'>(() => {
+  const [activeTab, setActiveTab] = useState<'map' | 'intelligence' | 'feed' | 'about'>(() => {
     if (typeof window === 'undefined') return 'map';
     return (localStorage.getItem('hw-active-tab') as any) || 'map';
   });
@@ -157,8 +163,10 @@ export function HomePage() {
     systemHealth,
     wsStatus,
     latestLogs,
+    tracks,
   } = useHomeTelemetry({
     initialMetrics: loaderData?.initialMetrics ?? undefined,
+    initialTracks: loaderData?.initialTracks ?? undefined,
     initialTraces: loaderData?.initialTraces ?? undefined,
     initialNews: loaderData?.initialNews ?? undefined,
     severityFilter,
@@ -328,6 +336,7 @@ export function HomePage() {
             rightPanelW={rightPanelW}
             onDragStart={handleDragStart}
             highlightZoneRef={highlightZoneRef}
+            tracks={tracks}
             newsItems={newsItems}
             topThreats={topThreats}
             totalThreats={totalThreats}
@@ -385,6 +394,13 @@ export function HomePage() {
             blockade={blockade}
             transits={transits}
           />
+        </div>
+      )}
+
+      {/* View: About */}
+      {activeTab === 'about' && (
+        <div className="flex-1 min-h-0 overflow-y-auto p-4">
+          <AboutPage />
         </div>
       )}
 
