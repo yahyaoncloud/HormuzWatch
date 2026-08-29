@@ -107,16 +107,15 @@ export function HomePage() {
     const saved = localStorage.getItem('hw-show-aircraft');
     return saved === null ? true : saved === '1';
   });
-  const [showConflicts, setShowConflicts] = useState(() => {
-    if (typeof window === 'undefined') return true;
-    const saved = localStorage.getItem('hw-show-conflicts');
-    return saved === null ? true : saved === '1';
-  });
-  const [showMetrics, setShowMetrics] = useState(() => {
-    if (typeof window === 'undefined') return true;
-    const saved = localStorage.getItem('hw-show-metrics');
-    return saved === null ? true : saved === '1';
-  });
+  const [showConflicts, setShowConflicts] = useState(
+    () => typeof window !== 'undefined' && window.localStorage.getItem('hw-show-conflicts') !== '0'
+  );
+  const [showAreas, setShowAreas] = useState(
+    () => typeof window !== 'undefined' && window.localStorage.getItem('hw-show-areas') !== '0'
+  );
+  const [showMetrics, setShowMetrics] = useState(
+    () => typeof window !== 'undefined' && window.localStorage.getItem('hw-show-metrics') === '1'
+  );
   const [reduceMotion, setReduceMotion] = useState(
     () => typeof window !== 'undefined' && window.localStorage.getItem('hw-reduce-motion') === '1'
   );
@@ -158,6 +157,7 @@ export function HomePage() {
     aircraftCount,
     systemHealth,
     wsStatus,
+    latestLogs,
   } = useHomeTelemetry({
     initialMetrics: loaderData?.initialMetrics,
     initialTraces: loaderData?.initialTraces,
@@ -182,12 +182,13 @@ export function HomePage() {
       window.localStorage.setItem('hw-show-vessels', showVessels ? '1' : '0');
       window.localStorage.setItem('hw-show-aircraft', showAircraft ? '1' : '0');
       window.localStorage.setItem('hw-show-conflicts', showConflicts ? '1' : '0');
+      window.localStorage.setItem('hw-show-areas', showAreas ? '1' : '0');
       window.localStorage.setItem('hw-show-metrics', showMetrics ? '1' : '0');
       window.localStorage.setItem('hw-timeline-filter', timeline);
       window.localStorage.setItem('hw-severity-filter', severityFilter);
       window.localStorage.setItem('hw-region-filter', regionFilter);
     } catch {}
-  }, [showHeatmap, showVessels, showAircraft, showConflicts, showMetrics, timeline, severityFilter, regionFilter, reduceMotion]);
+  }, [showHeatmap, showVessels, showAircraft, showConflicts, showAreas, showMetrics, timeline, severityFilter, regionFilter, reduceMotion]);
 
   // Resizing mouse move handlers
   useEffect(() => {
@@ -295,6 +296,8 @@ export function HomePage() {
         onToggleAircraft={() => setShowAircraft(!showAircraft)}
         showConflicts={showConflicts}
         onToggleConflicts={() => setShowConflicts(!showConflicts)}
+        showAreas={showAreas}
+        onToggleAreas={() => setShowAreas(!showAreas)}
         showHeatmap={showHeatmap}
         onToggleHeatmap={() => setShowHeatmap(!showHeatmap)}
         showMetrics={showMetrics}
@@ -310,6 +313,7 @@ export function HomePage() {
         transits={transits}
         systemHealth={systemHealth}
         wsStatus={wsStatus}
+        latestLogs={latestLogs}
       />
 
       {/* View: Map */}
@@ -336,6 +340,7 @@ export function HomePage() {
             showAircraft={showAircraft}
             showConflicts={showConflicts}
             onShowConflictsChange={setShowConflicts}
+            showAreas={showAreas}
             showMetrics={showMetrics}
             onShowMetricsChange={setShowMetrics}
             recenterTrigger={recenterTrigger}

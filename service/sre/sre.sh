@@ -49,11 +49,16 @@ case "$command" in
     cd "$ROOT_DIR"
     docker compose -f service/observability/docker-compose.observability.yml down
     ;;
+  deploy)
+    echo -e "${C_BOLD}${C_CYAN}==> Launching Automated Build & Deployment Pipeline...${C_RESET}"
+    bash "$SCRIPT_DIR/deploy.sh" "${@:2}"
+    ;;
   *)
     echo -e "${C_BOLD}HormuzWatch SRE & Observability Tool${C_RESET}"
-    echo "Usage: $0 {health|tolerance|logs|monitor|obs-up|obs-down}"
+    echo "Usage: $0 {deploy|health|tolerance|logs|monitor|obs-up|obs-down}"
     echo ""
     echo "Commands:"
+    echo "  deploy     - Interactive build & deploy pipeline for MVP (with confirmation)"
     echo "  health     - Deep health check of Go API, ML Service, Client, and Cloudflare Tunnel"
     echo "  tolerance  - Run fault-tolerance & resilience benchmark tests"
     echo "  logs       - Stream multiplexed color logs from all Docker containers"

@@ -30,6 +30,8 @@ export interface HomeMapLayoutProps {
   showAircraft: boolean;
   showConflicts: boolean;
   onShowConflictsChange: (val: boolean) => void;
+  showAreas?: boolean;
+  onShowAreasChange?: (val: boolean) => void;
   showMetrics: boolean;
   onShowMetricsChange: (val: boolean) => void;
   recenterTrigger: number;
@@ -58,6 +60,8 @@ export function HomeMapLayout({
   showAircraft,
   showConflicts,
   onShowConflictsChange,
+  showAreas = true,
+  onShowAreasChange: _onShowAreasChange,
   showMetrics,
   onShowMetricsChange,
   recenterTrigger,
@@ -104,6 +108,7 @@ export function HomeMapLayout({
                 showAircraft={showAircraft}
                 showConflicts={showConflicts}
                 onShowConflictsChange={onShowConflictsChange}
+                showAreas={showAreas}
                 showMetrics={showMetrics}
                 onShowMetricsChange={onShowMetricsChange}
                 recenterTrigger={recenterTrigger}

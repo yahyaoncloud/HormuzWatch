@@ -332,6 +332,8 @@ export interface LeafletMapProps {
   showAircraft?: boolean;
   showConflicts?: boolean;
   onShowConflictsChange?: (v: boolean) => void;
+  showAreas?: boolean;
+  onShowAreasChange?: (v: boolean) => void;
   showMetrics?: boolean;
   onShowMetricsChange?: (v: boolean) => void;
   recenterTrigger?: number;
@@ -353,6 +355,8 @@ export default function LeafletMapInner({
   showAircraft = true,
   showConflicts: showConflictsProp,
   onShowConflictsChange: _onShowConflictsChange,
+  showAreas = true,
+  onShowAreasChange: _onShowAreasChange,
   showMetrics: _showMetrics,
   onShowMetricsChange: _onShowMetricsChange,
   recenterTrigger,
@@ -664,6 +668,8 @@ export default function LeafletMapInner({
     document.head.appendChild(style);
   }, []);
 
+  const zoneMarkersRef = useRef<L.Marker[]>([]);
+
   useEffect(() => {
     if (!map) return;
 
@@ -676,7 +682,11 @@ export default function LeafletMapInner({
           fillColor: zone.color,
           fillOpacity: 0.08,
           dashArray: '5 5',
-        }).addTo(map);
+        });
+
+        if (showAreas) {
+          polygon.addTo(map);
+        }
 
         polygon.bindTooltip(
           `<div style="font-family: monospace; font-size: 11px;">
@@ -696,7 +706,7 @@ export default function LeafletMapInner({
         });
 
         const center = polygon.getBounds().getCenter();
-        L.marker(center, {
+        const marker = L.marker(center, {
           icon: L.divIcon({
             html: `<div style="
               color: ${zone.color};
@@ -716,9 +726,29 @@ export default function LeafletMapInner({
             iconAnchor: [40, 7],
           }),
           interactive: false,
-        }).addTo(map);
+        });
 
+        if (showAreas) {
+          marker.addTo(map);
+        }
+
+        zoneMarkersRef.current.push(marker);
         zoneLayersRef.current.set(zone.id, polygon);
+      });
+    } else {
+      zoneLayersRef.current.forEach((polygon) => {
+        if (showAreas) {
+          if (!map.hasLayer(polygon)) polygon.addTo(map);
+        } else {
+          if (map.hasLayer(polygon)) polygon.remove();
+        }
+      });
+      zoneMarkersRef.current.forEach((marker) => {
+        if (showAreas) {
+          if (!map.hasLayer(marker)) marker.addTo(map);
+        } else {
+          if (map.hasLayer(marker)) marker.remove();
+        }
       });
     }
 
