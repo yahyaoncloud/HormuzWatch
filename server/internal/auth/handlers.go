@@ -262,7 +262,7 @@ func Logout(c *gin.Context) {
 		return
 	}
 
-	_, err := db.DB.Exec("UPDATE sessions SET revoked_at = ? WHERE id = ?", time.Now().UTC().Format(time.RFC3339), user.SessionID)
+	_, err := db.Exec("UPDATE sessions SET revoked_at = ? WHERE id = ?", time.Now().UTC().Format(time.RFC3339), user.SessionID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to revoke session"})
 		return
@@ -407,7 +407,7 @@ func UpdateUser(c *gin.Context) {
 
 // GetAllUsers returns a list of all registered users (Admin only)
 func GetAllUsers(c *gin.Context) {
-	rows, err := db.DB.Query("SELECT id, username, email, role, status, created_at FROM users ORDER BY created_at DESC")
+	rows, err := db.Query("SELECT id, username, email, role, status, created_at FROM users ORDER BY created_at DESC")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query users"})
 		return
@@ -452,19 +452,19 @@ func BlacklistUser(c *gin.Context) {
 	}
 
 	var email string
-	err := db.DB.QueryRow("SELECT email FROM users WHERE username = ?", username).Scan(&email)
+	err := db.QueryRow("SELECT email FROM users WHERE username = ?", username).Scan(&email)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
 	}
 
-	_, err = db.DB.Exec("UPDATE users SET status = 'blacklisted' WHERE username = ?", username)
+	_, err = db.Exec("UPDATE users SET status = 'blacklisted' WHERE username = ?", username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to blacklist user"})
 		return
 	}
 
-	_, _ = db.DB.Exec("UPDATE sessions SET revoked_at = ? WHERE username = ? AND revoked_at IS NULL", time.Now().UTC().Format(time.RFC3339), username)
+	_, _ = db.Exec("UPDATE sessions SET revoked_at = ? WHERE username = ? AND revoked_at IS NULL", time.Now().UTC().Format(time.RFC3339), username)
 
 	if email != "" {
 		go SendBlacklistNotification(email)
@@ -481,7 +481,7 @@ func UnblacklistUser(c *gin.Context) {
 	}
 
 	var status, email string
-	err := db.DB.QueryRow("SELECT status, email FROM users WHERE username = ?", username).Scan(&status, &email)
+	err := db.QueryRow("SELECT status, email FROM users WHERE username = ?", username).Scan(&status, &email)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
@@ -492,7 +492,7 @@ func UnblacklistUser(c *gin.Context) {
 		return
 	}
 
-	_, err = db.DB.Exec("UPDATE users SET status = 'approved' WHERE username = ?", username)
+	_, err = db.Exec("UPDATE users SET status = 'approved' WHERE username = ?", username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to unblacklist user"})
 		return

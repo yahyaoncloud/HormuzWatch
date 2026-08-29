@@ -196,51 +196,7 @@ func ValidateToken(tokenString string) (jwt.MapClaims, bool, error) {
 				}
 			}
 		} else {
-			// Log error if it failed
-			log.Printf("[JWT] Failed to verify Supabase token: %v", err)
-			
-			// Fallback for ES256/RS256 Supabase tokens (Insecure for production, but unblocks development)
-			parser := jwt.Parser{}
-			unverifiedToken, _, parseErr := parser.ParseUnverified(tokenString, jwt.MapClaims{})
-			if parseErr == nil {
-				unverifiedClaims, ok := unverifiedToken.Claims.(jwt.MapClaims)
-				if ok {
-					if _, hasSub := unverifiedClaims["sub"]; hasSub {
-					log.Printf("[JWT] WARNING: Accepting unverified Supabase token due to signature mismatch.")
-					sub, _ := unverifiedClaims["sub"].(string)
-					email, _ := unverifiedClaims["email"].(string)
-					var dbUsername, dbRole, dbStatus string
-					err := db.QueryRow(
-						"SELECT username, role, status FROM users WHERE supabase_uid = ? OR email = ?",
-						sub, email,
-					).Scan(&dbUsername, &dbRole, &dbStatus)
-					if err == nil {
-						if strings.EqualFold(email, config.PrimaryAdminEmail) {
-							dbRole = "admin"
-							dbStatus = "approved"
-						}
-						unverifiedClaims["username"] = dbUsername
-						unverifiedClaims["role"] = dbRole
-						unverifiedClaims["status"] = dbStatus
-						unverifiedClaims["supabase_uid"] = sub
-					} else {
-						unverifiedClaims["username"] = strings.Split(email, "@")[0]
-						if unverifiedClaims["username"] == "" {
-							unverifiedClaims["username"] = "user"
-						}
-						if strings.EqualFold(email, config.PrimaryAdminEmail) {
-							unverifiedClaims["role"] = "admin"
-							unverifiedClaims["status"] = "approved"
-						} else {
-							unverifiedClaims["role"] = "user"
-							unverifiedClaims["status"] = "pending"
-						}
-						unverifiedClaims["supabase_uid"] = sub
-					}
-					return unverifiedClaims, true, nil
-					}
-				}
-			}
+			log.Printf("[JWT] Supabase token signature verification failed: %v", err)
 		}
 	}
 

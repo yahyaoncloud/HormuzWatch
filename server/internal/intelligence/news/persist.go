@@ -18,30 +18,35 @@ func ProcessAndStore(ctx context.Context, raw source.RawArticle, sourceID string
 	articleID := GenerateArticleID(raw.URL)
 	tracker := Track()
 
+	// ── Fast-path check: if tracker already completed this article ──
+	if rec, exists := tracker.GetArticleRecord(articleID); exists && rec.State.IsTerminal() {
+		return rec.State != StateDuplicate && rec.State != StateSkipped
+	}
+
+	// ── Fast-path dedup check: skip if content hash already exists ────
+	cleaned := Clean(raw.Content)
+	dedup := CheckDuplicate(DedupArticle{
+		URL:        raw.URL,
+		Title:      raw.Title,
+		Content:    cleaned,
+		SourceName: raw.SourceName,
+	})
+	if exists, _ := db.HashExists(dedup.ContentHash); exists {
+		_ = tracker.TransitionArticle(articleID, sourceID, StateDuplicate, "content hash match")
+		return false
+	}
+
 	// ── State: QUEUED → PROCESSING ──────────────────────────
-	tracker.TransitionArticle(articleID, sourceID, StateProcessing, "pipeline started")
+	_ = tracker.TransitionArticle(articleID, sourceID, StateProcessing, "pipeline started")
 
 	// ── Run the 7-step ML pipeline ──────────────────────────
 	features, assessment := ProcessArticle(raw)
 
-	// ── Dedup check: skip if content hash already exists ────
-	dedup := CheckDuplicate(DedupArticle{
-		URL:        raw.URL,
-		Title:      raw.Title,
-		Content:    Clean(raw.Content),
-		SourceName: raw.SourceName,
-	})
-	if exists, _ := db.HashExists(dedup.ContentHash); exists {
-		tracker.TransitionArticle(articleID, sourceID, StateDuplicate, "content hash match")
-		return false
-	}
-
 	// ── State: PROCESSING → SCORED ──────────────────────────
-	tracker.TransitionArticle(articleID, sourceID, StateScored,
+	_ = tracker.TransitionArticle(articleID, sourceID, StateScored,
 		fmt.Sprintf("risk=%.1f cat=%s", assessment.RiskScore, assessment.Category))
 
 	// ── Extract coordinates ─────────────────────────────────
-	cleaned := Clean(raw.Content)
 	entities := ExtractEntities(cleaned)
 	coords := ExtractCoordinates(cleaned, entities, raw.Country)
 	lat, lon := coords.BestLatLon()

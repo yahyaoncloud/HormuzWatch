@@ -31,10 +31,10 @@ const (
 
 // ValidTransitions maps each state to the allowed next states.
 var ValidTransitions = map[ArticleState][]ArticleState{
-	StateQueued:        {StateFetching, StateProcessing, StateSkipped},
+	StateQueued:        {StateFetching, StateProcessing, StateDuplicate, StateSkipped},
 	StateFetching:      {StateFetched, StateFetchFailed},
 	StateFetched:       {StateProcessing, StateDuplicate, StateSkipped},
-	StateProcessing:    {StateScored, StateProcessFailed},
+	StateProcessing:    {StateScored, StateProcessFailed, StateDuplicate, StateSkipped},
 	StateScored:        {StateGeocoded},
 	StateGeocoded:      {StateStored, StateProcessFailed},
 	StateStored:        {StateDone},
