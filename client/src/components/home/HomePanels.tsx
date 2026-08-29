@@ -36,6 +36,7 @@ export interface HomeMapLayoutProps {
   timeline: '1hr' | '3hr' | '6hr' | '12hr' | '24hr' | 'all';
   severityFilter: string;
   regionFilter: string;
+  onRegionFilterChange?: (region: string) => void;
 }
 
 export function HomeMapLayout({
@@ -63,14 +64,17 @@ export function HomeMapLayout({
   timeline,
   severityFilter,
   regionFilter,
+  onRegionFilterChange,
 }: HomeMapLayoutProps) {
   return (
-    <div className="absolute left-0 right-0 bottom-0 top-[2.75rem] flex">
+    <div className="h-full w-full flex overflow-hidden">
       {/* Left Console */}
-      <div style={{ width: leftPanelW }} className="flex-shrink-0 overflow-hidden">
+      <div style={{ width: leftPanelW }} className="flex-shrink-0 overflow-hidden h-full">
         <IntelligenceConsole
           highlightZone={(id) => highlightZoneRef.current?.(id)}
           newsItems={newsItems}
+          selectedRegion={regionFilter}
+          onSelectRegion={onRegionFilterChange}
         />
       </div>
 
@@ -81,9 +85,9 @@ export function HomeMapLayout({
       />
 
       {/* Center — Map */}
-      <main className="flex-1 min-w-0 flex flex-col">
-        <div className="flex-1 px-1.5">
-          <div className="relative h-[90%] w-full overflow-hidden border border-[var(--color-border)]">
+      <main className="flex-1 min-w-0 flex flex-col h-full">
+        <div className="flex-1 px-1.5 py-1 h-full">
+          <div className="relative h-full w-full overflow-hidden border border-[var(--color-border)]">
             <Suspense
               fallback={
                 <div className="flex h-full w-full items-center justify-center bg-[var(--color-bg-elevated)] text-[var(--color-fg-muted)] font-ui text-sm">
@@ -122,7 +126,7 @@ export function HomeMapLayout({
       />
 
       {/* Right Threat Panel */}
-      <div style={{ width: rightPanelW }} className="flex-shrink-0 overflow-hidden">
+      <div style={{ width: rightPanelW }} className="flex-shrink-0 overflow-hidden h-full">
         <ThreatsPanel
           topThreats={topThreats}
           totalThreats={totalThreats}

@@ -29,6 +29,39 @@ const num = (v: string | undefined, fallback: number): number => {
 // Environment singleton
 // ---------------------------------------------------------------------------
 
+// Dynamic URL Resolvers for Dev, LAN, and Cloudflare / Vercel Production
+const getDefaultApiUrl = (): string => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (typeof window === "undefined") return "https://api.hormuzwatch.aburcloud.com";
+  const host = window.location.hostname;
+  if (host === "localhost" || host === "127.0.0.1") return "http://localhost:10020";
+  if (host === "192.168.1.51") return "http://192.168.1.51:10020";
+  return "https://api.hormuzwatch.aburcloud.com";
+};
+
+const getDefaultMlUrl = (): string => {
+  if (import.meta.env.VITE_ML_SERVICE_URL) return import.meta.env.VITE_ML_SERVICE_URL;
+  if (typeof window === "undefined") return "https://ml.hormuzwatch.aburcloud.com";
+  const host = window.location.hostname;
+  if (host === "localhost" || host === "127.0.0.1") return "http://localhost:8090";
+  if (host === "192.168.1.51") return "http://192.168.1.51:8090";
+  return "https://ml.hormuzwatch.aburcloud.com";
+};
+
+const getDefaultWsUrl = (): string => {
+  if (import.meta.env.VITE_WS_TELEMETRY_URL) return import.meta.env.VITE_WS_TELEMETRY_URL;
+  if (typeof window === "undefined") return "wss://api.hormuzwatch.aburcloud.com/ws/stream";
+  const host = window.location.hostname;
+  if (host === "localhost" || host === "127.0.0.1") return "ws://localhost:10020/ws/stream";
+  if (host === "192.168.1.51") return "ws://192.168.1.51:10020/ws/stream";
+  return "wss://api.hormuzwatch.aburcloud.com/ws/stream";
+};
+
+const getDefaultSseUrl = (): string => {
+  if (import.meta.env.VITE_SSE_TRACES_URL) return import.meta.env.VITE_SSE_TRACES_URL;
+  return `${getDefaultApiUrl()}/public/stream`;
+};
+
 export const env = {
   // ── Runtime mode ──────────────────────────────────────────────────
   /** True when running via `vite dev`. */
@@ -43,21 +76,19 @@ export const env = {
   // ── Go backend API ────────────────────────────────────────────────
   api: {
     /** REST API base URL (no trailing slash). */
-    baseUrl: import.meta.env.VITE_API_URL || "http://localhost:10020",
+    baseUrl: getDefaultApiUrl(),
     /** Request timeout in milliseconds. */
     timeoutMs: num(import.meta.env.VITE_API_TIMEOUT_MS, 5000),
   },
 
   // ── ML / Analysis Service ─────────────────────────────────────────
   /** Python ML service URL (used by analysis charts page). */
-  mlServiceUrl: import.meta.env.VITE_ML_SERVICE_URL || "http://localhost:8090",
+  mlServiceUrl: getDefaultMlUrl(),
 
   // ── WebSocket ─────────────────────────────────────────────────────
   ws: {
     /** Telemetry WebSocket endpoint. */
-    telemetryUrl:
-      import.meta.env.VITE_WS_TELEMETRY_URL ||
-      "ws://localhost:10020/ws/stream",
+    telemetryUrl: getDefaultWsUrl(),
     /** Reconnect backoff floor (ms). */
     reconnectInitialMs: num(
       import.meta.env.VITE_WS_RECONNECT_INITIAL_MS,
@@ -75,9 +106,7 @@ export const env = {
   // ── Server-Sent Events ────────────────────────────────────────────
   sse: {
     /** Public SSE traces stream. */
-    tracesUrl:
-      import.meta.env.VITE_SSE_TRACES_URL ||
-      "http://localhost:10020/public/stream",
+    tracesUrl: getDefaultSseUrl(),
     /** Reconnect delay (ms). */
     reconnectDelayMs: num(import.meta.env.VITE_SSE_RECONNECT_MS, 3000),
   },
@@ -106,26 +135,30 @@ export const env = {
 
   // ── Maps ──────────────────────────────────────────────────────────
   map: {
-    /** Primary dark basemap tile URL template (XYZ format). Default: CartoDB Dark Matter. */
+    /** Primary dark tactical basemap tile URL template (XYZ format). Default: ESRI World Dark Gray Canvas. */
     tileUrlDark:
       import.meta.env.VITE_MAP_TILE_URL_DARK ||
       import.meta.env.VITE_MAP_TILE_URL ||
-      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    /** Primary light basemap tile URL template (XYZ format). Default: CartoDB Positron. */
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    /** Satellite reconnaissance tile URL template (XYZ format). Default: ESRI World Imagery. */
+    tileUrlSatellite:
+      import.meta.env.VITE_MAP_TILE_URL_SATELLITE ||
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    /** Primary light basemap tile URL template (XYZ format). Default: ESRI World Light Gray Canvas. */
     tileUrlLight:
       import.meta.env.VITE_MAP_TILE_URL_LIGHT ||
-      "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-    /** Fallback dark basemap URL if primary tile provider experiences network or quota failure. */
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    /** Fallback basemap URL (OSM with custom tactical shader grading). */
     tileUrlFallback:
       import.meta.env.VITE_MAP_TILE_URL_FALLBACK ||
-      "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png",
+      "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
     /** Subdomains for tile rotation. Default: 'abcd'. */
     subdomains: (import.meta.env.VITE_MAP_SUBDOMAINS as string) || "abcd",
     /** Map copyright & attribution HTML. */
     attribution:
       import.meta.env.VITE_MAP_ATTRIBUTION ||
-      '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
-    /** Optional public client-side API key / token (e.g., for Stadia Maps, MapTiler, or Jawg). */
+      '&copy; <a href="https://www.esri.com" target="_blank" rel="noopener noreferrer">Esri</a> &mdash; National Geographic, DeLorme, NAVTEQ, OpenStreetMap',
+    /** Optional public client-side API key / token. */
     apiKey: (import.meta.env.VITE_MAP_API_KEY as string) || "",
     /** MapLibre style JSON URL. */
     styleUrl:

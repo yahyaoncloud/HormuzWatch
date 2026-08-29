@@ -1,0 +1,31 @@
+{
+  "version": 8,
+  "name": "HormuzWatch Dark Tactical Intelligence",
+  "sources": {
+    "esri-dark": {
+      "type": "raster",
+      "tiles": [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+      ],
+      "tileSize": 256,
+      "attribution": "&copy; Esri &mdash; National Geographic, DeLorme, NAVTEQ, OpenStreetMap"
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#0a0f1a"
+      }
+    },
+    {
+      "id": "esri-dark-layer",
+      "type": "raster",
+      "source": "esri-dark",
+      "paint": {
+        "raster-opacity": 0.95
+      }
+    }
+  ]
+}

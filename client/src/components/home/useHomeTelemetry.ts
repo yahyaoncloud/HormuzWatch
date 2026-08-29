@@ -1,12 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import {
+  checkHealth,
   getBlockadeIndicators,
   getNews,
   getPublicMetrics,
   getTopTraces,
   getTransits,
   type BlockadeIndicators,
+  type HealthResponse,
   type TransitSummary,
 } from '@/lib/api';
 import { useRealtimeStore } from '@/stores';
@@ -73,9 +75,17 @@ export function useHomeTelemetry({
     refetchInterval: 60000,
   });
 
+  // Real-time Backend & Subsystem Health Check
+  const { data: systemHealth } = useQuery<HealthResponse>({
+    queryKey: ['system-health-home'],
+    queryFn: checkHealth,
+    refetchInterval: 10000,
+    retry: 1,
+  });
+
   // Real-time WebSocket subscriptions
   const liveStats = useRealtimeStore((s) => s.stats);
-  const { subscribe } = useWebSocket();
+  const { subscribe, status: wsStatus } = useWebSocket();
   const [realtimeTracesMap, setRealtimeTracesMap] = useState<Map<string, any>>(new Map());
 
   useEffect(() => {
@@ -297,5 +307,7 @@ export function useHomeTelemetry({
     totalThreats,
     vesselCount,
     aircraftCount,
+    systemHealth,
+    wsStatus,
   };
 }

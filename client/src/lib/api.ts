@@ -865,9 +865,26 @@ export async function getNewsMapMetrics(
 // ============================================================
 
 export interface HealthResponse {
-  status: string;
-  managedIdentityEnabled: boolean;
+  status: 'healthy' | 'degraded' | 'unhealthy' | string;
+  version?: string;
+  git_commit?: string;
+  build_time?: string;
   timestamp: string;
+  managed_identity_enabled?: boolean;
+  components?: {
+    database?: {
+      healthy: boolean;
+      ping_ms: number;
+      latency?: string;
+    };
+    ml_service?: {
+      healthy: boolean;
+      circuit: 'CLOSED' | 'OPEN' | 'HALF_OPEN' | string;
+    };
+    websocket?: {
+      healthy: boolean;
+    };
+  };
 }
 
 export async function checkHealth(): Promise<HealthResponse> {

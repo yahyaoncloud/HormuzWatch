@@ -793,3 +793,21 @@
   color: #e0e7ff;
 }
 
+/* ── Tactical Intelligence Raw Basemap Tile Filters ──── */
+.tactical-esri-dark {
+  filter: brightness(0.85) contrast(1.22) saturate(1.15) hue-rotate(2deg) !important;
+}
+
+.tactical-esri-light {
+  filter: brightness(0.97) contrast(1.08) saturate(1.05) !important;
+}
+
+.tactical-esri-satellite {
+  filter: brightness(0.92) contrast(1.18) saturate(1.15) !important;
+}
+
+.tactical-osm-fallback {
+  filter: invert(1) hue-rotate(195deg) brightness(0.82) contrast(1.28) saturate(0.95) !important;
+}
+
+

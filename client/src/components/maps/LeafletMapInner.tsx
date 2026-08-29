@@ -9,6 +9,7 @@ import 'leaflet.markercluster/dist/leaflet.markercluster.js';
 import 'leaflet.heat';
 import { useQuery } from '@tanstack/react-query';
 import { ZoomIn, ZoomOut } from 'lucide-react';
+import { env } from '@/environments/environment';
 import * as apiMethods from '@/lib/api';
 import { getConflictFeed } from '@/lib/api';
 import { useWebSocket } from '@/providers';
@@ -19,6 +20,41 @@ const CENTER: [number, number] = [26.06, 56.28];
 const ZOOM = 6;
 const DEFAULT_MIN_ZOOM = 3;
 const DEFAULT_MAX_ZOOM = 16;
+
+function getTileLayerConfig(isDarkMode: boolean, useFallback = false) {
+  let rawUrl = useFallback
+    ? env.map.tileUrlFallback
+    : isDarkMode
+      ? env.map.tileUrlDark
+      : env.map.tileUrlLight;
+
+  if (env.map.apiKey) {
+    if (rawUrl.includes('{key}')) {
+      rawUrl = rawUrl.replace('{key}', env.map.apiKey);
+    } else if (rawUrl.includes('{apikey}')) {
+      rawUrl = rawUrl.replace('{apikey}', env.map.apiKey);
+    } else if (rawUrl.includes('?')) {
+      rawUrl = `${rawUrl}&api_key=${env.map.apiKey}`;
+    } else {
+      rawUrl = `${rawUrl}?api_key=${env.map.apiKey}`;
+    }
+  } else {
+    rawUrl = rawUrl.replace('{key}', '').replace('{apikey}', '').replace('{r}', '');
+  }
+
+  const className = useFallback
+    ? 'tactical-osm-fallback'
+    : isDarkMode
+      ? 'tactical-esri-dark'
+      : 'tactical-esri-light';
+
+  return {
+    url: rawUrl,
+    attribution: env.map.attribution,
+    subdomains: env.map.subdomains,
+    className,
+  };
+}
 
 export const DEFAULT_GULF_BOUNDS: L.LatLngBoundsExpression = [
   [5.0, 32.0],   // SW: Sri Lanka, Red Sea
@@ -103,7 +139,7 @@ function makeIcon(track: any, severity: string, heading: number, selected: boole
   });
 }
 
-const WATCH_ZONES = [
+export const WATCH_ZONES = [
   {
     id: 'AREA-HORMUZ',
     name: 'Strait of Hormuz',
@@ -121,8 +157,8 @@ const WATCH_ZONES = [
       [26.4, 55.6],
       [26.75, 55.5],
     ] as [number, number][],
-    color: '#ef4444',
-    label: 'HORMUZ',
+    color: '#FF0055',
+    label: 'HORMUZ CHOKEPOINT',
   },
   {
     id: 'AREA-PGULF',
@@ -151,8 +187,8 @@ const WATCH_ZONES = [
       [29.2, 48.6],
       [29.7, 48.3],
     ] as [number, number][],
-    color: '#b87333',
-    label: 'N.GULF',
+    color: '#FF9900',
+    label: 'PERSIAN GULF',
   },
   {
     id: 'AREA-GOMAN',
@@ -175,60 +211,116 @@ const WATCH_ZONES = [
       [25.0, 56.3],
       [25.5, 56.4],
     ] as [number, number][],
-    color: '#38bdf8',
-    label: 'G.OMAN',
+    color: '#00E5FF',
+    label: 'GULF OF OMAN',
+  },
+  {
+    id: 'AREA-FUJAIRAH',
+    name: 'Fujairah Anchorage Hub',
+    coords: [
+      [25.45, 56.35],
+      [25.45, 56.75],
+      [24.95, 56.75],
+      [24.95, 56.35],
+    ] as [number, number][],
+    color: '#00E676',
+    label: 'FUJAIRAH ANCHORAGE',
+  },
+  {
+    id: 'AREA-JEBELALI',
+    name: 'Jebel Ali Corridor',
+    coords: [
+      [25.25, 54.85],
+      [25.25, 55.25],
+      [24.85, 55.25],
+      [24.85, 54.85],
+    ] as [number, number][],
+    color: '#10B981',
+    label: 'JEBEL ALI CORRIDOR',
+  },
+  {
+    id: 'AREA-RASTANURA',
+    name: 'Ras Tanura Terminal',
+    coords: [
+      [27.15, 49.95],
+      [27.15, 50.45],
+      [26.60, 50.45],
+      [26.60, 49.95],
+    ] as [number, number][],
+    color: '#F59E0B',
+    label: 'RAS TANURA HUB',
+  },
+  {
+    id: 'AREA-QATAR-LNG',
+    name: 'Ras Laffan / North Field',
+    coords: [
+      [26.45, 51.35],
+      [26.45, 52.35],
+      [25.80, 52.35],
+      [25.80, 51.35],
+    ] as [number, number][],
+    color: '#3B82F6',
+    label: 'RAS LAFFAN LNG',
+  },
+  {
+    id: 'AREA-KHARG',
+    name: 'Kharg Island Terminal',
+    coords: [
+      [29.40, 50.15],
+      [29.40, 50.55],
+      [29.10, 50.55],
+      [29.10, 50.15],
+    ] as [number, number][],
+    color: '#EC4899',
+    label: 'KHARG TERMINAL',
+  },
+  {
+    id: 'AREA-BANDARABBAS',
+    name: 'Bandar Abbas / Qeshm',
+    coords: [
+      [27.25, 55.80],
+      [27.25, 56.55],
+      [26.70, 56.55],
+      [26.70, 55.80],
+    ] as [number, number][],
+    color: '#E11D48',
+    label: 'BANDAR ABBAS',
   },
   {
     id: 'AREA-RS-SOUTH',
-    name: 'Red Sea — Bab-el-Mandeb',
+    name: 'Bab-el-Mandeb',
     coords: [
-      [16.4, 42.0],
-      [16.6, 42.7],
-      [16.3, 43.5],
-      [15.8, 44.2],
-      [15.0, 44.8],
-      [13.8, 44.2],
-      [12.8, 43.5],
-      [12.3, 43.2],
-      [12.5, 42.7],
-      [13.2, 42.3],
-      [14.0, 42.0],
-      [15.0, 41.8],
-      [16.0, 41.9],
+      [13.5, 42.8],
+      [13.5, 43.6],
+      [12.3, 43.6],
+      [12.3, 42.8],
     ] as [number, number][],
-    color: '#dc2626',
+    color: '#DC2626',
     label: 'BAB-EL-MANDEB',
   },
   {
     id: 'AREA-RS-NORTH',
-    name: 'Red Sea (North)',
+    name: 'Red Sea & Suez Approach',
     coords: [
-      [28.8, 34.6],
-      [28.4, 34.7],
-      [27.8, 34.9],
-      [27.0, 35.4],
-      [25.8, 36.2],
-      [24.5, 37.2],
-      [23.2, 38.0],
-      [22.0, 38.6],
-      [20.8, 39.2],
-      [19.5, 39.8],
-      [18.2, 40.2],
-      [17.0, 40.6],
-      [16.8, 41.2],
-      [17.4, 41.6],
-      [18.4, 41.4],
-      [20.0, 40.8],
-      [21.5, 40.0],
-      [23.0, 39.2],
-      [24.5, 38.3],
-      [26.0, 37.3],
-      [27.2, 36.2],
-      [28.2, 35.2],
-      [28.8, 34.7],
+      [28.8, 32.8],
+      [28.8, 35.2],
+      [26.5, 36.5],
+      [26.5, 34.0],
     ] as [number, number][],
-    color: '#7c3aed',
-    label: 'N.RED SEA',
+    color: '#8B5CF6',
+    label: 'SUEZ APPROACH',
+  },
+  {
+    id: 'AREA-ADEN-IRTC',
+    name: 'Gulf of Aden IRTC Corridor',
+    coords: [
+      [13.2, 45.0],
+      [13.2, 51.5],
+      [11.8, 51.5],
+      [11.8, 45.0],
+    ] as [number, number][],
+    color: '#06B6D4',
+    label: 'GULF OF ADEN IRTC',
   },
 ];
 
@@ -277,6 +369,19 @@ export default function LeafletMapInner({
   const maxZoom = maxZoomProp ?? (locked ? LOCKED_MAX_ZOOM : DEFAULT_MAX_ZOOM);
   const boundsViscosity = 0;
   const [map, setMap] = useState<L.Map | null>(null);
+  const [tileFailed, setTileFailed] = useState(false);
+  const tileErrorCountRef = useRef(0);
+
+  const handleTileError = useCallback((_e: L.TileErrorEvent) => {
+    tileErrorCountRef.current += 1;
+    if (tileErrorCountRef.current >= 8 && !tileFailed) {
+      console.warn(
+        '[LeafletMap] Primary basemap tile provider encountered repeated errors. Switching to fallback basemap.'
+      );
+      setTileFailed(true);
+    }
+  }, [tileFailed]);
+
   const clusterRef = useRef<any>(null);
   const heatRef = useRef<any>(null);
   const zoneLayersRef = useRef<Map<string, L.Polygon>>(new Map());
@@ -286,27 +391,27 @@ export default function LeafletMapInner({
   const highlightZone = useCallback((zoneId: string | null) => {
     if (highlightedZoneRef.current && zoneLayersRef.current.has(highlightedZoneRef.current)) {
       zoneLayersRef.current.get(highlightedZoneRef.current)!.setStyle({
-        opacity: 0,
-        fillOpacity: 0,
+        opacity: 0.75,
+        fillOpacity: 0.08,
         weight: 1.5,
       });
       if (typeof document !== 'undefined') {
         const prevLabel = document.querySelector(
           `.zone-label-${highlightedZoneRef.current}`
         ) as HTMLElement;
-        if (prevLabel) prevLabel.style.opacity = '0';
+        if (prevLabel) prevLabel.style.opacity = '0.75';
       }
     }
     highlightedZoneRef.current = zoneId;
     if (zoneId && zoneLayersRef.current.has(zoneId)) {
       zoneLayersRef.current.get(zoneId)!.setStyle({
-        opacity: 0.8,
-        fillOpacity: 0.18,
+        opacity: 1.0,
+        fillOpacity: 0.25,
         weight: 3,
       });
       if (typeof document !== 'undefined') {
         const label = document.querySelector(`.zone-label-${zoneId}`) as HTMLElement;
-        if (label) label.style.opacity = '0.8';
+        if (label) label.style.opacity = '1.0';
       }
     }
   }, []);
@@ -315,6 +420,63 @@ export default function LeafletMapInner({
     onHighlightReady?.(highlightZone);
   }, [highlightZone, onHighlightReady]);
 
+  // Focus and highlight active area when regionFilter changes
+  useEffect(() => {
+    if (!map || zoneLayersRef.current.size === 0) return;
+
+    if (!regionFilter || regionFilter === 'all') {
+      zoneLayersRef.current.forEach((layer, id) => {
+        layer.setStyle({
+          opacity: 0.75,
+          fillOpacity: 0.08,
+          weight: 1.5,
+        });
+        if (typeof document !== 'undefined') {
+          const label = document.querySelector(`.zone-label-${id}`) as HTMLElement;
+          if (label) label.style.opacity = '0.85';
+        }
+      });
+      return;
+    }
+
+    const activeZone = WATCH_ZONES.find(
+      (z) => z.id.toLowerCase() === regionFilter.toLowerCase() || z.id === regionFilter
+    );
+
+    if (activeZone && zoneLayersRef.current.has(activeZone.id)) {
+      const activeLayer = zoneLayersRef.current.get(activeZone.id)!;
+      zoneLayersRef.current.forEach((layer, id) => {
+        if (id === activeZone.id) {
+          layer.setStyle({
+            opacity: 1.0,
+            fillOpacity: 0.28,
+            weight: 3.0,
+          });
+          if (typeof document !== 'undefined') {
+            const label = document.querySelector(`.zone-label-${id}`) as HTMLElement;
+            if (label) label.style.opacity = '1.0';
+          }
+        } else {
+          layer.setStyle({
+            opacity: 0.2,
+            fillOpacity: 0.02,
+            weight: 1.0,
+          });
+          if (typeof document !== 'undefined') {
+            const label = document.querySelector(`.zone-label-${id}`) as HTMLElement;
+            if (label) label.style.opacity = '0.2';
+          }
+        }
+      });
+
+      map.flyToBounds(activeLayer.getBounds(), {
+        padding: [60, 60],
+        maxZoom: 11,
+        duration: 1.2,
+      });
+    }
+  }, [map, regionFilter]);
+
   const [internalHeatmap] = useState(false);
   const storeTheme = useSettingsStore((s) => s.theme);
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -322,6 +484,8 @@ export default function LeafletMapInner({
     const darkClass = document.documentElement.classList.contains('dark');
     return darkClass || storeTheme === 'dark' || (storeTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
+
+  const tileConfig = getTileLayerConfig(isDarkMode, tileFailed);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -508,18 +672,26 @@ export default function LeafletMapInner({
         const polygon = L.polygon(zone.coords, {
           color: zone.color,
           weight: 1.5,
-          opacity: 0,
+          opacity: 0.8,
           fillColor: zone.color,
-          fillOpacity: 0,
-          dashArray: '6 4',
+          fillOpacity: 0.08,
+          dashArray: '5 5',
         }).addTo(map);
 
+        polygon.bindTooltip(
+          `<div style="font-family: monospace; font-size: 11px;">
+            <div style="font-weight: bold; color: ${zone.color};">${zone.name}</div>
+            <div style="color: #94a3b8; font-size: 10px;">ID: ${zone.id}</div>
+          </div>`,
+          { sticky: true, opacity: 0.95 }
+        );
+
         polygon.on('mouseover', () => {
-          polygon.setStyle({ opacity: 0.6, fillOpacity: 0.12, weight: 3 });
+          polygon.setStyle({ opacity: 1.0, fillOpacity: 0.22, weight: 2.5 });
         });
         polygon.on('mouseout', () => {
           if (highlightedZoneRef.current !== zone.id) {
-            polygon.setStyle({ opacity: 0, fillOpacity: 0, weight: 1.5 });
+            polygon.setStyle({ opacity: 0.8, fillOpacity: 0.08, weight: 1.5 });
           }
         });
 
@@ -534,14 +706,14 @@ export default function LeafletMapInner({
               text-transform: uppercase;
               font-family: 'JetBrains Mono', monospace;
               white-space: nowrap;
-              text-shadow: 0 0 6px rgba(0,0,0,0.9);
+              text-shadow: 0 0 8px rgba(0,0,0,0.95), 0 0 4px ${zone.color};
               pointer-events: none;
-              opacity: 0;
-              transition: opacity 0.2s;
+              opacity: 0.85;
+              transition: opacity 0.2s, transform 0.2s;
             " class="zone-label zone-label-${zone.id}">${zone.label}</div>`,
             className: '',
-            iconSize: [60, 14],
-            iconAnchor: [30, 7],
+            iconSize: [80, 14],
+            iconAnchor: [40, 7],
           }),
           interactive: false,
         }).addTo(map);
@@ -1083,15 +1255,15 @@ export default function LeafletMapInner({
         ref={setMap as any}
       >
         <TileLayer
-          key={isDarkMode ? 'dark-tiles' : 'light-tiles'}
-          attribution="&copy; OpenStreetMap contributors &copy; CARTO"
-          url={
-            isDarkMode
-              ? 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png'
-              : 'https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png'
-          }
-          subdomains="abcd"
+          key={`${isDarkMode ? 'dark-tiles' : 'light-tiles'}-${tileFailed ? 'fallback' : 'primary'}`}
+          attribution={tileConfig.attribution}
+          url={tileConfig.url}
+          subdomains={tileConfig.subdomains}
           maxZoom={maxZoom}
+          className={tileConfig.className}
+          eventHandlers={{
+            tileerror: handleTileError,
+          }}
         />
       </MapContainer>
     </div>

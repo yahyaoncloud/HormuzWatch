@@ -1,5 +1,5 @@
 import { AlertCircle, Bell, CheckCircle2, Info, Lock, X } from 'lucide-react';
-import { Link, Outlet } from 'react-router';
+import { Link, Outlet, useLocation } from 'react-router';
 import { Navbar } from '@/components/ui/navbar';
 import { SiteFooter } from './SiteFooter';
 import { cn } from '@/utils/cn';
@@ -52,6 +52,8 @@ function ToastContainer() {
 }
 
 export function RootLayout() {
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
   const notifs = useNotificationStore(s => s.notifs);
   const unread = notifs.filter(n => !n.read).length;
   const showPanel = useNotificationStore(s => s.showPanel);
@@ -61,7 +63,10 @@ export function RootLayout() {
   const clearAll = useNotificationStore(s => s.clearAll);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--color-bg)]">
+    <div className={cn(
+      "flex flex-col bg-[var(--color-bg)]",
+      isHomePage ? "h-screen overflow-hidden" : "min-h-screen"
+    )}>
       <Navbar>
         <div className="flex items-center gap-0 border border-[var(--color-border)] divide-x divide-[var(--color-border)] rounded-none">
           <Link
@@ -141,10 +146,17 @@ export function RootLayout() {
         </>
       )}
 
-      <main id="main-content" className="relative flex-1" tabIndex={-1}>
+      <main
+        id="main-content"
+        className={cn(
+          "relative flex-1",
+          isHomePage ? "min-h-0 overflow-hidden flex flex-col" : ""
+        )}
+        tabIndex={-1}
+      >
         <Outlet />
       </main>
-      <SiteFooter />
+      {!isHomePage && <SiteFooter />}
 
       {/* Universal Toast Container */}
       <ToastContainer />

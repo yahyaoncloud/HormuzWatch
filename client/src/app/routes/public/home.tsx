@@ -71,8 +71,26 @@ export function HomePage() {
   });
   const [regionFilter, setRegionFilter] = useState<string>(() => {
     if (typeof window === 'undefined') return 'all';
+    const param = new URLSearchParams(window.location.search).get('region');
+    if (param) return param;
     return localStorage.getItem('hw-region-filter') || 'all';
   });
+
+  const handleRegionFilterChange = useCallback((region: string) => {
+    setRegionFilter(region);
+    try {
+      localStorage.setItem('hw-region-filter', region);
+    } catch {}
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (region && region !== 'all') {
+        next.set('region', region);
+      } else {
+        next.delete('region');
+      }
+      return next;
+    });
+  }, [setSearchParams]);
 
   // Layer Toggles
   const [showHeatmap, setShowHeatmap] = useState(() => {
@@ -138,6 +156,8 @@ export function HomePage() {
     totalThreats,
     vesselCount,
     aircraftCount,
+    systemHealth,
+    wsStatus,
   } = useHomeTelemetry({
     initialMetrics: loaderData?.initialMetrics,
     initialTraces: loaderData?.initialTraces,
@@ -237,7 +257,7 @@ export function HomePage() {
   }, [addToast]);
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[var(--color-bg)]">
+    <div className="relative h-full w-full overflow-hidden flex flex-col bg-[var(--color-bg)]">
       {/* Mobile view desktop overlay blocker */}
       <DesktopOnlyOverlay title="Live Operations & Command" subtitle="Desktop View Required" />
 
@@ -268,7 +288,7 @@ export function HomePage() {
         severityFilter={severityFilter}
         onSeverityFilterChange={setSeverityFilter}
         regionFilter={regionFilter}
-        onRegionFilterChange={setRegionFilter}
+        onRegionFilterChange={handleRegionFilterChange}
         showVessels={showVessels}
         onToggleVessels={() => setShowVessels(!showVessels)}
         showAircraft={showAircraft}
@@ -288,11 +308,13 @@ export function HomePage() {
         totalTracks={metrics?.totalTracks}
         blockade={blockade}
         transits={transits}
+        systemHealth={systemHealth}
+        wsStatus={wsStatus}
       />
 
       {/* View: Map */}
       {activeTab === 'map' && (
-        <>
+        <div className="flex-1 min-h-0 relative w-full overflow-hidden">
           <HomeMapLayout
             leftPanelW={leftPanelW}
             rightPanelW={rightPanelW}
@@ -320,10 +342,11 @@ export function HomePage() {
             timeline={timeline}
             severityFilter={severityFilter}
             regionFilter={regionFilter}
+            onRegionFilterChange={handleRegionFilterChange}
           />
 
           {/* Floating metrics panel */}
-          <div className="absolute bottom-5 left-5 right-5 z-20 flex justify-center pointer-events-none md:bottom-18 md:left-8 md:right-8 lg:left-[calc(18rem+1.5rem)] lg:right-[calc(20rem+1.5rem)]">
+          <div className="absolute bottom-3 left-5 right-5 z-20 flex justify-center pointer-events-none md:bottom-4 md:left-8 md:right-8 lg:left-[calc(18rem+1.5rem)] lg:right-[calc(20rem+1.5rem)]">
             <div className="w-full max-w-5xl glass-card pointer-events-auto">
               <LiveStatStrip
                 metrics={metrics}
@@ -332,20 +355,26 @@ export function HomePage() {
               />
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* View: Intelligence */}
-      {activeTab === 'intelligence' && <IntelligenceDashboard />}
+      {activeTab === 'intelligence' && (
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <IntelligenceDashboard />
+        </div>
+      )}
 
       {/* View: Feed */}
       {activeTab === 'feed' && (
-        <HomeFeedView
-          topThreats={topThreats}
-          newsItems={newsItems}
-          blockade={blockade}
-          transits={transits}
-        />
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <HomeFeedView
+            topThreats={topThreats}
+            newsItems={newsItems}
+            blockade={blockade}
+            transits={transits}
+          />
+        </div>
       )}
 
       {/* Modals & Detail Sheets */}

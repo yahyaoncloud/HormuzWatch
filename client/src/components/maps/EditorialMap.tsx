@@ -16,16 +16,11 @@ export const HORMUZ_DARK_STYLE: maplibregl.StyleSpecification = {
     'maputnik:renderer': 'mbgljs',
   },
   sources: {
-    osm: {
+    'esri-dark': {
       type: 'raster',
-      tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
-      attribution: '&copy; OpenStreetMap contributors',
-      minzoom: 0,
-      maxzoom: 19,
-    },
-    'cartodb-dark': {
-      type: 'raster',
-      tiles: ['https://a.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'],
+      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'],
+      tileSize: 256,
+      attribution: '&copy; Esri &mdash; National Geographic, DeLorme, NAVTEQ',
       minzoom: 0,
       maxzoom: 19,
     },
@@ -39,11 +34,11 @@ export const HORMUZ_DARK_STYLE: maplibregl.StyleSpecification = {
       },
     },
     {
-      id: 'cartodb-dark-layer',
+      id: 'esri-dark-layer',
       type: 'raster',
-      source: 'cartodb-dark',
+      source: 'esri-dark',
       paint: {
-        'raster-opacity': 0.8,
+        'raster-opacity': 0.9,
         'raster-fade-duration': 150,
       },
     },

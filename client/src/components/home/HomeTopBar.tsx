@@ -14,7 +14,7 @@ import {
   ShieldAlert,
   Ship,
 } from 'lucide-react';
-import type { BlockadeIndicators, TransitSummary } from '@/lib/api';
+import type { BlockadeIndicators, HealthResponse, TransitSummary } from '@/lib/api';
 import { cn } from '@/utils/cn';
 
 export interface HomeTopBarProps {
@@ -56,6 +56,8 @@ export interface HomeTopBarProps {
   totalTracks?: number;
   blockade?: BlockadeIndicators | null;
   transits?: TransitSummary | null;
+  systemHealth?: HealthResponse | null;
+  wsStatus?: 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
 }
 
 export function HomeTopBar({
@@ -88,7 +90,15 @@ export function HomeTopBar({
   totalTracks,
   blockade,
   transits,
+  systemHealth,
+  wsStatus,
 }: HomeTopBarProps) {
+  const isHealthy = systemHealth?.status === 'healthy';
+  const isDegraded = systemHealth?.status === 'degraded';
+  const dbHealth = systemHealth?.components?.database;
+  const mlHealth = systemHealth?.components?.ml_service;
+  const isWsConnected = wsStatus === 'connected';
+
   return (
     <>
       {/* Top Tab Bar */}
@@ -197,18 +207,32 @@ export function HomeTopBar({
             <option value="low">Low</option>
           </select>
 
-          {/* Region Filter */}
+          {/* Region & Area Filter */}
           <select
             value={regionFilter}
             onChange={(e) => onRegionFilterChange(e.target.value)}
             className="px-3 py-1.5 border border-[var(--color-border)] bg-[var(--color-bg)] font-ui text-xs text-[var(--color-fg)] cursor-pointer hover:border-[var(--color-primary-400)] transition-colors"
-            aria-label="Region filter"
+            aria-label="Region and Zone filter"
           >
-            <option value="all">All Regions</option>
-            <option value="hormuz">Strait of Hormuz</option>
-            <option value="pgulf">Persian Gulf</option>
-            <option value="goman">Gulf of Oman</option>
-            <option value="redsea">Red Sea</option>
+            <option value="all">All Sectors & Zones</option>
+            <optgroup label="Strategic Chokepoints">
+              <option value="AREA-HORMUZ">Strait of Hormuz</option>
+              <option value="AREA-RS-SOUTH">Bab-el-Mandeb</option>
+              <option value="AREA-RS-NORTH">Red Sea & Suez</option>
+              <option value="AREA-ADEN-IRTC">Gulf of Aden IRTC</option>
+            </optgroup>
+            <optgroup label="Persian Gulf & Terminals">
+              <option value="AREA-PGULF">Persian Gulf Basin</option>
+              <option value="AREA-RASTANURA">Ras Tanura Terminal</option>
+              <option value="AREA-QATAR-LNG">Ras Laffan LNG</option>
+              <option value="AREA-KHARG">Kharg Island Terminal</option>
+              <option value="AREA-BANDARABBAS">Bandar Abbas / Qeshm</option>
+            </optgroup>
+            <optgroup label="Gulf of Oman & Anchorage Hubs">
+              <option value="AREA-GOMAN">Gulf of Oman</option>
+              <option value="AREA-FUJAIRAH">Fujairah Anchorage</option>
+              <option value="AREA-JEBELALI">Jebel Ali Corridor</option>
+            </optgroup>
           </select>
 
           {/* Heatmap Toggle */}
@@ -279,16 +303,33 @@ export function HomeTopBar({
             )}
           </button>
 
-          {/* Live Pipeline Processing Status HUD Strip */}
+          {/* Real Live Systems Health & Pipeline HUD Strip */}
           <div className="w-full pt-2 mt-1 border-t border-[var(--color-border)]/50 flex items-center justify-between gap-2 text-[11px] font-mono overflow-x-auto flex-nowrap">
             <div className="flex items-center gap-2">
+              {/* Go Core API Health */}
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-fg)]">
+                <Activity className={cn("h-3.5 w-3.5", isHealthy ? "text-emerald-400" : isDegraded ? "text-amber-400" : "text-rose-400")} />
+                <span className="text-[var(--color-fg-subtle)] font-medium">CORE API:</span>
+                <span className={cn("font-bold", isHealthy ? "text-emerald-400" : isDegraded ? "text-amber-400" : "text-rose-400")}>
+                  {systemHealth?.status ? systemHealth.status.toUpperCase() : 'CONNECTING'}
+                </span>
+                {dbHealth && (
+                  <span className="text-[10px] text-[var(--color-fg-muted)]">
+                    (DB: {dbHealth.healthy ? `${dbHealth.ping_ms}ms` : 'ERR'})
+                  </span>
+                )}
+                <span className={cn("w-2 h-2 rounded-full", isHealthy ? "bg-emerald-500 animate-pulse" : isDegraded ? "bg-amber-500" : "bg-rose-500 animate-ping")}></span>
+              </div>
+
+              {/* AIS Maritime Telemetry */}
               <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-fg)]">
                 <Ship className="h-3.5 w-3.5 text-emerald-400" />
-                <span className="text-[var(--color-fg-subtle)] font-medium">AIS STREAM:</span>
-                <span className="font-bold text-emerald-400">{vesselCount > 0 ? `${vesselCount} VESSELS` : 'RECEIVING'}</span>
+                <span className="text-[var(--color-fg-subtle)] font-medium">AIS MARITIME:</span>
+                <span className="font-bold text-emerald-400">{vesselCount > 0 ? `${vesselCount} VESSELS` : 'INGESTING'}</span>
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               </div>
 
+              {/* ADS-B Air Telemetry */}
               <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-fg)]">
                 <Plane className="h-3.5 w-3.5 text-sky-400" />
                 <span className="text-[var(--color-fg-subtle)] font-medium">ADS-B AIR:</span>
@@ -296,25 +337,34 @@ export function HomeTopBar({
                 <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>
               </div>
 
+              {/* ML Anomaly Ensemble Engine */}
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-fg)]">
+                <Cpu className={cn("h-3.5 w-3.5", mlHealth?.healthy ? "text-emerald-400" : "text-amber-400")} />
+                <span className="text-[var(--color-fg-subtle)] font-medium">ML ENSEMBLE:</span>
+                <span className={cn("font-bold", mlHealth?.healthy ? "text-emerald-400" : "text-amber-400")}>
+                  {mlHealth?.healthy
+                    ? (totalTracks !== undefined ? `${totalTracks} TRACKS` : 'ONLINE (6/6)')
+                    : `CIRCUIT ${mlHealth?.circuit || 'FALLBACK'}`}
+                </span>
+                <span className={cn("w-2 h-2 rounded-full", mlHealth?.healthy ? "bg-emerald-500 animate-pulse" : "bg-amber-500")}></span>
+              </div>
+
+              {/* WebSocket Real-time Stream */}
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-fg)]">
+                <Radio className={cn("h-3.5 w-3.5", isWsConnected ? "text-purple-400" : "text-amber-400")} />
+                <span className="text-[var(--color-fg-subtle)] font-medium">WS STREAM:</span>
+                <span className={cn("font-bold", isWsConnected ? "text-purple-400" : "text-amber-400")}>
+                  {isWsConnected ? 'CONNECTED' : wsStatus?.toUpperCase() || 'OFFLINE'}
+                </span>
+                <span className={cn("w-2 h-2 rounded-full", isWsConnected ? "bg-purple-500 animate-pulse" : "bg-amber-500 animate-ping")}></span>
+              </div>
+
+              {/* News Articles Pipeline */}
               <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-fg)]">
                 <Rss className="h-3.5 w-3.5 text-indigo-400" />
                 <span className="text-[var(--color-fg-subtle)] font-medium">NEWS PIPELINE:</span>
-                <span className="font-bold text-indigo-400">{newsCount > 0 ? `${newsCount} ARTICLES` : 'SCRAPING'}</span>
+                <span className="font-bold text-indigo-400">{newsCount > 0 ? `${newsCount} ARTICLES` : 'POLLING'}</span>
                 <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-              </div>
-
-              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-fg)]">
-                <Cpu className="h-3.5 w-3.5 text-amber-400" />
-                <span className="text-[var(--color-fg-subtle)] font-medium">ANOMALY ML ENGINE:</span>
-                <span className="font-bold text-amber-400">{totalTracks !== undefined ? `${totalTracks} TRACKS` : 'ONLINE'}</span>
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-              </div>
-
-              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-fg)]">
-                <Radio className="h-3.5 w-3.5 text-purple-400" />
-                <span className="text-[var(--color-fg-subtle)] font-medium">FIRMS / GDELT:</span>
-                <span className="font-bold text-purple-400">INGESTION OK</span>
-                <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
               </div>
             </div>
 
