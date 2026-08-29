@@ -1,44 +1,70 @@
-# HormuzWatch Client (`client-v2`)
+# 🌐 HormuzWatch Frontend Client (`client/`)
 
-> The next-generation interactive intelligence portal and documentation platform for the HormuzWatch platform.
-
----
-
-## 🚀 Tech Stack
-
-- **Framework**: React 19 + React Router v7 (Framework Mode)
-- **Build Tool**: Vite 6 + `@vitejs/plugin-react`
-- **Styling**: Tailwind CSS v4 (CSS-first, `@theme` token design system, `:root.dark` overrides)
-- **Maps**:
-  - `LeafletMap`: Full-bleed centerpiece map with light/dark CartoDB & Esri tiles.
-  - `EditorialMap` & `RegionalMap`: MapLibre GL 2D/3D map for regional intelligence, hotzones, and vector layers.
-- **Charts**: uPlot for high-performance zero-latency telemetry and model comparison rendering.
-- **State Management**: Zustand stores (`useAuthStore`, `useSettingsStore`) + TanStack Query (v5).
-- **Code Quality**: Biome formatter & linter.
+The HormuzWatch frontend is a responsive Single-Page Application (SPA) built with React 19, React Router v7, Tailwind CSS, MapLibre GL, and Leaflet.
 
 ---
 
-## 🛠️ Getting Started
+## 📁 Project Structure
 
-```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
+```
+client/
+├── src/
+│   ├── app/
+│   │   ├── routes/             # File-based SPA routes (public, admin, auth, docs)
+│   │   │   ├── public/         # Public live map, intelligence dashboard, feed
+│   │   │   └── admin/          # Admin tracking, anomaly review, event audit
+│   │   └── root.tsx            # Global layout, theme provider, and toasts
+│   ├── components/
+│   │   ├── maps/               # MapLibre GL & Leaflet geospatial visualizers
+│   │   ├── intelligence/       # Threat assessment, metrics grid, PDF report modal
+│   │   ├── home/               # Navigation topbar, telemetry panels, tabs
+│   │   └── ui/                 # Accessible Radix / Tailwind UI primitives
+│   ├── lib/
+│   │   ├── api.ts              # Fetch client for Go REST API
+│   │   └── websocket.ts        # Resilient auto-reconnecting WebSocket client
+│   └── stores/                 # Zustand state stores (UI, telemetry, map filters)
+├── nginx.conf                  # Production reverse proxy config for Docker
+├── vercel.json                 # Vercel SPA routing configuration
+├── react-router.config.ts      # React Router 7 SPA configuration
+└── vite.config.ts              # Vite build, asset chunking & alias definitions
 ```
 
 ---
 
-## 📡 Key Features
+## 🚀 Key Features
 
-1. **Interactive Home Console**: Full-bleed live map with real-time AIS/ADS-B tracks, quick timeline filters, severity toggles, and live stat strips.
-2. **Regional Intelligence**: Dedicated interactive intelligence maps for the Strait of Hormuz, Persian Gulf, Gulf of Oman, Red Sea, and Bab-el-Mandeb.
-3. **Living Documentation**: Technical whitepapers with live interactive charts, math formulas, architecture breakdowns, and live data stream mode toggles.
-4. **Admin Dashboard (`/dashboard`)**: Single-admin console for user approvals, platform settings, dataset snapshotting, and server configuration.
+1. **High-Performance Geospatial Rendering**:
+   - Hardware-accelerated MapLibre GL vector tiles with custom dark marine styling.
+   - Dynamic track rendering with heading vectors, speed interpolations, and land-clipping prevention.
+2. **Real-time Live Telemetry**:
+   - Auto-reconnecting WebSocket stream with zero-drop client-side message queue.
+   - Live AIS vessel and ADS-B aircraft markers color-coded by threat classification.
+3. **Automated Intelligence Dossiers**:
+   - Single-click PDF intelligence report generation downloaded directly from the Go LaTeX pipeline.
+4. **Resilient Offline Fallback**:
+   - Progressive hydration with graceful fallback when backend feeds are unavailable.
+
+---
+
+## 🛠️ Development & Deployment
+
+### 1. Local Development
+```bash
+# Install dependencies
+npm install --legacy-peer-deps
+
+# Start Vite dev server with hot module replacement (HMR)
+npm run dev
+```
+
+### 2. Production Build
+```bash
+# Compile TypeScript and build static SPA assets to build/client
+npm run build
+
+# Preview production build locally
+npm run preview
+```
+
+### 3. Vercel Deployment
+The client is automatically deployed to [hormuzwatch.vercel.app](https://hormuzwatch.vercel.app) via `.github/workflows/client-pipeline.yml` using `vercel.json` rewrites.

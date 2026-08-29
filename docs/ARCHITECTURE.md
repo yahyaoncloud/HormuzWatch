@@ -1,66 +1,44 @@
-# HormuzWatch — System Architecture & Implementation Map
+# 🏛️ HormuzWatch Architecture Specification
 
-HormuzWatch is a high-availability maritime and aviation intelligence platform monitoring the Strait of Hormuz, Persian Gulf, Gulf of Oman, Red Sea, and Bab-el-Mandeb chokepoints.
+## 1. Overview
+HormuzWatch is an open-source, defense-grade maritime & geospatial intelligence platform engineered for real-time tracking, risk modeling, and threat classification across the Strait of Hormuz.
 
----
-
-## 🏛️ System Overview
-
-```
-                      ┌─────────────────────────────────────────┐
-                      │    React Router v7 Frontend (client-v2) │
-                      │      - Leaflet 2D / MapLibre 3D Maps    │
-                      │      - Realtime uPlot Metrics & Graphs  │
-                      └────────────────────┬────────────────────┘
-                                           │ WebSocket / SSE / REST
-                                           ▼
-                      ┌─────────────────────────────────────────┐
-                      │            Go Server (server/)          │
-                      │      - Gin REST & WS Gateway            │
-                      │      - Track State & Geofencing         │
-                      │      - SQLite Persistence & Cache       │
-                      └────────────────────┬────────────────────┘
-                                           │ gRPC / Protocol Buffers
-                                           ▼
-                      ┌─────────────────────────────────────────┐
-                      │          Python ML Service (ml-service) │
-                      │      - Multi-Domain Isolation Forest    │
-                      │      - Local Outlier Factor (LOF)       │
-                      │      - Isotonic Probability Calibration │
-                      └─────────────────────────────────────────┘
+```mermaid
+graph TD
+    A[AISStream / AIS Hub] -->|WebSocket / UDP| S[Go Server Core :10020]
+    B[OpenSky Network] -->|REST API| S
+    C[GDELT 2.0 / RSS] -->|HTTP Poll| S
+    
+    S -->|PostgreSQL / pgx| DB[(Supabase Postgres)]
+    S -->|gRPC :8091 / HTTP :8090| ML[Python ML Ensemble Service]
+    
+    ML -->|Anomalies & Predictions| S
+    
+    S -->|WebSocket / SSE / REST| NGINX[Client Nginx Container :3000]
+    NGINX -->|Cloudflare Tunnel| CF[hormuzwatch.aburcloud.com]
+    
+    S -->|Scrape /metrics| PROM[Prometheus :9090]
+    PROM -->|Datasource| GRAF[Grafana SRE Dashboards :3001]
 ```
 
 ---
 
-## 📂 Core Subsystems
+## 2. Core Subsystems
 
-### 1. Frontend (`client-v2/`)
-- **Framework:** React Router v7 (Framework Mode), Vite, TailwindCSS v4, Biome.
-- **Maps:** Leaflet hero basemap on home page; MapLibre GL for regional intelligence and heatmaps.
-- **Charts:** uPlot lightweight high-frequency charting for F1 comparisons, anomaly distributions, and live telemetry rates.
-- **State & Realtime:** Zustand stores + TanStack Query + WebSockets & Server-Sent Events.
+### 2.1 Backend Ingestion & State Manager (Go)
+- **Track State Manager (TSM)**: Thread-safe in-memory cache tracking vessel trajectories, velocities, course deviations, and ETA estimates.
+- **Circuit Breaker**: Automatic failover protecting backend latency if the ML inference cluster experiences load spikes.
+- **LaTeX Reporting Engine**: Dynamically compiles comprehensive PDF dossiers containing MapLibre map captures, anomaly plots, and threat summaries.
 
-### 2. Backend Gateway (`server/`)
-- **Framework:** Go with Gin Web Framework & Gorilla WebSocket.
-- **Ingestion Workers:** Multi-provider live ingestion (AISStream, OpenSky Network, Kystverket NMEA-0183 TCP stream, GDELT OSINT).
-- **Intelligence Pipeline:** In-memory track state manager (`TSM`), spatial geofencing, threat scoring engine.
-- **Dataset Pipeline:** Asynchronous bounded queue with Google Drive API persistence and automated 3-file retention.
-- **Caching:** 5-minute in-memory TTL telemetry cache with admin toggle.
+### 2.2 Machine Learning Anomaly Ensemble (Python)
+- Asynchronous FastAPI & gRPC worker loaded with 6 specialized machine learning models (Vessel Kinematics, Airspace Corridors, Traffic Density, News Sentiment, Transit Bottlenecks, Blockade Classifiers).
 
-### 3. Machine Learning Microservice (`ml-service/`)
-- **Framework:** Python 3.11, FastAPI, gRPC, scikit-learn, SHAP.
-- **Ensemble Architecture:** Hybrid Isolation Forest + Local Outlier Factor + Isotonic Calibration.
-- **Features:** 14-feature multi-domain kinematic vector (speed variance, course delta, AIS message gap, hotzone proximity, barometric altitude deltas).
+### 2.3 Single-Page Application (React & Vite)
+- Built with React 19 and React Router v7 in SPA mode (`ssr: false`).
+- Rendered via GPU-accelerated MapLibre GL and Leaflet layers.
+- Deployed concurrently via Docker Nginx (`hormuzwatch.aburcloud.com`) and edge-replicated Vercel (`hormuzwatch.vercel.app`).
 
----
-
-## 📚 Deep-Dive Architecture Documentation
-
-For complete technical specifications, analysis, and implementation details, refer to:
-
-- [Repository Overview & Architecture Analysis](file:///c:/Users/amena/OneDrive/Desktop/Projects/HormuzWatch/docs/new/00-repository-analysis.md)
-- [Design & Styling Token System](file:///c:/Users/amena/OneDrive/Desktop/Projects/HormuzWatch/docs/new/02-styling-root-cause.md)
-- [Backend Pipeline & API Analysis](file:///c:/Users/amena/OneDrive/Desktop/Projects/HormuzWatch/docs/new/07-backend-review.md)
-- [ML & AI Foundations Study](file:///c:/Users/amena/OneDrive/Desktop/Projects/HormuzWatch/docs/learn/study/01-ml-ai-foundations.md)
-- [Geospatial & Data Sources Reference](file:///c:/Users/amena/OneDrive/Desktop/Projects/HormuzWatch/docs/learn/study/03-data-sources-geospatial.md)
-- [Frontend Inventory & Coverage](file:///c:/Users/amena/OneDrive/Desktop/Projects/HormuzWatch/docs/new/13-frontend-coverage.md)
+### 2.4 Reliability & Observability Layer
+- **Prometheus**: Automated scraping of native `/metrics` endpoints.
+- **Grafana**: Provisioned SRE dashboards for real-time system vital signs.
+- **SRE Tool**: Built-in Go CLI for multi-tier healthchecks, fault-tolerance load testing, and colorized log streaming.

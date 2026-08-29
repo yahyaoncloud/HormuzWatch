@@ -1,134 +1,112 @@
-# HormuzWatch — Maritime Intelligence MVP
+# 🌊 HormuzWatch — Maritime & Geospatial Intelligence Platform
 
-**HormuzWatch** is a real-time maritime intelligence and geospatial anomaly detection platform for the Strait of Hormuz.
+HormuzWatch is an open-source real-time geospatial tracking, risk prediction, and anomaly detection intelligence platform monitoring the **Strait of Hormuz** and the broader Persian Gulf region.
 
-The project is architected with complete folder isolation (`service/`, `server/`, `client/`), designed for local development and hybrid cloud deployment across **Tunkstun Workstation (`192.168.1.51`)**, **Cloudflare Tunnel (`hormuzwatch.aburcloud.com`)**, and **Vercel Edge (`hormuzwatch.vercel.app`)**.
+The platform ingests live AIS maritime telemetry, OpenSky aviation feeds, GDELT geopolitical news events, and satellite SAR anomalies to generate threat assessments, blockade predictions, and geospatial heatmaps.
 
 ---
 
-## 📁 Repository Structure
+## 🏛️ System Architecture & Repository Layout
 
-```text
+The repository is organized into cleanly isolated tiers:
+
+```
 HormuzWatch/
-├── .github/
-│   └── workflows/
-│       ├── service-pipeline.yml       # Pipeline: Cloudflared Tunnel & Ingress
-│       ├── ml-service-pipeline.yml    # Pipeline: Python ML Anomaly Detection Engine
-│       ├── server-pipeline.yml        # Pipeline: Go Backend API & Core Engine
-│       └── client-pipeline.yml        # Pipeline: React Vite Frontend & Vercel Deploy
-├── service/                           # Edge Ingress, Tunnel & ML Backend Services
-│   ├── cloudflared/
-│   │   └── config.yml                 # Cloudflare Tunnel routing configuration
-│   ├── ml-service/                    # Isolated Python FastAPI + gRPC anomaly ensemble
-│   │   ├── app.py                     # ML REST health & prediction API
-│   │   ├── grpc_server.py             # ML gRPC high-throughput scoring bridge
-│   │   ├── requirements.txt           # Python dependencies
-│   │   └── Dockerfile                 # Multi-stage Python 3.11 container
-│   └── scripts/
-│       └── manage-service.sh          # Tunnel status, reload, and verification script
-├── server/                            # Isolated Go Backend Engine
-│   ├── cmd/                           # Go server entrypoint (main.go)
-│   ├── internal/                      # REST API, WebSocket hub, SSE, AIS ingest, DB
-│   ├── proto/                         # Protocol Buffer definitions for gRPC bridge
-│   ├── data/                          # Land masks and incident history data
-│   ├── templates/                     # LaTeX report templates
-│   ├── Dockerfile                     # Go 1.24 multi-stage Alpine build
-│   └── go.mod                         # Go 1.24 module definition
-├── client/                            # Isolated React 18 / Vite / Tailwind Frontend
-│   ├── src/                           # UI components, Leaflet/MapLibre map, state
-│   ├── Dockerfile                     # Multi-stage production Nginx container
-│   ├── vercel.json                    # Vercel SPA routing & deployment config
-│   └── package.json
-├── docs/                              # Architecture & technical documentation
-├── docker-compose.yml                 # Full-stack production Compose
-├── docker-compose.dev.yml             # Isolated development Compose (Hot-reload / Debug)
-├── .env.example                       # Environment configuration template
-└── README.md
+├── client/                     # React 19 + React Router v7 SPA (Vite, Tailwind, MapLibre GL)
+│   ├── src/                    # UI Components, Leaflet/MapLibre maps, Stores
+│   ├── Dockerfile              # Production Nginx multi-stage build (Port 3000)
+│   ├── nginx.conf              # SPA routing & Go API reverse proxy
+│   └── vercel.json             # Vercel SPA deployment configuration
+│
+├── server/                     # Go 1.24+ High-Performance REST & WebSocket Backend
+│   ├── cmd/                    # Entrypoint (hormuz-server)
+│   ├── internal/               # API handlers, intelligence pipeline, auth, db, geo
+│   ├── data/                   # Historical attack datasets & GIS land masks
+│   ├── templates/              # LaTeX report generation templates
+│   └── Dockerfile              # Minimal Alpine production container (Port 10020)
+│
+├── service/                    # Infrastructure & Platform Services
+│   ├── cloudflared/            # Cloudflare Tunnel ingress configurations
+│   ├── ml-service/             # Python 3.11 FastAPI & gRPC 6-model ML anomaly ensemble
+│   │   ├── app/                # Ensemble models (Vessel, Aviation, Heatmap, News, etc.)
+│   │   ├── service_entrypoint.py # FastAPI (:8090) & gRPC (:8091) runner
+│   │   └── Dockerfile          # Python 3.11 ML container
+│   ├── sre/                    # SRE CLI tool in Go & Bash for monitoring & chaos tests
+│   │   ├── main.go             # Go SRE CLI implementation
+│   │   └── sre.sh              # Bash execution wrapper
+│   └── observability/          # Dev Observability Stack (Prometheus & Grafana)
+│       ├── prometheus.yml      # Prometheus metrics scraper config
+│       ├── dashboards/         # Pre-provisioned Grafana SRE dashboards
+│       └── docker-compose.observability.yml # Prometheus (:9090) & Grafana (:3001)
+│
+├── .github/workflows/          # 4 Dedicated Automated CI/CD Pipelines
+│   ├── service-pipeline.yml    # Ingress & Cloudflare Tunnel deployment
+│   ├── ml-service-pipeline.yml # Python ML testing & container updates
+│   ├── server-pipeline.yml     # Go testing, Docker build & backend deployment
+│   └── client-pipeline.yml     # TypeScript check, Vite build & Vercel deployment
+│
+├── docker-compose.yml          # Production container orchestration
+└── docker-compose.dev.yml      # Local development compose stack with hot-reload
 ```
 
 ---
 
-## 🚀 Quick Start (Development Environment)
+## 🚀 Live Production MVP Endpoints
 
-### 1. Run the Entire Stack in Dev Mode with Docker
+Deployed on workstation `tunkstun` (`192.168.1.51`) routed via Cloudflare Zero-Trust Tunnel and Vercel:
+
+| Tier | Endpoint | Description |
+| :--- | :--- | :--- |
+| **Client Web SPA** | [https://hormuzwatch.aburcloud.com](https://hormuzwatch.aburcloud.com) | Production Web Dashboard (Nginx) |
+| **Vercel Client** | [https://hormuzwatch.vercel.app](https://hormuzwatch.vercel.app) | Production Edge SPA (Vercel) |
+| **Backend REST API** | [https://api.hormuzwatch.aburcloud.com](https://api.hormuzwatch.aburcloud.com/health) | Go API & WebSocket Stream |
+| **ML Inference Service** | [https://ml.hormuzwatch.aburcloud.com](https://ml.hormuzwatch.aburcloud.com/health) | FastAPI ML Engine |
+| **Grafana SRE Dashboard** | `http://192.168.1.51:3001` | SRE Vital Signs & Telemetry Graphs |
+| **Prometheus Metrics** | `http://192.168.1.51:9090` | Prometheus Time-Series Scraper |
+
+---
+
+## 🛠️ Developer Quickstart
+
+### 1. Run Complete Local Dev Stack
 ```bash
-# Clone and navigate to project root
-cd ~/SHARED/Projects/HormuzWatch
+# Start Server, ML Engine, and Client in Dev Mode
+docker compose -f docker-compose.dev.yml up -d
 
-# Copy environment variables
-cp .env.example .env
-
-# Start dev environment (Server + ML Service + Client)
-docker compose -f docker-compose.dev.yml up --build
+# Verify all services are healthy
+./service/sre/sre.sh health
 ```
 
-### 2. Run Services Individually
-
-#### A. Go Server (`server/`)
+### 2. SRE & Observability CLI
+HormuzWatch includes a built-in SRE CLI in Go (`service/sre/`):
 ```bash
-cd server
-go run cmd/main.go
-# API running on http://localhost:10020
-```
+# Multi-tier health check across all services & cloudflare edge
+./service/sre/sre.sh health
 
-#### B. Python ML Service (`service/ml-service/`)
-```bash
-cd service/ml-service
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python ml_cli.py serve --port 8090
-# REST on :8090 | gRPC on :8091
-```
+# Fault-tolerance & resilience benchmark (SLO score, P50/P99 latency)
+./service/sre/sre.sh tolerance -requests 100 -concurrency 10
 
-#### C. React Client (`client/`)
-```bash
-cd client
-npm install
-npm run dev
-# Vite dev server running on http://localhost:5173
+# Real-time multi-container colorized logs
+./service/sre/sre.sh logs
+
+# Live terminal TUI vital signs monitor
+./service/sre/sre.sh monitor
+
+# Start Prometheus (:9090) & Grafana (:3001) SRE dashboards
+./service/sre/sre.sh obs-up
 ```
 
 ---
 
-## 🌐 Production & Host Architecture (`tunkstun`)
+## 🔄 CI/CD Pipelines
 
-| Component | Target Host / URL | Protocol / Port | Role |
-| :--- | :--- | :--- | :--- |
-| **Host Workstation** | `192.168.1.51` (Static IP) | SSH Port 22 | Server compute node (`tunkstun`) |
-| **Cloudflare Tunnel**| `hormuzwatch.aburcloud.com` | HTTPS | Edge entrypoint to MVP client |
-| **Backend API** | `api.hormuzwatch.aburcloud.com` | HTTPS / WSS | Go REST API, WebSocket & SSE stream |
-| **ML Engine** | `ml.hormuzwatch.aburcloud.com` | HTTPS | ML telemetry & anomaly endpoints |
-| **Vercel Client** | `hormuzwatch.vercel.app` | HTTPS | Edge-hosted production React client |
+Automated GitHub Actions workflows are configured in `.github/workflows/`:
+- **`client-pipeline.yml`**: Validates TypeScript, compiles Vite bundle, and deploys to Vercel (`hormuzwatch.vercel.app`).
+- **`server-pipeline.yml`**: Runs Go tests, compiles `hormuz-server`, builds Docker container, and deploys to `tunkstun`.
+- **`ml-service-pipeline.yml`**: Runs PyTest suite, validates model serialization, and updates `hormuzwatch-ml` on `tunkstun`.
+- **`service-pipeline.yml`**: Validates Cloudflare Tunnel configuration and reloads edge service.
 
 ---
 
-## 🔄 Dedicated CI/CD Pipelines
-
-1. **Service Pipeline (`service-pipeline.yml`)**  
-   Validates Cloudflare tunnel configs and syncs `/etc/cloudflared/config.yml` on `tunkstun`.
-2. **ML Service Pipeline (`ml-service-pipeline.yml`)**  
-   Runs Python test suite, builds ML container, and deploys `hormuzwatch-ml` on `tunkstun`.
-3. **Server Pipeline (`server-pipeline.yml`)**  
-   Executes Go test suite, builds backend binary container, and deploys `hormuzwatch-server` on `tunkstun`.
-4. **Client Pipeline (`client-pipeline.yml`)**  
-   Validates TypeScript, compiles production bundle, and deploys to Vercel at `hormuzwatch.vercel.app`.
-
----
-
-## 🛠️ Management Commands on Tunkstun
-
-```bash
-# Connect to Tunkstun without password
-ssh tunkstun
-
-# Manage containers
-cd ~/SHARED/Projects/HormuzWatch
-docker compose ps
-docker compose logs -f server
-docker compose logs -f ml
-docker compose restart
-
-# Manage Cloudflare Tunnel service
-sudo systemctl status cloudflared
-sudo systemctl restart cloudflared
-```
+## 📜 License
+Apache-2.0 License.
