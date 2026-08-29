@@ -1,6 +1,7 @@
 package integrations
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,15 +11,16 @@ import (
 
 	"Geospatial-harmuz-watch/server/internal/api"
 	"Geospatial-harmuz-watch/server/internal/domain/telemetry"
+	"Geospatial-harmuz-watch/server/internal/geo"
 	"Geospatial-harmuz-watch/server/internal/intelligence"
 )
 
 type OpenSkyResponse struct {
-	Time   int             `json:"time"`
+	Time   int64           `json:"time"`
 	States [][]interface{} `json:"states"`
 }
 
-func StartOpenSky(p *intelligence.Pipeline) {
+func StartOpenSky(ctx context.Context, p *intelligence.Pipeline) {
 	username := os.Getenv("OPENSKY_USERNAME")
 	password := os.Getenv("OPENSKY_PASSWORD")
 
@@ -48,104 +50,132 @@ func StartOpenSky(p *intelligence.Pipeline) {
 	log.Printf("[OpenSky] Starting poll loop (interval=%v, anonymous=%v, boxes=%d)", pollInterval, isAnonymous, len(urls))
 
 	for {
+		select {
+		case <-ctx.Done():
+			log.Println("[OpenSky] Context canceled, stopping worker.")
+			return
+		default:
+		}
+
 		for _, url := range urls {
 			log.Println("[OpenSky] Fetching OpenSky data...")
 
-			req, err := http.NewRequest("GET", url, nil)
+			req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 			if err != nil {
 				log.Printf("[OpenSky] Request creation error: %v", err)
 				continue
 			}
 
-			// Set standard User-Agent to prevent 403 / 429 blocks from Cloudflare/OpenSky
-			req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 HormuzWatch/2.0")
-			req.Header.Set("Accept", "application/json")
-
-			if username != "" && password != "" {
+			req.Header.Set("User-Agent", "HormuzWatch/2.0 (Maritime & Aviation Intelligence; contact@hormuzwatch.internal)")
+			if !isAnonymous {
 				req.SetBasicAuth(username, password)
 			}
 
 			resp, err := client.Do(req)
 			if err != nil {
-				log.Printf("[OpenSky] Do error: %v", err)
-				continue
-			}
-
-			if resp.StatusCode == http.StatusTooManyRequests {
-				resp.Body.Close()
-				currentInterval = currentInterval * 2
-				if currentInterval > 10*time.Minute {
-					currentInterval = 10 * time.Minute
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					log.Printf("[OpenSky] Fetch error: %v", err)
+					continue
 				}
-				log.Printf("[OpenSky] Rate limited (429). Backing off. Waiting %v before retry.", currentInterval)
-				continue
 			}
 
 			if resp.StatusCode != http.StatusOK {
-				log.Printf("[OpenSky] non-200 status: %v", resp.StatusCode)
+				log.Printf("[OpenSky] API error: HTTP %d (%s)", resp.StatusCode, resp.Status)
+				if resp.StatusCode == 429 {
+					currentInterval = 10 * time.Minute
+					log.Printf("[OpenSky] Rate limited (429). Backing off to %v", currentInterval)
+				}
 				resp.Body.Close()
 				continue
 			}
-
-			// Reset interval on successful HTTP 200 response
 			currentInterval = pollInterval
 
-			var data OpenSkyResponse
-			if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-				log.Printf("OpenSky decode error: %v", err)
+			var openSkyData OpenSkyResponse
+			if err := json.NewDecoder(resp.Body).Decode(&openSkyData); err != nil {
+				log.Printf("[OpenSky] JSON parse error: %v", err)
 				resp.Body.Close()
 				continue
 			}
 			resp.Body.Close()
 
-			for _, state := range data.States {
-				if len(state) < 11 {
+			observations := 0
+			for _, state := range openSkyData.States {
+				if len(state) < 17 {
 					continue
 				}
 
 				icao24, _ := state[0].(string)
 				callsign, _ := state[1].(string)
-				lon, _ := state[5].(float64)
-				lat, _ := state[6].(float64)
-				baroAlt, _ := state[7].(float64)
 				onGround, _ := state[8].(bool)
-				velocity, _ := state[9].(float64)
-				heading, _ := state[10].(float64)
+				if onGround {
+					continue
+				}
 
-				// Squawk code (index 14 in OpenSky state vector)
-				var squawk string
-				if len(state) > 14 {
-					if s, ok := state[14].(string); ok {
-						squawk = s
-					}
+				lon, okLon := state[5].(float64)
+				lat, okLat := state[6].(float64)
+				if !okLon || !okLat {
+					continue
+				}
+
+				var speedKnots float64
+				if velocity, ok := state[9].(float64); ok {
+					speedKnots = velocity * 1.94384
+				}
+
+				var heading float64
+				if track, ok := state[10].(float64); ok {
+					heading = track
+				}
+
+				var altMeters float64
+				if baroAlt, ok := state[7].(float64); ok {
+					altMeters = baroAlt
 				}
 
 				if callsign == "" {
-					callsign = "Unknown Aircraft"
+					callsign = fmt.Sprintf("ICAO-%s", icao24)
 				}
 
 				payload := api.TelemetryPayload{
-					TrackID:           fmt.Sprintf("FLIGHT-%s", icao24),
+					TrackID:           icao24,
 					AssetName:         callsign,
 					Timestamp:         time.Now().UTC().Format(time.RFC3339),
 					Lat:               lat,
 					Lon:               lon,
-					Speed:             velocity,
+					Speed:             speedKnots,
 					Heading:           heading,
+					Altitude:          altMeters,
 					AisAgeMinutes:     0,
 					HotZoneDistanceNm: 0,
-					Altitude:          baroAlt,
-					Squawk:            squawk,
-					OnGround:          onGround,
-					ObjectType:        "aircraft",
+					ObjectType:        telemetry.DomainAircraft,
 					Source:            telemetry.SourceOpenSky,
 				}
 
-				// ── Intelligence Pipeline (non-blocking queue) ──
+				// Reject obvious sensor errors (aircraft > Mach 3 / ~2000 kn)
+				if speedKnots > 2000.0 {
+					continue
+				}
+
+				// Data Quality: Reject positions on ocean if altitude is below 0
+				if altMeters < -100 && !geo.IsOnLand(lat, lon) {
+					continue
+				}
+
 				p.EnqueueObservation(&payload)
+				observations++
 			}
+
+			log.Printf("[OpenSky] Ingested %d aircraft observations from %s", observations, url)
 		}
 
-		time.Sleep(currentInterval)
+		select {
+		case <-ctx.Done():
+			log.Println("[OpenSky] Context canceled, stopping worker.")
+			return
+		case <-time.After(currentInterval):
+		}
 	}
 }

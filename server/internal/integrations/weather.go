@@ -1,6 +1,7 @@
 package integrations
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -26,7 +27,7 @@ type WeatherPayload struct {
 	Severity      string  `json:"severity"`
 }
 
-func StartWeather(h *hub.Hub) {
+func StartWeather(ctx context.Context, h *hub.Hub) {
 	// Center of Strait of Hormuz
 	lat := 26.5
 	lon := 56.0
@@ -41,63 +42,68 @@ func StartWeather(h *hub.Hub) {
 	for {
 		log.Println("Fetching Open-Meteo Marine weather data...")
 
-		req, err := http.NewRequest("GET", url, nil)
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
 			log.Printf("Weather Request error: %v", err)
-			<-ticker.C
-			continue
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				continue
+			}
 		}
 
 		resp, err := client.Do(req)
 		if err != nil {
-			log.Printf("Weather Do error: %v", err)
-			<-ticker.C
-			continue
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				log.Printf("Weather API error: %v", err)
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					continue
+				}
+			}
 		}
 
-		if resp.StatusCode != http.StatusOK {
-			log.Printf("Weather non-200 status: %v", resp.StatusCode)
-			resp.Body.Close()
-			<-ticker.C
-			continue
-		}
+		if resp.StatusCode == http.StatusOK {
+			var weatherData WeatherResponse
+			if err := json.NewDecoder(resp.Body).Decode(&weatherData); err == nil {
+				severity := "nominal"
+				if weatherData.Current.WaveHeight > 2.5 {
+					severity = "severe"
+				} else if weatherData.Current.WaveHeight > 1.5 {
+					severity = "moderate"
+				}
 
-		var data WeatherResponse
-		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-			log.Printf("Weather decode error: %v", err)
-			resp.Body.Close()
-			<-ticker.C
-			continue
+				payload := WeatherPayload{
+					Timestamp:     time.Now().UTC().Format(time.RFC3339),
+					Lat:           lat,
+					Lon:           lon,
+					WaveHeight:    weatherData.Current.WaveHeight,
+					WaveDirection: weatherData.Current.WaveDirection,
+					Severity:      severity,
+				}
+
+				// Broadcast to all connected WebSocket clients
+				h.Publish(hub.Message{
+					Type: "weather",
+					Data: payload,
+				})
+
+				log.Printf("Weather Updated: Wave Height %.2fm, Severity: %s", payload.WaveHeight, payload.Severity)
+			}
 		}
 		resp.Body.Close()
 
-		severity := "low"
-		if data.Current.WaveHeight >= 4.0 {
-			severity = "critical"
-		} else if data.Current.WaveHeight >= 2.5 {
-			severity = "high"
-		} else if data.Current.WaveHeight >= 1.5 {
-			severity = "medium"
-		}
-
-		payload := WeatherPayload{
-			Timestamp:     data.Current.Time,
-			Lat:           lat,
-			Lon:           lon,
-			WaveHeight:    data.Current.WaveHeight,
-			WaveDirection: data.Current.WaveDirection,
-			Severity:      severity,
-		}
-
 		select {
-		case h.Broadcast <- hub.Message{
-			Type: "telemetry",
-			Data: payload,
-		}:
-		default:
-			log.Printf("[Integration] Hub broadcast channel full, dropping weather update")
+		case <-ctx.Done():
+			log.Println("[Weather] Context canceled, stopping worker.")
+			return
+		case <-ticker.C:
 		}
-
-		<-ticker.C
 	}
 }

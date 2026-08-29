@@ -12,26 +12,47 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// --- Rate Limiting ---
+type visitor struct {
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
 
 var (
-	limiters = make(map[string]*rate.Limiter)
+	visitors = make(map[string]*visitor)
 	mu       sync.Mutex
 )
 
-// getVisitorLimiter retrieves or creates a rate limiter for an IP
+func init() {
+	// Background cleanup ticker to purge inactive visitors every 5 minutes
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		for range ticker.C {
+			mu.Lock()
+			for ip, v := range visitors {
+				if time.Since(v.lastSeen) > 10*time.Minute {
+					delete(visitors, ip)
+				}
+			}
+			mu.Unlock()
+		}
+	}()
+}
+
+// getVisitorLimiter retrieves or creates a rate limiter for an IP and updates lastSeen
 func getVisitorLimiter(ip string) *rate.Limiter {
 	mu.Lock()
 	defer mu.Unlock()
 
-	limiter, exists := limiters[ip]
+	v, exists := visitors[ip]
 	if !exists {
 		// 20 requests per second, burst of 40
-		limiter = rate.NewLimiter(rate.Limit(20), 40)
-		limiters[ip] = limiter
+		limiter := rate.NewLimiter(rate.Limit(20), 40)
+		visitors[ip] = &visitor{limiter: limiter, lastSeen: time.Now()}
+		return limiter
 	}
 
-	return limiter
+	v.lastSeen = time.Now()
+	return v.limiter
 }
 
 // RateLimiterMiddleware applies IP-based rate limiting

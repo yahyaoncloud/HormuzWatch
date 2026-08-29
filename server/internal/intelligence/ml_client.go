@@ -35,8 +35,92 @@ type mlResultCache struct {
 //   - Dev fallback: when ML_SERVICE_ADDR points at localhost and ML_SERVICE_TLS
 //     is "off" (or unset), an insecure channel is used.
 //
-// Behavior is unchanged from the REST client: a 30s result cache and a local
-// heuristic fallback keep scoring resilient when the ML service is unreachable.
+type CircuitState int
+
+const (
+	StateClosed CircuitState = iota
+	StateHalfOpen
+	StateOpen
+)
+
+func (s CircuitState) String() string {
+	switch s {
+	case StateClosed:
+		return "CLOSED"
+	case StateHalfOpen:
+		return "HALF-OPEN"
+	case StateOpen:
+		return "OPEN"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+type circuitBreaker struct {
+	mu               sync.Mutex
+	state            CircuitState
+	consecutiveFails int
+	threshold        int
+	resetTimeout     time.Duration
+	lastFailureTime  time.Time
+}
+
+func newCircuitBreaker(threshold int, resetTimeout time.Duration) *circuitBreaker {
+	return &circuitBreaker{
+		state:        StateClosed,
+		threshold:    threshold,
+		resetTimeout: resetTimeout,
+	}
+}
+
+func (cb *circuitBreaker) Allow() bool {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+
+	if cb.state == StateClosed {
+		return true
+	}
+	if cb.state == StateOpen {
+		if time.Since(cb.lastFailureTime) > cb.resetTimeout {
+			cb.state = StateHalfOpen
+			log.Println("[CircuitBreaker] Transitioning to HALF-OPEN, attempting canary probe")
+			return true
+		}
+		return false
+	}
+	// StateHalfOpen: allow 1 test call
+	return true
+}
+
+func (cb *circuitBreaker) ReportSuccess() {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+	if cb.state != StateClosed {
+		log.Printf("[CircuitBreaker] Service recovered, resetting from %s to CLOSED", cb.state)
+	}
+	cb.state = StateClosed
+	cb.consecutiveFails = 0
+}
+
+func (cb *circuitBreaker) ReportFailure() {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+	cb.consecutiveFails++
+	cb.lastFailureTime = time.Now()
+	if cb.state == StateHalfOpen || cb.consecutiveFails >= cb.threshold {
+		if cb.state != StateOpen {
+			log.Printf("[CircuitBreaker] Threshold reached (%d failures), tripping to OPEN. Fallback activated.", cb.consecutiveFails)
+		}
+		cb.state = StateOpen
+	}
+}
+
+func (cb *circuitBreaker) State() string {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+	return cb.state.String()
+}
+
 type MLClient struct {
 	addr     string
 	useTLS   bool
@@ -45,6 +129,8 @@ type MLClient struct {
 	grpcConn *grpc.ClientConn
 	connMu   sync.Mutex
 	client   mlgrpc.MLInferenceServiceClient
+
+	breaker *circuitBreaker
 
 	// In-memory result cache to reduce duplicate calls (keyed by track ID hash).
 	cache   map[string]mlResultCache
@@ -70,6 +156,7 @@ func NewMLClient() *MLClient {
 		addr:     addr,
 		useTLS:   useTLS,
 		dialOpts: dialOpts,
+		breaker:  newCircuitBreaker(5, 10*time.Second),
 		cache:    make(map[string]mlResultCache),
 	}
 }
@@ -254,11 +341,16 @@ func featureCacheKey(features FeatureVector) string {
 	)
 }
 
-// grpcPredict performs the unary gRPC Predict call with graceful degradation.
+// grpcPredict performs the unary gRPC Predict call with graceful degradation and circuit breaking.
 func (c *MLClient) grpcPredict(req *mlgrpc.PredictRequest) (float64, *MLExplanation) {
+	if !c.breaker.Allow() {
+		return c.localFallback(req), nil
+	}
+
 	client, err := c.getClient()
 	if err != nil {
-		log.Printf("[ML] gRPC connect failed: %v — using local heuristic", err)
+		c.breaker.ReportFailure()
+		log.Printf("[ML] gRPC connect failed: %v (circuit: %s) — using local heuristic", err, c.breaker.State())
 		return c.localFallback(req), nil
 	}
 
@@ -267,12 +359,24 @@ func (c *MLClient) grpcPredict(req *mlgrpc.PredictRequest) (float64, *MLExplanat
 
 	resp, err := client.Predict(ctx, req)
 	if err != nil {
-		log.Printf("[ML] Predict RPC error: %v — using local heuristic", err)
+		c.breaker.ReportFailure()
+		log.Printf("[ML] Predict RPC error: %v (circuit: %s) — using local heuristic", err, c.breaker.State())
 		return c.localFallback(req), nil
 	}
 
+	c.breaker.ReportSuccess()
 	expl := mlExplanationFromProto(resp)
 	return resp.GetAnomalyScore(), expl
+}
+
+// IsHealthy returns true if the ML gRPC client circuit is not tripped (OPEN).
+func (c *MLClient) IsHealthy() bool {
+	return c.breaker.State() != "OPEN"
+}
+
+// CircuitState returns the current state of the ML circuit breaker (CLOSED, OPEN, HALF-OPEN).
+func (c *MLClient) CircuitState() string {
+	return c.breaker.State()
 }
 
 // localFallback maps a gRPC request back to a FeatureVector for the heuristic.

@@ -1,0 +1,62 @@
+{
+  "version": "2.0.0",
+  "generated_at": "2026-08-29T14:50:00Z",
+  "models": {
+    "aviation_ensemble": {
+      "file": "aviation_ensemble.joblib",
+      "sha256": "f3a1e40740ead69ecc39e5364fe411cee4413f5762f348a68ecbd16f5f21fa21",
+      "domain": "aviation",
+      "algorithm": "IsolationForest+LOF Ensemble",
+      "calibration": "IsotonicRegression"
+    },
+    "blockade_ensemble": {
+      "file": "blockade_ensemble.joblib",
+      "sha256": "e60648c1af46761d0454b284b245d47b4e54f2f1d9a80fdea5832af8d02a29cf",
+      "domain": "blockade",
+      "algorithm": "Heuristic+LOF Ensemble",
+      "calibration": "IsotonicRegression"
+    },
+    "conflict_model": {
+      "file": "conflict_model.joblib",
+      "sha256": "664a0357cd43305869d1712d821ab0b8e55cc5419575e1d0d050a67c94bc2e4d",
+      "domain": "conflict",
+      "algorithm": "IsolationForest",
+      "calibration": "None"
+    },
+    "heatmap_ensemble": {
+      "file": "heatmap_ensemble.joblib",
+      "sha256": "c8ba58585b286d05eaea1563c6d1ccd71ad710dff4ed5f48824984498a1c4cca",
+      "domain": "heatmap",
+      "algorithm": "KDE+Spatial Ensemble",
+      "calibration": "MinMax"
+    },
+    "isolation_forest": {
+      "file": "isolation_forest.joblib",
+      "sha256": "bdffae18355e4ab0ecb45a5aa5211af7d50477ea5987fa27c79c3d7cd9e36112",
+      "domain": "vessel_baseline",
+      "algorithm": "IsolationForest",
+      "calibration": "Sigmoid"
+    },
+    "news_ensemble": {
+      "file": "news_ensemble.joblib",
+      "sha256": "a381a15bed7b58cbb4bc2573c2d8e1fecd70d176dbf3e25c839b470fd755cde9",
+      "domain": "news",
+      "algorithm": "TFIDF+LOF Ensemble",
+      "calibration": "IsotonicRegression"
+    },
+    "transit_ensemble": {
+      "file": "transit_ensemble.joblib",
+      "sha256": "de6aafd690fd8e6b8ad6449c002c3d16f67a5166d895e6e841c08964e176e7c0",
+      "domain": "transit",
+      "algorithm": "Markov+IsolationForest Ensemble",
+      "calibration": "IsotonicRegression"
+    },
+    "vessel_ensemble": {
+      "file": "vessel_ensemble.joblib",
+      "sha256": "bfaf321f3d4487702670c1013d95f7b63dc41b7e9788a194a4ee5c140a9e2bc3",
+      "domain": "vessel",
+      "algorithm": "IsolationForest+LOF Ensemble",
+      "calibration": "IsotonicRegression"
+    }
+  }
+}

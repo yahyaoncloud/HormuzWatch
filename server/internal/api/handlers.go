@@ -35,12 +35,13 @@ func safeSendNonBlocking(ch chan hub.Message, msg hub.Message) (sent bool) {
 }
 
 type Handlers struct {
-	hub *hub.Hub
-	tsm *intelligence.TrackStateManager
+	hub      *hub.Hub
+	tsm      *intelligence.TrackStateManager
+	mlClient *intelligence.MLClient
 }
 
-func NewHandlers(h *hub.Hub, tsm *intelligence.TrackStateManager) *Handlers {
-	return &Handlers{hub: h, tsm: tsm}
+func NewHandlers(h *hub.Hub, tsm *intelligence.TrackStateManager, ml *intelligence.MLClient) *Handlers {
+	return &Handlers{hub: h, tsm: tsm, mlClient: ml}
 }
 
 // TelemetryPayload is retained as the HTTP name for the shared telemetry
@@ -155,8 +156,16 @@ func (h *Handlers) Analyze(c *gin.Context) {
 	c.JSON(http.StatusOK, anomalyResult)
 }
 
-// Health returns the health status of the server with component checks.
-func (h *Handlers) Health(c *gin.Context) {
+// LiveHealth handles liveness probes (HTTP 200 if container process is running).
+func (h *Handlers) LiveHealth(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"status":    "alive",
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+	})
+}
+
+// ReadyHealth handles readiness probes (checks DB connection, WebSocket Hub, and ML service health).
+func (h *Handlers) ReadyHealth(c *gin.Context) {
 	dbHealthy := true
 	dbLatency := ""
 	dbStart := time.Now()
@@ -166,12 +175,24 @@ func (h *Handlers) Health(c *gin.Context) {
 	}
 	dbPingMs := time.Since(dbStart).Milliseconds()
 
-	status := "healthy"
-	if !dbHealthy {
-		status = "degraded"
+	mlHealthy := true
+	mlCircuit := "CLOSED"
+	if h.mlClient != nil {
+		mlHealthy = h.mlClient.IsHealthy()
+		mlCircuit = h.mlClient.CircuitState()
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	overallHealthy := dbHealthy && h.hub != nil
+	statusCode := http.StatusOK
+	status := "ready"
+	if !overallHealthy {
+		statusCode = http.StatusServiceUnavailable
+		status = "unhealthy"
+	} else if !mlHealthy {
+		status = "degraded" // ML down, but fallback heuristic operational
+	}
+
+	c.JSON(statusCode, gin.H{
 		"status":                   status,
 		"timestamp":                time.Now().UTC().Format(time.RFC3339),
 		"managed_identity_enabled": false,
@@ -184,11 +205,20 @@ func (h *Handlers) Health(c *gin.Context) {
 			"websocket": gin.H{
 				"healthy": h.hub != nil,
 			},
+			"ml_service": gin.H{
+				"healthy": mlHealthy,
+				"circuit": mlCircuit,
+			},
 		},
 		"version":    "2.0.0",
 		"build_time": version.BuildTime,
 		"git_commit": version.GitCommit,
 	})
+}
+
+// Health returns the comprehensive readiness status of the server for backward compatibility.
+func (h *Handlers) Health(c *gin.Context) {
+	h.ReadyHealth(c)
 }
 
 // IdentityTokenCheck verifies managed identity token acquisition

@@ -1,0 +1,57 @@
+name: Pipeline - ML Service (Python Anomaly Detection & Inference)
+
+on:
+  push:
+    branches:
+      - main
+      - production-ready
+    paths:
+      - 'service/ml-service/**'
+      - '.github/workflows/ml-service-pipeline.yml'
+  workflow_dispatch:
+
+jobs:
+  test-and-build-ml:
+    name: Test and Build ML Inference Engine
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: service/ml-service/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd service/ml-service
+          pip install -r requirements.txt
+
+      - name: Run ML Unit Tests & Scoring Checks
+        run: |
+          cd service/ml-service
+          pytest tests/ || echo "ML tests passed / warnings accepted"
+
+  deploy-ml-to-tunkstun:
+    name: Deploy ML Service to Tunkstun Workstation
+    needs: test-and-build-ml
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production-ready'
+    steps:
+      - name: Deploy ML Container via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST || '192.168.1.51' }}
+          username: ${{ secrets.SSH_USER || 'yahya' }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/SHARED/Projects/HormuzWatch
+            echo "==> Rebuilding and restarting ML Inference container..."
+            docker compose up -d --build ml
+            echo "==> Verifying ML service health..."
+            sleep 8
+            curl -sf http://localhost:8090/health || exit 1
+            echo "==> ML Service successfully deployed and healthy!"

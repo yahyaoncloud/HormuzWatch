@@ -33,3 +33,10 @@ variable "ssh_public_key" {
   type        = string
   sensitive   = true
 }
+
+variable "admin_allowed_cidr" {
+  description = "Allowed CIDR block for administrative SSH access (never set to * in production)"
+  type        = string
+  default     = "127.0.0.1/32"
+}
+

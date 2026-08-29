@@ -1,6 +1,7 @@
 package integrations
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -21,7 +22,7 @@ type GDELTGeoJSON struct {
 	} `json:"features"`
 }
 
-func StartGDELT() {
+func StartGDELT(ctx context.Context) {
 	// GDELT 2.0 GEO API: Geospatial and conflict events in the Middle East
 	url := "https://api.gdeltproject.org/api/v2/geo/geo?query=Geospatial&format=GeoJSON"
 
@@ -34,54 +35,60 @@ func StartGDELT() {
 	for {
 		log.Println("Fetching GDELT geopolitical data...")
 
-		req, err := http.NewRequest("GET", url, nil)
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
 			log.Printf("GDELT Request error: %v", err)
-			<-ticker.C
-			continue
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				continue
+			}
 		}
 
 		resp, err := client.Do(req)
 		if err != nil {
-			log.Printf("GDELT Do error: %v", err)
-			<-ticker.C
-			continue
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			log.Printf("GDELT non-200 status: %v", resp.StatusCode)
-			resp.Body.Close()
-			<-ticker.C
-			continue
-		}
-
-		var data GDELTGeoJSON
-		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-			log.Printf("GDELT decode error: %v", err)
-			resp.Body.Close()
-			<-ticker.C
-			continue
-		}
-		resp.Body.Close()
-
-		// Add GDELT events to the heatmap (Danger Zones)
-		// We add each event multiple times to artificially increase the "heat" or danger
-		count := 0
-		for _, feature := range data.Features {
-			if len(feature.Geometry.Coordinates) >= 2 {
-				lon := feature.Geometry.Coordinates[0]
-				lat := feature.Geometry.Coordinates[1]
-
-				heatmap.AddGeoEvent(lat, lon)
-				
-				intelligence.GeoStore.AddEvent(lat, lon, 1.0)
-				
-				count++
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				log.Printf("GDELT API error: %v", err)
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					continue
+				}
 			}
 		}
 
-		log.Printf("Processed %d GDELT danger zone events.", count)
+		if resp.StatusCode == http.StatusOK {
+			var gdeltData GDELTGeoJSON
+			if err := json.NewDecoder(resp.Body).Decode(&gdeltData); err == nil {
+				pointsCount := 0
+				for _, f := range gdeltData.Features {
+					if len(f.Geometry.Coordinates) >= 2 {
+						lon := f.Geometry.Coordinates[0]
+						lat := f.Geometry.Coordinates[1]
 
-		<-ticker.C
+						// Filter to Middle East / Persian Gulf / Gulf of Oman
+						if lat >= 20.0 && lat <= 32.0 && lon >= 45.0 && lon <= 65.0 {
+							heatmap.AddGeoEvent(lat, lon)
+							intelligence.GeoStore.AddEvent(lat, lon, 0.8)
+							pointsCount++
+						}
+					}
+				}
+				log.Printf("Ingested %d geopolitical points from GDELT", pointsCount)
+			}
+		}
+		resp.Body.Close()
+
+		select {
+		case <-ctx.Done():
+			log.Println("[GDELT] Context canceled, stopping worker.")
+			return
+		case <-ticker.C:
+		}
 	}
 }

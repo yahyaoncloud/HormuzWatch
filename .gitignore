@@ -1,59 +1,48 @@
+# HormuzWatch Root Git Ignore
 
-# Dependencies
-node_modules/
-
-# Environment
+# Environment variables & secrets
 .env
 .env.local
-.env.*
-!.env.example
-!**/.env.example
+.env.*.local
+*.pem
+*.key
+credentials.json
+*.json.credential
 
-# Logs
-*.log
-
-# Build artifacts
+# Node / Frontend
+node_modules/
 dist/
 build/
-*.o
-*.obj
-*.pyc
+.next/
+.vercel/
+*.tsbuildinfo
+
+# Python / ML
 __pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+analysis_output/
+*.joblib
+*.pkl
 
-# IDE
-.vscode/
-.idea/
+# Go
+bin/
+*.exe
+*.test
+*.prof
+server/cmd/main
 
-# OS
+# OS & IDE
 .DS_Store
 Thumbs.db
-
-# Terraform
-**/.terraform/*
-*.tfstate
-*.tfstate.*
-.terraform.lock.hcl
-
-credentials.json
-gcp-oauth.keys.json
-
-# Go binary
-server/server.exe
-
-# ML artifacts
-ml-service/models/*.joblib
-ml-service/backups/
-ml-service/predictions.json
-*.joblib
-
-# Python
-*.egg-info/
-.venv/
-venv/
-
-# Trae IDE
-.trae/
-
-# Supabase
-supabase/.temp/
-.env.*
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

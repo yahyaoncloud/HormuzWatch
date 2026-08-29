@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -40,6 +41,9 @@ type Hub struct {
 	Register   chan *Client
 	Unregister chan *Client
 	mu         sync.RWMutex
+
+	publishedCount atomic.Uint64
+	droppedCount   atomic.Uint64
 }
 
 func NewHub() *Hub {
@@ -56,10 +60,34 @@ func NewHub() *Hub {
 func (h *Hub) Publish(message Message) bool {
 	select {
 	case h.Broadcast <- message:
+		h.publishedCount.Add(1)
 		return true
 	default:
-		log.Printf("[Hub] Broadcast queue full; dropping %s message", message.Type)
+		h.droppedCount.Add(1)
+		log.Printf("[Hub] Broadcast queue full; dropping %s message (total dropped: %d)", message.Type, h.droppedCount.Load())
 		return false
+	}
+}
+
+// ClientCount returns the number of currently connected WebSocket clients.
+func (h *Hub) ClientCount() int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.Clients)
+}
+
+// Stats returns operational metrics for the WebSocket Hub.
+func (h *Hub) Stats() map[string]interface{} {
+	h.mu.RLock()
+	clientCount := len(h.Clients)
+	h.mu.RUnlock()
+
+	return map[string]interface{}{
+		"active_clients":  clientCount,
+		"total_published": h.publishedCount.Load(),
+		"total_dropped":   h.droppedCount.Load(),
+		"queue_capacity":  cap(h.Broadcast),
+		"queue_length":    len(h.Broadcast),
 	}
 }
 

@@ -1,0 +1,16 @@
+{
+  "export_timestamp": "2026-08-08T13:04:51.237809",
+  "total_tracks": 1000,
+  "risk_counts": {
+    "low": 35821,
+    "medium": 3169,
+    "high": 72,
+    "critical": 17
+  },
+  "mode": "LIVE_BACKEND",
+  "files": [
+    "telemetry_tracks.csv",
+    "charts_visualization.png",
+    "app_window_screenshot.png"
+  ]
+}

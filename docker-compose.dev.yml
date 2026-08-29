@@ -1,0 +1,104 @@
+# HormuzWatch — Development Docker Compose
+# Usage: docker compose -f docker-compose.dev.yml up --build
+
+version: "3.9"
+
+services:
+  # ── Go Backend Server (Dev Mode) ───────────────────────────
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      args:
+        VERSION: "dev-2.0.0"
+        BUILD_TIME: "dev"
+        GIT_COMMIT: "local"
+    image: hormuzwatch-server:dev
+    container_name: hormuzwatch-server-dev
+    ports:
+      - "10020:10020"
+    environment:
+      - PORT=10020
+      - GIN_MODE=debug
+      - AUTH_DISABLED=true
+      - DATABASE_URL=${DATABASE_URL:-}
+      - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret-at-least-32-chars-long!}
+      - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET:-}
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
+      - ML_SERVICE_ADDR=ml:8091
+      - ML_SERVICE_TLS=off
+      - ML_SERVICE_URL=http://ml:8090
+      - AISSTREAM_API_KEY=${AISSTREAM_API_KEY:-}
+      - OPENSKY_USERNAME=${OPENSKY_USERNAME:-}
+      - OPENSKY_PASSWORD=${OPENSKY_PASSWORD:-}
+      - FIRMS_MAP_KEY=${FIRMS_MAP_KEY:-}
+      - METRICS_API_KEY=${METRICS_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+    volumes:
+      - ./server/data:/app/data
+      - ./server/templates:/app/templates
+    depends_on:
+      ml:
+        condition: service_healthy
+    networks:
+      - hormuzwatch-dev
+    restart: unless-stopped
+
+  # ── Python ML Service (Dev Mode) ───────────────────────────
+  ml:
+    build:
+      context: ./service/ml-service
+      dockerfile: Dockerfile
+      args:
+        VERSION: "dev-2.0.0"
+    image: hormuzwatch-ml:dev
+    container_name: hormuzwatch-ml-dev
+    ports:
+      - "8090:8090"
+      - "8091:8091"
+    environment:
+      - ML_PORT=8090
+      - GRPC_PORT=8091
+      - MODELS_DIR=/app/models
+      - APP_VERSION=dev-2.0.0
+    volumes:
+      - ./service/ml-service:/app
+      - ml-models-dev:/app/models
+    networks:
+      - hormuzwatch-dev
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8090/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  # ── React Frontend (Dev / Nginx Mode) ──────────────────────
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: "http://localhost:10020"
+        VITE_APP_VERSION: "dev-2.0.0"
+    image: hormuzwatch-client:dev
+    container_name: hormuzwatch-client-dev
+    ports:
+      - "3000:3000"
+    depends_on:
+      server:
+        condition: service_started
+    networks:
+      - hormuzwatch-dev
+    restart: unless-stopped
+
+networks:
+  hormuzwatch-dev:
+    driver: bridge
+    name: hormuzwatch-dev-network
+
+volumes:
+  ml-models-dev:
+    name: hormuzwatch-ml-models-dev

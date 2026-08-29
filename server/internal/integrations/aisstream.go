@@ -1,6 +1,7 @@
 package integrations
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -25,7 +26,7 @@ type AISStreamSubscription struct {
 	FilterMessageTypes []string       `json:"FilterMessageTypes,omitempty"`
 }
 
-func StartAISStream(p *intelligence.Pipeline) {
+func StartAISStream(ctx context.Context, p *intelligence.Pipeline) {
 	apiKey := os.Getenv("AISSTREAM_API_KEY")
 	if apiKey == "" || apiKey == "your_aisstream_api_key" {
 		log.Println("AISSTREAM_API_KEY not configured. Skipping AISStream integration.")
@@ -80,10 +81,6 @@ func StartAISStream(p *intelligence.Pipeline) {
 		},
 	}
 
-	// Optional TLS bypass for development when stream.aisstream.io presents a
-	// certificate that fails system validation (e.g. clock skew / expired cert
-	// -> "x509: certificate has expired or is not yet valid"). OFF by default —
-	// never enable in production.
 	insecure := os.Getenv("AISSTREAM_INSECURE_SKIP_VERIFY") == "true"
 	dialer := *websocket.DefaultDialer
 	dialer.HandshakeTimeout = 20 * time.Second
@@ -93,6 +90,13 @@ func StartAISStream(p *intelligence.Pipeline) {
 
 	backoff := newRetryBackoff(10*time.Second, 5*time.Minute)
 	for {
+		select {
+		case <-ctx.Done():
+			log.Println("[AISStream] Context canceled, stopping worker.")
+			return
+		default:
+		}
+
 		log.Println("[AISStream] Connecting to", url, "...")
 		conn, resp, err := dialer.Dial(url, nil)
 		if err != nil {
@@ -106,7 +110,11 @@ func StartAISStream(p *intelligence.Pipeline) {
 			}
 			delay := backoff.Next(retryAfter)
 			log.Printf("[AISStream] Retry in %s", delay)
-			time.Sleep(delay)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(delay):
+			}
 			continue
 		}
 		backoff.Reset()
@@ -129,11 +137,25 @@ func StartAISStream(p *intelligence.Pipeline) {
 			conn.Close()
 			delay := backoff.Next("")
 			log.Printf("[AISStream] Retry in %s", delay)
-			time.Sleep(delay)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(delay):
+			}
 			continue
 		}
 
 		log.Println("[AISStream] Connected and subscribed. Awaiting messages...")
+
+		// Goroutine to close connection if context is canceled
+		done := make(chan struct{})
+		go func() {
+			select {
+			case <-ctx.Done():
+				conn.Close()
+			case <-done:
+			}
+		}()
 
 		for {
 			_, message, err := conn.ReadMessage()
@@ -142,7 +164,6 @@ func StartAISStream(p *intelligence.Pipeline) {
 				break
 			}
 
-			// Decode using official aisstream.io message models
 			var aisMsg aisStream.AisStreamMessage
 			if err := json.Unmarshal(message, &aisMsg); err != nil {
 				continue
@@ -176,7 +197,6 @@ func StartAISStream(p *intelligence.Pipeline) {
 				continue
 			}
 
-			// Filter positions to expanded Middle East / Arabian Peninsula / Gulf / Red Sea / India / Bay of Bengal sector (5.0°N to 32.0°N, 32.0°E to 95.0°E)
 			if lat < 5.0 || lat > 32.0 || lon < 32.0 || lon > 95.0 {
 				continue
 			}
@@ -215,27 +235,33 @@ func StartAISStream(p *intelligence.Pipeline) {
 				Source:            telemetry.SourceAISStream,
 			}
 
-			// ── Data Quality Filters ─────────────────────────
-			// Reject AIS protocol "not available" sentinel (102.3 kn = 0x3FF)
 			if speed >= 102.3 {
 				continue
 			}
-			// Reject suspicious speeds from coastal receiver glitches
 			if speed >= 40.0 {
 				continue
 			}
-			// Reject positions on land (Natural Earth 10m mask)
 			if geo.IsOnLand(lat, lon) {
 				continue
 			}
 
-			// ── Intelligence Pipeline (non-blocking queue) ──
 			p.EnqueueObservation(&payload)
 		}
 
+		close(done)
 		conn.Close()
-		delay := backoff.Next("")
-		log.Printf("[AISStream] Disconnected. Reconnecting in %s...", delay)
-		time.Sleep(delay)
+
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			delay := backoff.Next("")
+			log.Printf("[AISStream] Disconnected. Reconnecting in %s...", delay)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(delay):
+			}
+		}
 	}
 }

@@ -416,15 +416,15 @@ func callOpenRouterForReport(ctx context.Context, apiKey string, prompt string) 
 		Messages: []openRouterMessage{
 			{
 				Role: "system",
-				Content: `You are a senior Geospatial Intelligence Analyst producing a formal Intelligence Assessment Report for naval and maritime security commanders.
+				Content: `You are a senior HormuzWatch Geospatial Intelligence Analyst producing a formal Intelligence Assessment Report based on live telemetry findings.
 Generate a comprehensive, structured intelligence report covering the Gulf region (Persian Gulf, Strait of Hormuz, Gulf of Oman, Red Sea/Bab-el-Mandeb).
-The report must be 5-6 pages equivalent in detail and follow standard intelligence documentation standards.
+Analyze live findings across the 6-tier anomaly risk spectrum (Low, Low-Med, Medium, Med-High, High, Critical).
 
 You MUST output ONLY a valid JSON object matching this exact structure, with NO markdown formatting:
 {
   "report_id": "HW-INT-YYYYMMDD-HHMMSS",
   "title": "HormuzWatch Regional Intelligence Assessment",
-  "classification": "UNCLASSIFIED//FOR OFFICIAL USE ONLY",
+  "classification": "HormuzWatch Intelligence Analysis",
   "generated_at": "ISO8601 timestamp",
   "source": "ai",
   "period_covered": "Last 24 hours",
@@ -437,7 +437,7 @@ You MUST output ONLY a valid JSON object matching this exact structure, with NO 
     {"title": "5. Anomaly & Pattern Analysis", "content": ["paragraph1", "paragraph2", "paragraph3"]},
     {"title": "6. Outlook & Tactical Recommendations", "content": ["paragraph1", "paragraph2", "paragraph3", "paragraph4"]}
   ],
-  "appendices": ["Appendix A: Data Sources & Methodology", "Appendix B: Anomaly Scoring Framework", "Appendix C: Watch Zone Definitions", "Appendix D: Acronyms & Abbreviations"]
+  "appendices": ["Appendix A: Data Sources & Methodology", "Appendix B: 6-Tier Anomaly Risk Spectrum", "Appendix C: Watch Zone Definitions", "Appendix D: Acronyms & Abbreviations"]
 }
 
 Each section content array should contain 3-4 detailed paragraphs. Write in formal intelligence style: objective, evidence-based, qualified assessments. Use standard intelligence terminology (INDICATE, ASSESS, LIKELY, UNLIKELY).`,
@@ -574,7 +574,7 @@ func getFallbackDetailedReport() *DetailedReport {
 	return &DetailedReport{
 		ReportID:         fmt.Sprintf("HW-INT-%s", now.Format("20060102-150405")),
 		Title:            "HormuzWatch Regional Intelligence Assessment",
-		Classification:   "UNCLASSIFIED//FOR OFFICIAL USE ONLY",
+		Classification:   "HormuzWatch Intelligence Analysis",
 		GeneratedAt:      now.Format(time.RFC3339),
 		Source:           "fallback",
 		PeriodCovered:    "Last 24 hours (fallback data)",
@@ -637,7 +637,7 @@ func getFallbackDetailedReport() *DetailedReport {
 		},
 		Appendices: []string{
 			"Appendix A: Data Sources & Methodology — AIS (MarineTraffic/Spire/Kystverket), ADS-B (OpenSky/ADSBx), GDELT v2.0, NASA FIRMS, Open-Meteo, UKMTO/IMB/EU NAVFOR advisories, OSINT. Anomaly scoring: Isolation Forest + LOF ensemble, isotonic calibration, 0-100 scale.",
-			"Appendix B: Anomaly Scoring Framework — CRITICAL ≥80 (Immediate threat, kinetic action probable); HIGH 60-79 (Significant deviation, enhanced monitoring); MEDIUM 40-59 (Behavioral anomaly, investigate); LOW <40 (Baseline variance, log only). Factors: AIS gaps, course/speed deviation, proximity to restricted zones, pattern-of-life violation.",
+			"Appendix B: 6-Tier Anomaly Risk Spectrum — CRITICAL ≥85 (Immediate threat signature); HIGH 70-84 (Significant route deviation / AIS gap); MED-HIGH 55-69 (Moderate traffic separation deviation); MEDIUM 40-54 (Speed anomaly / local maneuvering); LOW-MED 20-39 (Minor position delta); LOW <20 (Baseline transit pattern).",
 			"Appendix C: Watch Zone Definitions — Z1 Strait of Hormuz TSS (55.0-56.5°E, 25.5-27.5°N); Z2 Persian Gulf North (50.0-55.0°E, 27.5-30.5°N); Z3 Gulf of Oman (56.5-60.0°E, 23.0-26.0°N); Z4 Red Sea Bab-el-Mandeb (42.5-43.5°E, 12.0-13.5°N); Z5 Red Sea North (35.0-40.0°E, 20.0-28.0°N).",
 			"Appendix D: Acronyms — AIS: Automatic Identification System; ADS-B: Automatic Dependent Surveillance-Broadcast; ASCM: Anti-Ship Cruise Missile; CAP: Combat Air Patrol; FAC: Fast Attack Craft; FIR: Flight Information Region; GDELT: Global Database of Events, Language, and Tone; IRGCN: Islamic Revolutionary Guard Corps Navy; ISR: Intelligence, Surveillance, Reconnaissance; MCM: Mine Countermeasures; NOTAM: Notice to Airmen; OSINT: Open-Source Intelligence; ROE: Rules of Engagement; SAM: Surface-to-Air Missile; SIGINT: Signals Intelligence; SSK: Diesel-Electric Submarine; STS: Ship-to-Ship Transfer; TSS: Traffic Separation Scheme; UAV: Unmanned Aerial Vehicle; USV: Unmanned Surface Vehicle.",
 		},

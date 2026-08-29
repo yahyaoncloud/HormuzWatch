@@ -1,0 +1,38 @@
+name: Pipeline 1 - Service (Cloudflared Tunnel & Ingress)
+
+on:
+  push:
+    branches:
+      - main
+      - production-ready
+    paths:
+      - 'service/**'
+      - '.github/workflows/service-pipeline.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-and-deploy-service:
+    name: Validate and Deploy Cloudflare Service
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Cloudflared Configuration
+        run: |
+          echo "==> Validating Cloudflare Tunnel configuration syntax..."
+          python3 -c "import yaml; yaml.safe_load(open('service/cloudflared/config.yml'))"
+          echo "==> YAML syntax is valid."
+
+      - name: Deploy Service Config to Tunkstun Workstation
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production-ready'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST || '192.168.1.51' }}
+          username: ${{ secrets.SSH_USER || 'yahya' }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "==> Syncing service configuration to /etc/cloudflared/..."
+            sudo cp ~/SHARED/Projects/HormuzWatch/service/cloudflared/config.yml /etc/cloudflared/config.yml
+            sudo systemctl restart cloudflared
+            sudo systemctl is-active cloudflared

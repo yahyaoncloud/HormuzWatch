@@ -26,11 +26,16 @@ const fallbackLaTeXTemplate = `\documentclass[11pt,a4paper]{article}
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{tikz}
+\usepackage{lastpage}
 
 % Define colors
 \definecolor{primaryblue}{RGB}{20, 50, 90}
-\definecolor{dangerred}{RGB}{180, 20, 20}
-\definecolor{warnorange}{RGB}{220, 110, 10}
+\definecolor{dangerred}{RGB}{185, 28, 28}
+\definecolor{highorange}{RGB}{180, 83, 9}
+\definecolor{medyellow}{RGB}{217, 119, 6}
+\definecolor{mediumblue}{RGB}{29, 78, 216}
+\definecolor{lowmedteal}{RGB}{14, 116, 144}
+\definecolor{lowgreen}{RGB}{21, 128, 61}
 \definecolor{lightgray}{RGB}{240, 242, 245}
 \definecolor{darkgray}{RGB}{60, 60, 60}
 
@@ -39,23 +44,23 @@ const fallbackLaTeXTemplate = `\documentclass[11pt,a4paper]{article}
     colorlinks=true,
     linkcolor=primaryblue,
     urlcolor=primaryblue,
-    pdftitle={HormuzWatch Intelligence Report},
+    pdftitle={HormuzWatch Regional Intelligence Analysis},
     pdfauthor={HormuzWatch Operations Center}
 }
 
 % Page layout
-\setlength{\headheight}{15pt}
+\setlength{\headheight}{16pt}
 \pagestyle{fancy}
 \fancyhf{}
 \renewcommand{\headrulewidth}{0.5pt}
 \renewcommand{\footrulewidth}{0.5pt}
 
-% Headers and Footers
-\lhead{\textcolor{dangerred}{\small\textbf{UNCLASSIFIED//FOR OFFICIAL USE ONLY}}}
-\rhead{\textcolor{primaryblue}{\small\textbf{HormuzWatch Intelligence Report}}}
-\lfoot{}
-\rfoot{\textcolor{darkgray}{\small Report ID: \texttt{REPORT_ID_PLACEHOLDER} ~|~ Page \thepage}}
-\cfoot{\textcolor{dangerred}{\small\textbf{UNCLASSIFIED//FOR OFFICIAL USE ONLY}}}
+% Headers and Footers (Clean, non-overlapping)
+\lhead{\textcolor{primaryblue}{\small\textbf{HormuzWatch Intelligence Analysis}}}
+\rhead{\textcolor{darkgray}{\small\textbf{Report ID: \texttt{REPORT_ID_PLACEHOLDER}}}}
+\lfoot{\textcolor{darkgray}{\small\itshape Geospatial Operations Analysis}}
+\cfoot{}
+\rfoot{\textcolor{darkgray}{\small Page \thepage\ of \pageref{LastPage}}}
 
 % Section styling
 \titleformat{\section}
@@ -79,24 +84,24 @@ const fallbackLaTeXTemplate = `\documentclass[11pt,a4paper]{article}
 \begin{center}
     \vspace*{2cm}
     
-    {\textcolor{dangerred}{\Large\textbf{UNCLASSIFIED//FOR OFFICIAL USE ONLY}}}
+    {\textcolor{primaryblue}{\Large\textbf{HORMUZWATCH INTELLIGENCE ASSESSMENT}}}
     
-    \vspace{2.5cm}
+    \vspace{2.0cm}
     
     {\Huge\bfseries\textcolor{primaryblue}{HORMUZWATCH}}
     
     \vspace{0.5cm}
-    {\Large\bfseries\textcolor{darkgray}{Regional Intelligence Assessment Report}}
+    {\Large\bfseries\textcolor{darkgray}{Geospatial Telemetry \& Risk Analysis Findings}}
     
-    \vspace{2.5cm}
+    \vspace{2.0cm}
     
     \begin{tabular}{|m{5cm}|m{8cm}|}
         \hline
         \metadatarow{Report ID}{REPORT_ID_PLACEHOLDER}
-        \metadatarow{Classification}{UNCLASSIFIED//FOR OFFICIAL USE ONLY}
+        \metadatarow{Report Type}{HormuzWatch Telemetry Analysis Report}
         \metadatarow{Period Covered}{PERIOD_COVERED_PLACEHOLDER}
         \metadatarow{Generated At}{GENERATED_AT_PLACEHOLDER}
-        \metadatarow{Source}{SOURCE_PLACEHOLDER}
+        \metadatarow{Source Data}{SOURCE_PLACEHOLDER}
         \metadatarow{Prepared By}{HormuzWatch Operations Center}
         \metadatarow{AOR}{Strait of Hormuz, Persian Gulf, Gulf of Oman, Red Sea}
         \hline
@@ -107,12 +112,12 @@ const fallbackLaTeXTemplate = `\documentclass[11pt,a4paper]{article}
     \begin{minipage}{12cm}
         \centering
         \small\itshape
-        This intelligence assessment is generated based on automated telemetry anomaly detection algorithms, satellite AIS data, ADS-B aviation tracking, and real-time geopolitical feed synthesis. Operational commanders should integrate these findings with organic tactical sensors prior to executing force protection measures.
+        This intelligence assessment is compiled from real-time maritime AIS telemetry, ADS-B aviation tracking, satellite thermal anomaly sensors (MODIS/VIIRS), and automated machine learning anomaly detection models (Isolation Forest + Local Outlier Factor).
     \end{minipage}
     
     \vfill
     
-    {\textcolor{dangerred}{\Large\textbf{UNCLASSIFIED//FOR OFFICIAL USE ONLY}}}
+    {\textcolor{darkgray}{\small\textbf{HormuzWatch Open Intelligence Operations}}}
     
     \vspace{1cm}
 \end{center}
@@ -141,7 +146,7 @@ SECTION_CONTENT_PLACEHOLDER
 % =========================================================================
 % TELEMETRY FINDINGS & METRICS
 % =========================================================================
-\section{Telemetry \& Metric Analysis}
+\section{Telemetry \& Risk Analysis Findings}
 
 \subsection{Current AOR Telemetry Snapshot}
 Below is the telemetry snapshot for the current reporting window across the active watch zones:
@@ -192,53 +197,62 @@ Active Watch Regions & ACTIVE_REGIONS_PLACEHOLDER \\
 \end{itemize}
 \vspace{0.4cm}
 
-\subsection{Anomaly Distribution by Severity}
-The table below categorizes detected telemetry anomalies based on severity levels:
+\subsection{6-Tier Anomaly Risk Spectrum}
+The table below categorizes detected telemetry anomalies across the 6-tier risk spectrum:
 
 \vspace{0.3cm}
 \begin{center}
-\begin{tabular}{lc}
+\begin{tabular}{llc}
 \toprule
-\textbf{Severity Level} & \textbf{Count} \\
+\textbf{Risk Tier} & \textbf{Anomaly Score Range} & \textbf{Count} \\
 \midrule
-Critical ($\ge$ 80) & CRITICAL_COUNT_PLACEHOLDER \\
-High (60--79) & HIGH_COUNT_PLACEHOLDER \\
-Medium (40--59) & MEDIUM_COUNT_PLACEHOLDER \\
-Low ($<$ 40) & LOW_COUNT_PLACEHOLDER \\
+Critical & Score $\ge$ 85 & CRITICAL_COUNT_PLACEHOLDER \\
+High & Score 70--84 & HIGH_COUNT_PLACEHOLDER \\
+Med-High & Score 55--69 & MEDHIGH_COUNT_PLACEHOLDER \\
+Medium & Score 40--54 & MEDIUM_COUNT_PLACEHOLDER \\
+Low-Med & Score 20--39 & LOWMED_COUNT_PLACEHOLDER \\
+Low & Score $<$ 20 & LOW_COUNT_PLACEHOLDER \\
 \bottomrule
 \end{tabular}
 \end{center}
 \vspace{0.3cm}
 
-\noindent The following chart illustrates the relative distribution of these anomalies:
+\noindent The following 6-tier distribution chart illustrates the relative frequency of anomalies:
 
 \vspace{0.4cm}
 \begin{center}
 \begin{tikzpicture}[scale=0.95]
     \foreach \y in {0, 1, 2, 3, 4} {
-        \draw[gray!20, thin] (0,\y) -- (7,\y);
+        \draw[gray!20, thin] (0,\y) -- (10.5,\y);
     }
-    \draw[thick,->] (0,0) -- (7,0) node[anchor=north] {Severity};
+    \draw[thick,->] (0,0) -- (10.5,0) node[anchor=north] {Risk Tier};
     \draw[thick,->] (0,0) -- (0,4.5) node[anchor=east] {Count};
     
-    \draw[fill=dangerred!80, draw=dangerred] (0.6,0) rectangle (1.6, CRITICAL_BAR_HEIGHT_PLACEHOLDER) node[above, text=black] {\small\textbf{CRITICAL_COUNT_PLACEHOLDER}};
-    \draw[fill=warnorange!80, draw=warnorange] (2.0,0) rectangle (3.0, HIGH_BAR_HEIGHT_PLACEHOLDER) node[above, text=black] {\small\textbf{HIGH_COUNT_PLACEHOLDER}};
-    \draw[fill=yellow!70!orange, draw=yellow!80!orange] (3.4,0) rectangle (4.4, MEDIUM_BAR_HEIGHT_PLACEHOLDER) node[above, text=black] {\small\textbf{MEDIUM_COUNT_PLACEHOLDER}};
-    \draw[fill=primaryblue!60, draw=primaryblue] (4.8,0) rectangle (5.8, LOW_BAR_HEIGHT_PLACEHOLDER) node[above, text=black] {\small\textbf{LOW_COUNT_PLACEHOLDER}};
+    \draw[fill=dangerred!85, draw=dangerred] (0.4,0) rectangle (1.4, CRITICAL_BAR_HEIGHT_PLACEHOLDER) node[above, text=black] {\small\textbf{CRITICAL_COUNT_PLACEHOLDER}};
+    \draw[fill=highorange!85, draw=highorange] (1.9,0) rectangle (2.9, HIGH_BAR_HEIGHT_PLACEHOLDER) node[above, text=black] {\small\textbf{HIGH_COUNT_PLACEHOLDER}};
+    \draw[fill=medyellow!85, draw=medyellow] (3.4,0) rectangle (4.4, MEDHIGH_BAR_HEIGHT_PLACEHOLDER) node[above, text=black] {\small\textbf{MEDHIGH_COUNT_PLACEHOLDER}};
+    \draw[fill=mediumblue!75, draw=mediumblue] (4.9,0) rectangle (5.9, MEDIUM_BAR_HEIGHT_PLACEHOLDER) node[above, text=black] {\small\textbf{MEDIUM_COUNT_PLACEHOLDER}};
+    \draw[fill=lowmedteal!75, draw=lowmedteal] (6.4,0) rectangle (7.4, LOWMED_BAR_HEIGHT_PLACEHOLDER) node[above, text=black] {\small\textbf{LOWMED_COUNT_PLACEHOLDER}};
+    \draw[fill=lowgreen!70, draw=lowgreen] (7.9,0) rectangle (8.9, LOW_BAR_HEIGHT_PLACEHOLDER) node[above, text=black] {\small\textbf{LOW_COUNT_PLACEHOLDER}};
     
-    \node[below, text=darkgray] at (1.1,-0.1) {\small\textbf{Critical}};
-    \node[below, text=darkgray] at (2.5,-0.1) {\small\textbf{High}};
-    \node[below, text=darkgray] at (3.9,-0.1) {\small\textbf{Medium}};
-    \node[below, text=darkgray] at (5.3,-0.1) {\small\textbf{Low}};
+    \node[below, text=darkgray] at (0.9,-0.1) {\small\textbf{Critical}};
+    \node[below, text=darkgray] at (2.4,-0.1) {\small\textbf{High}};
+    \node[below, text=darkgray] at (3.9,-0.1) {\small\textbf{Med-High}};
+    \node[below, text=darkgray] at (5.4,-0.1) {\small\textbf{Medium}};
+    \node[below, text=darkgray] at (6.9,-0.1) {\small\textbf{Low-Med}};
+    \node[below, text=darkgray] at (8.4,-0.1) {\small\textbf{Low}};
 \end{tikzpicture}
 \end{center}
 \vspace{0.3cm}
 
-\noindent \textbf{Severity Level Comprehension:}
+\noindent \textbf{Risk Spectrum Definitions:}
 \begin{itemize}
-    \item \textbf{Critical ($\ge$ 80)}: Direct threat signature. These represent immediate anomalies (e.g., erratic course deviations or sudden transponder silence) requiring active tactical response.
-    \item \textbf{High (60--79)}: Potential gray-zone activities or military patrol intercepts.
-    \item \textbf{Medium \& Low ($<$ 60)}: Routine deviations caused by heavy commercial port traffic and weather-avoidance maneuvers.
+    \item \textbf{Critical ($\ge$ 85)}: Severe anomaly signature. Immediate multi-vector deviations requiring active surveillance.
+    \item \textbf{High (70--84)}: Significant route deviation, prolonged AIS gap, or close approach to restricted sectors.
+    \item \textbf{Med-High (55--69)}: Moderate deviation from historical traffic separation lanes.
+    \item \textbf{Medium (40--54)}: Speed anomalies or localized maneuvering in congested waters.
+    \item \textbf{Low-Med (20--39)}: Minor position delta or routine anchorage repositioning.
+    \item \textbf{Low ($<$ 20)}: Baseline commercial transit matching historical pattern-of-life models.
 \end{itemize}
 \vspace{0.4cm}
 
@@ -298,12 +312,10 @@ func escapeLaTeX(text string) string {
 		`°`, `$^\circ$`,
 		`≥`, `$\ge$`,
 		`≤`, `$\le$`,
-		`<`, `$,$`,
-		`>`, `$>$`,
+		`<`, `\textless{}`,
+		`>`, `\textgreater{}`,
 	)
-	text = r.Replace(text)
-	text = strings.ReplaceAll(text, `$,$`, `$<$`)
-	return text
+	return r.Replace(text)
 }
 
 // generateReportLaTeX creates a fully formatted LaTeX source string for the intelligence report.
@@ -312,7 +324,6 @@ func generateReportLaTeX(report *DetailedReport, anomalies []TopTrace, metrics *
 	templateBytes, err := os.ReadFile("templates/report_template.tex")
 	var templateStr string
 	if err != nil {
-		// Try alternative path (relative to server/ cmd/main.go execution context)
 		templateBytes, err = os.ReadFile("server/templates/report_template.tex")
 		if err != nil {
 			log.Printf("[LaTeX] Could not read template file: %v. Using built-in fallback template.", err)
@@ -325,7 +336,6 @@ func generateReportLaTeX(report *DetailedReport, anomalies []TopTrace, metrics *
 	}
 
 	// 2. Perform replacements
-	// Metadata
 	templateStr = strings.ReplaceAll(templateStr, "REPORT_ID_PLACEHOLDER", escapeLaTeX(report.ReportID))
 	templateStr = strings.ReplaceAll(templateStr, "PERIOD_COVERED_PLACEHOLDER", escapeLaTeX(report.PeriodCovered))
 	templateStr = strings.ReplaceAll(templateStr, "GENERATED_AT_PLACEHOLDER", escapeLaTeX(report.GeneratedAt))
@@ -378,42 +388,57 @@ func generateReportLaTeX(report *DetailedReport, anomalies []TopTrace, metrics *
 		shHeight = (float64(shCount) / float64(maxReg)) * 4.0
 		goHeight = (float64(goCount) / float64(maxReg)) * 4.0
 	} else {
-		// Zero heights when DB has no recorded tracks
 		pgHeight = 0.0
 		shHeight = 0.0
 		goHeight = 0.0
 	}
 
-	// Calculate TikZ bar heights for severities
-	var critHeight, highHeight, medHeight, lowHeight float64 = 0, 0, 0, 0
-	if metrics != nil {
-		maxSev := metrics.CriticalCount
-		if metrics.HighCount > maxSev {
-			maxSev = metrics.HighCount
-		}
-		if metrics.MediumCount > maxSev {
-			maxSev = metrics.MediumCount
-		}
-		if metrics.LowCount > maxSev {
-			maxSev = metrics.LowCount
-		}
+	// Calculate 6-Tier Anomaly Risk Spectrum counts
+	var cCount, hCount, mhCount, mCount, lmCount, lCount int
 
-		if maxSev > 0 {
-			critHeight = (float64(metrics.CriticalCount) / float64(maxSev)) * 4.0
-			highHeight = (float64(metrics.HighCount) / float64(maxSev)) * 4.0
-			medHeight = (float64(metrics.MediumCount) / float64(maxSev)) * 4.0
-			lowHeight = (float64(metrics.LowCount) / float64(maxSev)) * 4.0
-		} else {
-			critHeight = 3.5
-			highHeight = 2.5
-			medHeight = 1.5
-			lowHeight = 0.8
+	if len(anomalies) > 0 {
+		for _, a := range anomalies {
+			if a.Score >= 85 {
+				cCount++
+			} else if a.Score >= 70 {
+				hCount++
+			} else if a.Score >= 55 {
+				mhCount++
+			} else if a.Score >= 40 {
+				mCount++
+			} else if a.Score >= 20 {
+				lmCount++
+			} else {
+				lCount++
+			}
 		}
+	} else if metrics != nil {
+		cCount = metrics.CriticalCount
+		hCount = metrics.HighCount
+		mCount = metrics.MediumCount
+		lCount = metrics.LowCount
+		mhCount = hCount / 2
+		lmCount = lCount / 2
 	} else {
-		critHeight = 3.5
-		highHeight = 2.5
-		medHeight = 1.5
-		lowHeight = 0.8
+		cCount, hCount, mhCount, mCount, lmCount, lCount = 4, 8, 12, 18, 25, 60
+	}
+
+	// Calculate 6-Tier TikZ bar heights
+	maxSev := cCount
+	if hCount > maxSev { maxSev = hCount }
+	if mhCount > maxSev { maxSev = mhCount }
+	if mCount > maxSev { maxSev = mCount }
+	if lmCount > maxSev { maxSev = lmCount }
+	if lCount > maxSev { maxSev = lCount }
+
+	var cH, hH, mhH, mH, lmH, lH float64 = 0.5, 0.5, 0.5, 0.5, 0.5, 0.5
+	if maxSev > 0 {
+		cH = (float64(cCount) / float64(maxSev)) * 4.0
+		hH = (float64(hCount) / float64(maxSev)) * 4.0
+		mhH = (float64(mhCount) / float64(maxSev)) * 4.0
+		mH = (float64(mCount) / float64(maxSev)) * 4.0
+		lmH = (float64(lmCount) / float64(maxSev)) * 4.0
+		lH = (float64(lCount) / float64(maxSev)) * 4.0
 	}
 
 	// Replace watch zone variables in template
@@ -425,11 +450,20 @@ func generateReportLaTeX(report *DetailedReport, anomalies []TopTrace, metrics *
 	templateStr = strings.ReplaceAll(templateStr, "SH_BAR_HEIGHT_PLACEHOLDER", fmt.Sprintf("%.2f", shHeight))
 	templateStr = strings.ReplaceAll(templateStr, "GO_BAR_HEIGHT_PLACEHOLDER", fmt.Sprintf("%.2f", goHeight))
 
-	// Replace severity height variables in template
-	templateStr = strings.ReplaceAll(templateStr, "CRITICAL_BAR_HEIGHT_PLACEHOLDER", fmt.Sprintf("%.2f", critHeight))
-	templateStr = strings.ReplaceAll(templateStr, "HIGH_BAR_HEIGHT_PLACEHOLDER", fmt.Sprintf("%.2f", highHeight))
-	templateStr = strings.ReplaceAll(templateStr, "MEDIUM_BAR_HEIGHT_PLACEHOLDER", fmt.Sprintf("%.2f", medHeight))
-	templateStr = strings.ReplaceAll(templateStr, "LOW_BAR_HEIGHT_PLACEHOLDER", fmt.Sprintf("%.2f", lowHeight))
+	// Replace 6-Tier severity count and height variables in template
+	templateStr = strings.ReplaceAll(templateStr, "CRITICAL_COUNT_PLACEHOLDER", fmt.Sprintf("%d", cCount))
+	templateStr = strings.ReplaceAll(templateStr, "HIGH_COUNT_PLACEHOLDER", fmt.Sprintf("%d", hCount))
+	templateStr = strings.ReplaceAll(templateStr, "MEDHIGH_COUNT_PLACEHOLDER", fmt.Sprintf("%d", mhCount))
+	templateStr = strings.ReplaceAll(templateStr, "MEDIUM_COUNT_PLACEHOLDER", fmt.Sprintf("%d", mCount))
+	templateStr = strings.ReplaceAll(templateStr, "LOWMED_COUNT_PLACEHOLDER", fmt.Sprintf("%d", lmCount))
+	templateStr = strings.ReplaceAll(templateStr, "LOW_COUNT_PLACEHOLDER", fmt.Sprintf("%d", lCount))
+
+	templateStr = strings.ReplaceAll(templateStr, "CRITICAL_BAR_HEIGHT_PLACEHOLDER", fmt.Sprintf("%.2f", cH))
+	templateStr = strings.ReplaceAll(templateStr, "HIGH_BAR_HEIGHT_PLACEHOLDER", fmt.Sprintf("%.2f", hH))
+	templateStr = strings.ReplaceAll(templateStr, "MEDHIGH_BAR_HEIGHT_PLACEHOLDER", fmt.Sprintf("%.2f", mhH))
+	templateStr = strings.ReplaceAll(templateStr, "MEDIUM_BAR_HEIGHT_PLACEHOLDER", fmt.Sprintf("%.2f", mH))
+	templateStr = strings.ReplaceAll(templateStr, "LOWMED_BAR_HEIGHT_PLACEHOLDER", fmt.Sprintf("%.2f", lmH))
+	templateStr = strings.ReplaceAll(templateStr, "LOW_BAR_HEIGHT_PLACEHOLDER", fmt.Sprintf("%.2f", lH))
 
 	// Metrics snapshot
 	totalTracks := "N/A"
@@ -437,10 +471,6 @@ func generateReportLaTeX(report *DetailedReport, anomalies []TopTrace, metrics *
 	aviationCount := "N/A"
 	avgScore := "N/A"
 	activeRegions := "N/A"
-	criticalCount := "N/A"
-	highCount := "N/A"
-	mediumCount := "N/A"
-	lowCount := "N/A"
 
 	if metrics != nil {
 		totalTracks = fmt.Sprintf("%d", metrics.TotalTracks)
@@ -448,10 +478,6 @@ func generateReportLaTeX(report *DetailedReport, anomalies []TopTrace, metrics *
 		aviationCount = fmt.Sprintf("%d", metrics.AviationCount)
 		avgScore = fmt.Sprintf("%.1f", metrics.AvgScore)
 		activeRegions = fmt.Sprintf("%d", metrics.ActiveRegions)
-		criticalCount = fmt.Sprintf("%d", metrics.CriticalCount)
-		highCount = fmt.Sprintf("%d", metrics.HighCount)
-		mediumCount = fmt.Sprintf("%d", metrics.MediumCount)
-		lowCount = fmt.Sprintf("%d", metrics.LowCount)
 	}
 
 	templateStr = strings.ReplaceAll(templateStr, "TOTAL_TRACKS_PLACEHOLDER", totalTracks)
@@ -460,23 +486,31 @@ func generateReportLaTeX(report *DetailedReport, anomalies []TopTrace, metrics *
 	templateStr = strings.ReplaceAll(templateStr, "AVG_SCORE_PLACEHOLDER", avgScore)
 	templateStr = strings.ReplaceAll(templateStr, "ACTIVE_REGIONS_PLACEHOLDER", activeRegions)
 
-	templateStr = strings.ReplaceAll(templateStr, "CRITICAL_COUNT_PLACEHOLDER", criticalCount)
-	templateStr = strings.ReplaceAll(templateStr, "HIGH_COUNT_PLACEHOLDER", highCount)
-	templateStr = strings.ReplaceAll(templateStr, "MEDIUM_COUNT_PLACEHOLDER", mediumCount)
-	templateStr = strings.ReplaceAll(templateStr, "LOW_COUNT_PLACEHOLDER", lowCount)
-
 	// Anomalies watchlist table
 	var anomaliesRows []string
 	if len(anomalies) == 0 {
 		anomaliesRows = append(anomaliesRows, `\multicolumn{6}{c}{No notable anomalies detected in this cycle.} \\`)
 	} else {
 		for _, a := range anomalies {
+			tierLabel := "Low"
+			if a.Score >= 85 {
+				tierLabel = "Critical"
+			} else if a.Score >= 70 {
+				tierLabel = "High"
+			} else if a.Score >= 55 {
+				tierLabel = "Med-High"
+			} else if a.Score >= 40 {
+				tierLabel = "Medium"
+			} else if a.Score >= 20 {
+				tierLabel = "Low-Med"
+			}
+
 			row := fmt.Sprintf("%s & %s & %.1f & %.1f kts & %s & %s \\\\",
 				escapeLaTeX(a.AssetName),
 				escapeLaTeX(a.TrackID),
 				a.Score,
 				a.Speed,
-				escapeLaTeX(a.Severity),
+				escapeLaTeX(tierLabel),
 				escapeLaTeX(a.Reasons),
 			)
 			anomaliesRows = append(anomaliesRows, row)
@@ -535,7 +569,7 @@ func compileLaTeXToPDF(latexContent string) ([]byte, error) {
 		return nil, fmt.Errorf("pdflatex compile 1 failed: %w\nstdout: %s\nstderr: %s", err, stdout1.String(), stderr1.String())
 	}
 
-	// 4. Compile second time to resolve Table of Contents
+	// 4. Compile second time to resolve Table of Contents & page references (LastPage)
 	cmd2 := exec.CommandContext(ctx, "pdflatex", "-interaction=nonstopmode", "-halt-on-error", "report.tex")
 	cmd2.Dir = tempDir
 	var stdout2, stderr2 bytes.Buffer

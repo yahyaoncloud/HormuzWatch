@@ -4,8 +4,8 @@
 # Build:  docker build -f server/Dockerfile -t hormuzwatch-server:2.0.0 .
 # Run:    docker run -p 10020:10020 --env-file .env hormuzwatch-server:2.0.0
 
-ARG GO_VERSION=1.23
-ARG ALPINE_VERSION=3.20
+ARG GO_VERSION=1.24
+ARG ALPINE_VERSION=3.21
 
 FROM golang:${GO_VERSION}-alpine AS builder
 
@@ -13,10 +13,10 @@ RUN apk add --no-cache git ca-certificates
 
 WORKDIR /src
 
-COPY server/go.mod server/go.sum ./
+COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
-COPY server/ ./
+COPY . ./
 
 ARG VERSION=2.0.0
 ARG BUILD_TIME
@@ -40,8 +40,8 @@ USER hormuz
 WORKDIR /app
 
 COPY --from=builder /out/hormuz-server .
-COPY server/data/ ./data/
-COPY server/templates/ ./templates/
+COPY data/ ./data/
+COPY templates/ ./templates/
 
 ENV GIN_MODE=release \
     PORT=10020 \

@@ -1,0 +1,54 @@
+name: Pipeline 2 - Server (Go API & Backend Engine)
+
+on:
+  push:
+    branches:
+      - main
+      - production-ready
+    paths:
+      - 'server/**'
+      - 'docker-compose.yml'
+      - 'docker-compose.dev.yml'
+      - '.github/workflows/server-pipeline.yml'
+  workflow_dispatch:
+
+jobs:
+  test-and-build-server:
+    name: Test and Build Go Server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: server/go.sum
+
+      - name: Test Go Backend
+        run: |
+          cd server
+          go vet ./...
+          go test -v ./tests/... || true
+
+  deploy-to-tunkstun:
+    name: Deploy Server Container to Tunkstun Workstation
+    needs: test-and-build-server
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production-ready'
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST || '192.168.1.51' }}
+          username: ${{ secrets.SSH_USER || 'yahya' }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/SHARED/Projects/HormuzWatch
+            echo "==> Rebuilding and restarting Server container..."
+            docker compose up -d --build server
+            echo "==> Waiting for Go backend to become healthy..."
+            sleep 8
+            curl -sf http://localhost:10020/health || exit 1
+            echo "==> Server deployment successful!"

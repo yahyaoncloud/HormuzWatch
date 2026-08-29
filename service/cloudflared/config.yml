@@ -1,0 +1,27 @@
+# HormuzWatch Production Cloudflare Tunnel Configuration
+# Tunnel ID: c139a2f5-28ac-49e5-bec5-1a7583f00a3d
+
+tunnel: c139a2f5-28ac-49e5-bec5-1a7583f00a3d
+credentials-file: /etc/cloudflared/c139a2f5-28ac-49e5-bec5-1a7583f00a3d.json
+
+ingress:
+  # ── MVP Web Client (Local Nginx SPA on Tunkstun) ────────────
+  - hostname: hormuzwatch.aburcloud.com
+    service: http://localhost:3000
+    originRequest:
+      noTLSVerify: true
+
+  # ── Go Backend REST API, WebSocket & SSE Stream ─────────────
+  - hostname: api.hormuzwatch.aburcloud.com
+    service: http://localhost:10020
+    originRequest:
+      noTLSVerify: true
+
+  # ── Python ML Anomaly Detection Service ─────────────────────
+  - hostname: ml.hormuzwatch.aburcloud.com
+    service: http://localhost:8090
+    originRequest:
+      noTLSVerify: true
+
+  # ── Catch-All ───────────────────────────────────────────────
+  - service: http_status:404
