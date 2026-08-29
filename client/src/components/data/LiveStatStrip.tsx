@@ -1,5 +1,6 @@
+import React from 'react';
 import type { PublicMetricsResponse } from '@/lib/api';
-import { formatCompact } from '@/utils/cn';
+import { MetricCard } from '@/components/molecules/MetricCard';
 
 export type MetricKey = 'vessels' | 'aircraft' | 'regions' | 'risk';
 
@@ -37,74 +38,55 @@ export const METRIC_META: Record<
   },
 };
 
-export function LiveStatStrip({
-  metrics,
-  isLoading,
-  onMetricClick,
-}: {
+export const LiveStatStrip: React.FC<{
   metrics: PublicMetricsResponse['metrics'] | undefined;
   isLoading: boolean;
   onMetricClick: (key: MetricKey) => void;
-}) {
-  const stats: Array<{ key: MetricKey; label: string; value: number | null; suffix: string }> = [
+}> = ({ metrics, isLoading, onMetricClick }) => {
+  const stats: Array<{ key: MetricKey; label: string; value: number | null | undefined; suffix: string; accent: string }> = [
     {
       key: 'vessels',
-      label: 'Vessels tracked',
-      value: metrics ? metrics.maritimeCount : null,
-      suffix: '',
+      label: METRIC_META.vessels.label,
+      value: metrics?.maritimeCount,
+      suffix: METRIC_META.vessels.suffix,
+      accent: METRIC_META.vessels.accent,
     },
     {
       key: 'aircraft',
-      label: 'Aircraft tracked',
-      value: metrics ? metrics.aviationCount : null,
-      suffix: '',
+      label: METRIC_META.aircraft.label,
+      value: metrics?.aviationCount,
+      suffix: METRIC_META.aircraft.suffix,
+      accent: METRIC_META.aircraft.accent,
     },
     {
       key: 'regions',
-      label: 'Active regions',
-      value: metrics ? metrics.activeRegions : null,
-      suffix: '',
+      label: METRIC_META.regions.label,
+      value: metrics?.activeRegions,
+      suffix: METRIC_META.regions.suffix,
+      accent: METRIC_META.regions.accent,
     },
     {
       key: 'risk',
-      label: 'Maritime risk index',
-      value: metrics ? metrics.avgScore : null,
-      suffix: '/100',
+      label: METRIC_META.risk.label,
+      value: metrics?.avgScore,
+      suffix: METRIC_META.risk.suffix,
+      accent: METRIC_META.risk.accent,
     },
   ];
 
-  if (isLoading) {
-    return (
-      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-border)] sm:grid-cols-4">
-        {stats.map((s) => (
-          <div key={s.key} className="animate-pulse bg-[var(--color-bg-card)] p-4">
-            <dt className="font-ui text-xs text-[var(--color-fg-muted)]">{s.label}</dt>
-            <dd className="mt-1 h-7 w-2/3 rounded bg-[var(--color-neutral-200)]" />
-          </div>
-        ))}
-      </dl>
-    );
-  }
-
   return (
-    <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-border)] sm:grid-cols-4">
+    <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-none border border-[var(--color-border)] bg-[var(--color-border)] sm:grid-cols-4">
       {stats.map((s) => (
-        <button
+        <MetricCard
           key={s.key}
-          type="button"
+          label={s.label}
+          value={s.value}
+          suffix={s.suffix}
+          accentColor={s.accent}
+          isLoading={isLoading}
           onClick={() => onMetricClick(s.key)}
-          aria-label={`${s.label} details`}
-          className="group flex flex-col items-start bg-[var(--color-bg-card)] p-4 text-left transition-colors hover:bg-[var(--color-bg-elevated)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-600)]"
-        >
-          <dt className="font-ui text-xs text-[var(--color-fg-muted)]">{s.label}</dt>
-          <dd className="mt-1 font-data text-2xl font-semibold text-[var(--color-fg)] transition-colors group-hover:text-[var(--color-primary-700)]">
-            {s.value === null ? '—' : formatCompact(Number(s.value))}
-            {s.suffix && (
-              <span className="ml-0.5 text-base text-[var(--color-fg-muted)]">{s.suffix}</span>
-            )}
-          </dd>
-        </button>
+        />
       ))}
     </dl>
   );
-}
+};
