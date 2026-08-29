@@ -29,30 +29,35 @@ const num = (v: string | undefined, fallback: number): number => {
 // Environment singleton
 // ---------------------------------------------------------------------------
 
-// Dynamic URL Resolvers for Dev, LAN, and Cloudflare / Production
+// Dynamic URL Resolvers for Dev, LAN, and Cloudflare Production
 const getDefaultApiUrl = (): string => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  if (typeof window === "undefined") return "https://api.hormuzwatch.aburcloud.com";
-  const host = window.location.hostname;
-  if (host === "192.168.1.51") return "http://192.168.1.51:10020";
-  // Default localhost / LAN / Cloudflare to live Cloudflare edge API
-  return "https://api.hormuzwatch.aburcloud.com";
+  if (typeof window === "undefined") return "https://hormuzwatch.aburcloud.com";
+  // In local Vite dev server without local backend, proxy to LAN server
+  if (window.location.hostname === "localhost" && window.location.port === "5173") {
+    return "http://192.168.1.51:10020";
+  }
+  // When running on SPA / Nginx (port 3000 or Cloudflare), use same-origin relative routing
+  return "";
 };
 
 const getDefaultMlUrl = (): string => {
   if (import.meta.env.VITE_ML_SERVICE_URL) return import.meta.env.VITE_ML_SERVICE_URL;
-  if (typeof window === "undefined") return "https://ml.hormuzwatch.aburcloud.com";
-  const host = window.location.hostname;
-  if (host === "192.168.1.51") return "http://192.168.1.51:8090";
-  return "https://ml.hormuzwatch.aburcloud.com";
+  if (typeof window === "undefined") return "https://hormuzwatch.aburcloud.com/ml";
+  if (window.location.hostname === "localhost" && window.location.port === "5173") {
+    return "http://192.168.1.51:8090";
+  }
+  return "/ml";
 };
 
 const getDefaultWsUrl = (): string => {
   if (import.meta.env.VITE_WS_TELEMETRY_URL) return import.meta.env.VITE_WS_TELEMETRY_URL;
-  if (typeof window === "undefined") return "wss://api.hormuzwatch.aburcloud.com/ws/stream";
-  const host = window.location.hostname;
-  if (host === "192.168.1.51") return "ws://192.168.1.51:10020/ws/stream";
-  return "wss://api.hormuzwatch.aburcloud.com/ws/stream";
+  if (typeof window === "undefined") return "wss://hormuzwatch.aburcloud.com/ws/stream";
+  if (window.location.hostname === "localhost" && window.location.port === "5173") {
+    return "ws://192.168.1.51:10020/ws/stream";
+  }
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${window.location.host}/ws/stream`;
 };
 
 const getDefaultSseUrl = (): string => {
