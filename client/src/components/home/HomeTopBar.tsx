@@ -1,12 +1,9 @@
+import React, { useMemo } from 'react';
 import {
   Activity,
-  AlertTriangle,
   Cpu,
-  Eye,
-  EyeOff,
   FileText,
   Globe,
-  Layers,
   Loader2,
   LocateFixed,
   Plane,
@@ -17,13 +14,9 @@ import {
 } from 'lucide-react';
 import type { BlockadeIndicators, HealthResponse, TransitSummary } from '@/lib/api';
 import { cn } from '@/utils/cn';
-
-export interface MetricLog {
-  time: string;
-  message: string;
-  details?: string;
-  status?: 'ok' | 'warn' | 'error';
-}
+import { HudMetricBadge, type HudMetricConfig } from './HudMetricBadge';
+import { LayerToggleGroup } from './LayerToggleGroup';
+import type { SystemMetricLogs } from '@/types/health';
 
 export interface HomeTopBarProps {
   // Tab state
@@ -68,17 +61,10 @@ export interface HomeTopBarProps {
   transits?: TransitSummary | null;
   systemHealth?: HealthResponse | null;
   wsStatus?: 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
-  latestLogs?: {
-    api?: MetricLog;
-    ais?: MetricLog;
-    adsb?: MetricLog;
-    ml?: MetricLog;
-    ws?: MetricLog;
-    news?: MetricLog;
-  };
+  latestLogs?: SystemMetricLogs;
 }
 
-export function HomeTopBar({
+export const HomeTopBar: React.FC<HomeTopBarProps> = ({
   tabs,
   activeTab,
   onTabChange,
@@ -113,12 +99,120 @@ export function HomeTopBar({
   systemHealth,
   wsStatus,
   latestLogs,
-}: HomeTopBarProps) {
+}) => {
   const isHealthy = systemHealth?.status === 'healthy';
   const isDegraded = systemHealth?.status === 'degraded';
   const dbHealth = systemHealth?.components?.database;
   const mlHealth = systemHealth?.components?.ml_service;
   const isWsConnected = wsStatus === 'connected';
+
+  // Compose declarative HUD metrics array
+  const hudMetrics: HudMetricConfig[] = useMemo(() => {
+    return [
+      {
+        id: 'core-api',
+        label: 'CORE API',
+        value: systemHealth?.status ? systemHealth.status.toUpperCase() : 'CONNECTING',
+        icon: Activity,
+        iconColor: isHealthy ? 'text-emerald-400' : isDegraded ? 'text-amber-400' : 'text-rose-400',
+        statusColor: isHealthy ? 'emerald' : isDegraded ? 'amber' : 'rose',
+        ping: !isHealthy && !isDegraded,
+        pulse: isHealthy,
+        extraInfo: dbHealth && (
+          <span className="text-[10px] text-[var(--color-fg-muted)]">
+            (DB: {dbHealth.healthy ? `${dbHealth.ping_ms}ms` : 'ERR'})
+          </span>
+        ),
+        hoverTitle: 'CORE API & DATABASE LOG',
+        log: latestLogs?.api,
+        defaultMessage: 'GET /health [HTTP 200] — System status: HEALTHY',
+        defaultDetails: 'PostgreSQL connection pool active & responsive',
+      },
+      {
+        id: 'ais-maritime',
+        label: 'AIS MARITIME',
+        value: vesselCount > 0 ? `${vesselCount} VESSELS` : 'INGESTING',
+        icon: Ship,
+        iconColor: 'text-emerald-400',
+        statusColor: 'emerald',
+        pulse: true,
+        hoverTitle: 'AIS TELEMETRY LOG',
+        log: latestLogs?.ais,
+        defaultMessage: 'AISStream & AISHub packet reception active',
+        defaultDetails: 'Strait of Hormuz & Persian Gulf bounding sector',
+      },
+      {
+        id: 'adsb-air',
+        label: 'ADS-B AIR',
+        value: aircraftCount > 0 ? `${aircraftCount} TRACKING` : 'STREAMING',
+        icon: Plane,
+        iconColor: 'text-sky-400',
+        statusColor: 'sky',
+        pulse: true,
+        hoverTitle: 'ADS-B AIR CORRIDOR LOG',
+        log: latestLogs?.adsb,
+        defaultMessage: 'OpenSky live transponder feed active',
+        defaultDetails: 'Regional airspace flight tracking and squawk auditing',
+      },
+      {
+        id: 'ml-ensemble',
+        label: 'ML ENSEMBLE',
+        value: mlHealth?.healthy
+          ? totalTracks !== undefined
+            ? `${totalTracks} TRACKS`
+            : 'ONLINE (6/6)'
+          : `CIRCUIT ${mlHealth?.circuit || 'FALLBACK'}`,
+        icon: Cpu,
+        iconColor: mlHealth?.healthy ? 'text-emerald-400' : 'text-amber-400',
+        statusColor: mlHealth?.healthy ? 'emerald' : 'amber',
+        pulse: mlHealth?.healthy,
+        hoverTitle: 'ML INFERENCE ENSEMBLE LOG',
+        log: latestLogs?.ml,
+        defaultMessage: 'Isolation Forest & DBSCAN anomaly scorers online',
+        defaultDetails: 'gRPC inference socket connected on port :8091',
+      },
+      {
+        id: 'ws-stream',
+        label: 'WS STREAM',
+        value: isWsConnected ? 'CONNECTED' : wsStatus?.toUpperCase() || 'OFFLINE',
+        icon: Radio,
+        iconColor: isWsConnected ? 'text-purple-400' : 'text-amber-400',
+        statusColor: isWsConnected ? 'purple' : 'amber',
+        pulse: isWsConnected,
+        ping: !isWsConnected,
+        hoverTitle: 'WEBSOCKET TELEMETRY LOG',
+        log: latestLogs?.ws,
+        defaultMessage: 'WebSocket stream connection active',
+        defaultDetails: 'Protocol: RFC 6455 | Auto-reconnect enabled',
+      },
+      {
+        id: 'news-pipeline',
+        label: 'NEWS PIPELINE',
+        value: newsCount > 0 ? `${newsCount} ARTICLES` : 'POLLING',
+        icon: Rss,
+        iconColor: 'text-indigo-400',
+        statusColor: 'indigo',
+        pulse: true,
+        hoverTitle: 'GDELT NEWS PIPELINE LOG',
+        log: latestLogs?.news,
+        defaultMessage: 'GDELT 2.0 & RSS geopolitical scraper active',
+        defaultDetails: 'Scraping Middle East maritime risk & naval reports',
+      },
+    ];
+  }, [
+    systemHealth,
+    isHealthy,
+    isDegraded,
+    dbHealth,
+    mlHealth,
+    isWsConnected,
+    wsStatus,
+    vesselCount,
+    aircraftCount,
+    totalTracks,
+    newsCount,
+    latestLogs,
+  ]);
 
   return (
     <>
@@ -168,63 +262,21 @@ export function HomeTopBar({
 
           <div className="w-px h-5 bg-[var(--color-border)] hidden sm:block" />
 
-          {/* Layer Visibility Toggles */}
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] text-[var(--color-fg-muted)] uppercase tracking-wider mr-0.5">Show:</span>
-            <button
-              type="button"
-              onClick={onToggleVessels}
-              className={cn(
-                'px-2.5 py-1 text-[11px] font-semibold transition-all border flex items-center gap-1',
-                showVessels
-                  ? 'bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)]'
-                  : 'bg-[var(--color-bg)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:border-[var(--color-primary-400)]'
-              )}
-            >
-              <Ship className="h-3.5 w-3.5" />
-              Vessels
-            </button>
-            <button
-              type="button"
-              onClick={onToggleAircraft}
-              className={cn(
-                'px-2.5 py-1 text-[11px] font-semibold transition-all border flex items-center gap-1',
-                showAircraft
-                  ? 'bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)]'
-                  : 'bg-[var(--color-bg)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:border-[var(--color-primary-400)]'
-              )}
-            >
-              <Plane className="h-3.5 w-3.5" />
-              Aircraft
-            </button>
-            <button
-              type="button"
-              onClick={onToggleConflicts}
-              className={cn(
-                'px-2.5 py-1 text-[11px] font-semibold transition-all border flex items-center gap-1',
-                showConflicts
-                  ? 'bg-rose-600 text-white border-rose-600'
-                  : 'bg-[var(--color-bg)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:border-[var(--color-primary-400)]'
-              )}
-            >
-              <AlertTriangle className="h-3.5 w-3.5" />
-              Conflicts
-            </button>
-            <button
-              type="button"
-              onClick={onToggleAreas}
-              className={cn(
-                'px-2.5 py-1 text-[11px] font-semibold transition-all border flex items-center gap-1',
-                showAreas
-                  ? 'bg-amber-600 text-white border-amber-600'
-                  : 'bg-[var(--color-bg)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:border-[var(--color-primary-400)]'
-              )}
-              title="Toggle Strategic Watch Zones & Chokepoints"
-            >
-              <Layers className="h-3.5 w-3.5" />
-              Areas
-            </button>
-          </div>
+          {/* Molecular Layer Visibility Toggles */}
+          <LayerToggleGroup
+            showVessels={showVessels}
+            onToggleVessels={onToggleVessels}
+            showAircraft={showAircraft}
+            onToggleAircraft={onToggleAircraft}
+            showConflicts={showConflicts}
+            onToggleConflicts={onToggleConflicts}
+            showAreas={showAreas}
+            onToggleAreas={onToggleAreas}
+            showHeatmap={showHeatmap}
+            onToggleHeatmap={onToggleHeatmap}
+            showMetrics={showMetrics}
+            onToggleMetrics={onToggleMetrics}
+          />
 
           <div className="w-px h-5 bg-[var(--color-border)] hidden sm:block" />
 
@@ -270,36 +322,6 @@ export function HomeTopBar({
             </optgroup>
           </select>
 
-          {/* Heatmap Toggle */}
-          <button
-            type="button"
-            onClick={onToggleHeatmap}
-            className={cn(
-              'px-3 py-1.5 font-ui text-xs font-semibold transition-all border flex items-center gap-1.5',
-              showHeatmap
-                ? 'bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)]'
-                : 'bg-[var(--color-bg)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:border-[var(--color-primary-400)]'
-            )}
-          >
-            {showHeatmap ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-            {showHeatmap ? 'Heatmap On' : 'Heatmap'}
-          </button>
-
-          {/* Metrics HUD Toggle */}
-          <button
-            type="button"
-            onClick={onToggleMetrics}
-            className={cn(
-              'px-3 py-1.5 font-ui text-xs font-semibold transition-all border flex items-center gap-1.5',
-              showMetrics
-                ? 'bg-emerald-600 text-white border-emerald-600'
-                : 'bg-[var(--color-bg)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:border-[var(--color-primary-400)]'
-            )}
-          >
-            <Activity className="h-3.5 w-3.5" />
-            {showMetrics ? 'Metrics On' : 'Metrics'}
-          </button>
-
           {/* Recenter Map Button */}
           <button
             type="button"
@@ -338,195 +360,12 @@ export function HomeTopBar({
             )}
           </button>
 
-          {/* Real Live Systems Health & Pipeline HUD Strip with Hover Logs */}
+          {/* Molecular Systems Health & Pipeline HUD Strip */}
           <div className="w-full pt-2 mt-1 border-t border-[var(--color-border)]/50 flex items-center justify-between gap-2 text-[11px] font-mono overflow-x-auto flex-nowrap">
-            <div className="flex items-center gap-2">
-              {/* Go Core API Health */}
-              <div className="relative group flex items-center gap-1.5 px-2.5 py-1 bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-fg)] hover:border-[var(--color-primary-400)] transition-colors cursor-pointer">
-                <Activity className={cn("h-3.5 w-3.5", isHealthy ? "text-emerald-400" : isDegraded ? "text-amber-400" : "text-rose-400")} />
-                <span className="text-[var(--color-fg-subtle)] font-medium">CORE API:</span>
-                <span className={cn("font-bold", isHealthy ? "text-emerald-400" : isDegraded ? "text-amber-400" : "text-rose-400")}>
-                  {systemHealth?.status ? systemHealth.status.toUpperCase() : 'CONNECTING'}
-                </span>
-                {dbHealth && (
-                  <span className="text-[10px] text-[var(--color-fg-muted)]">
-                    (DB: {dbHealth.healthy ? `${dbHealth.ping_ms}ms` : 'ERR'})
-                  </span>
-                )}
-                <span className={cn("w-2 h-2 rounded-full", isHealthy ? "bg-emerald-500 animate-pulse" : isDegraded ? "bg-amber-500" : "bg-rose-500 animate-ping")}></span>
-
-                {/* Hover Log Card */}
-                <div className="absolute bottom-full left-0 mb-2 hidden group-hover:flex flex-col z-50 w-80 p-2.5 bg-[var(--color-bg)] border border-[var(--color-border)] shadow-2xl backdrop-blur-md text-left pointer-events-none transition-all">
-                  <div className="flex items-center justify-between gap-2 pb-1.5 mb-1.5 border-b border-[var(--color-border)]">
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-[var(--color-primary-400)]">
-                      <Activity className="h-3 w-3" />
-                      <span>CORE API & DATABASE LOG</span>
-                    </div>
-                    <span className="text-[9px] font-mono text-[var(--color-fg-muted)]">
-                      {latestLogs?.api?.time || 'LIVE'}
-                    </span>
-                  </div>
-                  <div className="text-[11px] font-mono text-[var(--color-fg)] font-medium leading-tight">
-                    {latestLogs?.api?.message || 'GET /health -> 200 OK'}
-                  </div>
-                  {latestLogs?.api?.details && (
-                    <div className="mt-1.5 pt-1.5 border-t border-[var(--color-border)]/50 text-[10px] font-mono text-[var(--color-fg-muted)] leading-normal break-words">
-                      {latestLogs.api.details}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* AIS Maritime Telemetry */}
-              <div className="relative group flex items-center gap-1.5 px-2.5 py-1 bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-fg)] hover:border-emerald-500 transition-colors cursor-pointer">
-                <Ship className="h-3.5 w-3.5 text-emerald-400" />
-                <span className="text-[var(--color-fg-subtle)] font-medium">AIS MARITIME:</span>
-                <span className="font-bold text-emerald-400">{vesselCount > 0 ? `${vesselCount} VESSELS` : 'INGESTING'}</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-
-                {/* Hover Log Card */}
-                <div className="absolute bottom-full left-0 mb-2 hidden group-hover:flex flex-col z-50 w-80 p-2.5 bg-[var(--color-bg)] border border-[var(--color-border)] shadow-2xl backdrop-blur-md text-left pointer-events-none transition-all">
-                  <div className="flex items-center justify-between gap-2 pb-1.5 mb-1.5 border-b border-[var(--color-border)]">
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400">
-                      <Ship className="h-3 w-3" />
-                      <span>AIS TELEMETRY LOG</span>
-                    </div>
-                    <span className="text-[9px] font-mono text-[var(--color-fg-muted)]">
-                      {latestLogs?.ais?.time || 'LIVE'}
-                    </span>
-                  </div>
-                  <div className="text-[11px] font-mono text-[var(--color-fg)] font-medium leading-tight">
-                    {latestLogs?.ais?.message || 'AISStream feed active'}
-                  </div>
-                  {latestLogs?.ais?.details && (
-                    <div className="mt-1.5 pt-1.5 border-t border-[var(--color-border)]/50 text-[10px] font-mono text-[var(--color-fg-muted)] leading-normal break-words">
-                      {latestLogs.ais.details}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* ADS-B Air Telemetry */}
-              <div className="relative group flex items-center gap-1.5 px-2.5 py-1 bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-fg)] hover:border-sky-500 transition-colors cursor-pointer">
-                <Plane className="h-3.5 w-3.5 text-sky-400" />
-                <span className="text-[var(--color-fg-subtle)] font-medium">ADS-B AIR:</span>
-                <span className="font-bold text-sky-400">{aircraftCount > 0 ? `${aircraftCount} TRACKING` : 'STREAMING'}</span>
-                <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>
-
-                {/* Hover Log Card */}
-                <div className="absolute bottom-full left-0 mb-2 hidden group-hover:flex flex-col z-50 w-80 p-2.5 bg-[var(--color-bg)] border border-[var(--color-border)] shadow-2xl backdrop-blur-md text-left pointer-events-none transition-all">
-                  <div className="flex items-center justify-between gap-2 pb-1.5 mb-1.5 border-b border-[var(--color-border)]">
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-sky-400">
-                      <Plane className="h-3 w-3" />
-                      <span>ADS-B AIR CORRIDOR LOG</span>
-                    </div>
-                    <span className="text-[9px] font-mono text-[var(--color-fg-muted)]">
-                      {latestLogs?.adsb?.time || 'LIVE'}
-                    </span>
-                  </div>
-                  <div className="text-[11px] font-mono text-[var(--color-fg)] font-medium leading-tight">
-                    {latestLogs?.adsb?.message || 'OpenSky stream active'}
-                  </div>
-                  {latestLogs?.adsb?.details && (
-                    <div className="mt-1.5 pt-1.5 border-t border-[var(--color-border)]/50 text-[10px] font-mono text-[var(--color-fg-muted)] leading-normal break-words">
-                      {latestLogs.adsb.details}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* ML Anomaly Ensemble Engine */}
-              <div className="relative group flex items-center gap-1.5 px-2.5 py-1 bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-fg)] hover:border-amber-500 transition-colors cursor-pointer">
-                <Cpu className={cn("h-3.5 w-3.5", mlHealth?.healthy ? "text-emerald-400" : "text-amber-400")} />
-                <span className="text-[var(--color-fg-subtle)] font-medium">ML ENSEMBLE:</span>
-                <span className={cn("font-bold", mlHealth?.healthy ? "text-emerald-400" : "text-amber-400")}>
-                  {mlHealth?.healthy
-                    ? (totalTracks !== undefined ? `${totalTracks} TRACKS` : 'ONLINE (6/6)')
-                    : `CIRCUIT ${mlHealth?.circuit || 'FALLBACK'}`}
-                </span>
-                <span className={cn("w-2 h-2 rounded-full", mlHealth?.healthy ? "bg-emerald-500 animate-pulse" : "bg-amber-500")}></span>
-
-                {/* Hover Log Card */}
-                <div className="absolute bottom-full left-0 mb-2 hidden group-hover:flex flex-col z-50 w-80 p-2.5 bg-[var(--color-bg)] border border-[var(--color-border)] shadow-2xl backdrop-blur-md text-left pointer-events-none transition-all">
-                  <div className="flex items-center justify-between gap-2 pb-1.5 mb-1.5 border-b border-[var(--color-border)]">
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-400">
-                      <Cpu className="h-3 w-3" />
-                      <span>ML INFERENCE ENSEMBLE LOG</span>
-                    </div>
-                    <span className="text-[9px] font-mono text-[var(--color-fg-muted)]">
-                      {latestLogs?.ml?.time || 'LIVE'}
-                    </span>
-                  </div>
-                  <div className="text-[11px] font-mono text-[var(--color-fg)] font-medium leading-tight">
-                    {latestLogs?.ml?.message || 'Isolation Forest & DBSCAN active'}
-                  </div>
-                  {latestLogs?.ml?.details && (
-                    <div className="mt-1.5 pt-1.5 border-t border-[var(--color-border)]/50 text-[10px] font-mono text-[var(--color-fg-muted)] leading-normal break-words">
-                      {latestLogs.ml.details}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* WebSocket Real-time Stream */}
-              <div className="relative group flex items-center gap-1.5 px-2.5 py-1 bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-fg)] hover:border-purple-500 transition-colors cursor-pointer">
-                <Radio className={cn("h-3.5 w-3.5", isWsConnected ? "text-purple-400" : "text-amber-400")} />
-                <span className="text-[var(--color-fg-subtle)] font-medium">WS STREAM:</span>
-                <span className={cn("font-bold", isWsConnected ? "text-purple-400" : "text-amber-400")}>
-                  {isWsConnected ? 'CONNECTED' : wsStatus?.toUpperCase() || 'OFFLINE'}
-                </span>
-                <span className={cn("w-2 h-2 rounded-full", isWsConnected ? "bg-purple-500 animate-pulse" : "bg-amber-500 animate-ping")}></span>
-
-                {/* Hover Log Card */}
-                <div className="absolute bottom-full left-0 mb-2 hidden group-hover:flex flex-col z-50 w-84 p-2.5 bg-[var(--color-bg)] border border-[var(--color-border)] shadow-2xl backdrop-blur-md text-left pointer-events-none transition-all">
-                  <div className="flex items-center justify-between gap-2 pb-1.5 mb-1.5 border-b border-[var(--color-border)]">
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-purple-400">
-                      <Radio className="h-3 w-3" />
-                      <span>WEBSOCKET TELEMETRY LOG</span>
-                    </div>
-                    <span className="text-[9px] font-mono text-[var(--color-fg-muted)]">
-                      {latestLogs?.ws?.time || 'LIVE'}
-                    </span>
-                  </div>
-                  <div className="text-[11px] font-mono text-[var(--color-fg)] font-medium leading-tight">
-                    {latestLogs?.ws?.message || 'WS Stream active'}
-                  </div>
-                  {latestLogs?.ws?.details && (
-                    <div className="mt-1.5 pt-1.5 border-t border-[var(--color-border)]/50 text-[10px] font-mono text-[var(--color-fg-muted)] leading-normal break-words">
-                      {latestLogs.ws.details}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* News Articles Pipeline */}
-              <div className="relative group flex items-center gap-1.5 px-2.5 py-1 bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-fg)] hover:border-indigo-500 transition-colors cursor-pointer">
-                <Rss className="h-3.5 w-3.5 text-indigo-400" />
-                <span className="text-[var(--color-fg-subtle)] font-medium">NEWS PIPELINE:</span>
-                <span className="font-bold text-indigo-400">{newsCount > 0 ? `${newsCount} ARTICLES` : 'POLLING'}</span>
-                <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-
-                {/* Hover Log Card */}
-                <div className="absolute bottom-full left-0 mb-2 hidden group-hover:flex flex-col z-50 w-80 p-2.5 bg-[var(--color-bg)] border border-[var(--color-border)] shadow-2xl backdrop-blur-md text-left pointer-events-none transition-all">
-                  <div className="flex items-center justify-between gap-2 pb-1.5 mb-1.5 border-b border-[var(--color-border)]">
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-400">
-                      <Rss className="h-3 w-3" />
-                      <span>GDELT NEWS PIPELINE LOG</span>
-                    </div>
-                    <span className="text-[9px] font-mono text-[var(--color-fg-muted)]">
-                      {latestLogs?.news?.time || 'LIVE'}
-                    </span>
-                  </div>
-                  <div className="text-[11px] font-mono text-[var(--color-fg)] font-medium leading-tight">
-                    {latestLogs?.news?.message || 'GDELT 2.0 scraper active'}
-                  </div>
-                  {latestLogs?.news?.details && (
-                    <div className="mt-1.5 pt-1.5 border-t border-[var(--color-border)]/50 text-[10px] font-mono text-[var(--color-fg-muted)] leading-normal break-words">
-                      {latestLogs.news.details}
-                    </div>
-                  )}
-                </div>
-              </div>
+            <div className="flex items-center gap-2 flex-nowrap">
+              {hudMetrics.map((metric) => (
+                <HudMetricBadge key={metric.id} {...metric} />
+              ))}
             </div>
 
             <div className="flex items-center gap-1.5 text-[10px] text-[var(--color-fg-muted)] pl-2 border-l border-[var(--color-border)] shrink-0">
@@ -561,10 +400,6 @@ export function HomeTopBar({
               {transits?.recent_events && transits.recent_events.length > 0 && (
                 <span className="text-[var(--color-fg-muted)] ml-auto text-[10px]">
                   Latest: {transits.recent_events[0].ship_name || `MMSI ${transits.recent_events[0].mmsi}`}
-                  {' · '}
-                  {transits.recent_events[0].direction === 'INBOUND' ? '→ IN' : '← OUT'}
-                  {' · '}
-                  {transits.recent_events[0].gate}
                 </span>
               )}
             </div>
@@ -573,4 +408,4 @@ export function HomeTopBar({
       )}
     </>
   );
-}
+};

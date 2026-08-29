@@ -780,3 +780,7 @@ export const useSettingsStore = create<SettingsState>()(
     }
   )
 );
+
+export * from './slices/map.store';
+export * from './slices/health.store';
+

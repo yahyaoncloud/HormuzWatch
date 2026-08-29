@@ -81,6 +81,15 @@
   **Problem:** Replaced third-party keyed/watermarked tile providers with direct, production-grade ESRI ArcGIS Canvas & Imagery basemaps.  
   **Fix:** Configured ESRI World Dark Gray Canvas, World Imagery, and World Light Gray Base with raw tactical shader grading (`tactical-esri-dark`, `tactical-esri-satellite`, `tactical-osm-fallback`), full environment variable configurability (`VITE_MAP_TILE_URL_DARK`, `VITE_MAP_TILE_URL_SATELLITE`, `VITE_MAP_TILE_URL_LIGHT`, `VITE_MAP_TILE_URL_FALLBACK`, `VITE_MAP_ATTRIBUTION`), and automatic error recovery in `client/src/components/maps/LeafletMapInner.tsx` and `client/src/environments/environment.ts`.
 
+- [x] **Priority:** P1  
+  **Area:** Molecular Component Formatting & Theme Parity  
+  **Problem:** High JSX duplication, monolithic store file (783 lines), prop drilling, and manual inline styling across route pages.  
+  **Fix:** Established Atomic/Molecular architecture in `client/TODO.md`:
+  - Created canonical domain types (`types/telemetry.ts`, `types/health.ts`, `types/metrics.ts`).
+  - Created atomic & molecular primitives (`StatusIndicator`, `HoverLogCard`, `HudMetricBadge`, `LayerToggleGroup`).
+  - Extracted modular Zustand store slices (`stores/slices/map.store.ts`, `stores/slices/health.store.ts`).
+  - Refactored `HomeTopBar.tsx` into clean declarative composition using theme CSS tokens.
+
 - [ ] **Priority:** P2  
   **Area:** Client-Side Tile Caching & Offline PWA Caching  
   **Problem:** Map tiles are fetched on every session without service worker IndexedDB caching for tactical offline usage.  
