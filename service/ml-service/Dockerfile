@@ -13,6 +13,7 @@ LABEL org.hormuzwatch.version=${VERSION} \
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    MPLCONFIGDIR=/tmp \
     ML_PORT=8090 \
     GRPC_PORT=8091 \
     APP_VERSION=${VERSION}
@@ -36,7 +37,4 @@ USER hormuz
 
 EXPOSE 8090 8091
 
-HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -sf http://localhost:${ML_PORT}/health || exit 1
-
-CMD ["python", "ml_cli.py", "serve", "--port", "8090"]
+CMD ["python", "service_entrypoint.py"]

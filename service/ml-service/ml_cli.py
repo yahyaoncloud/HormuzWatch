@@ -100,7 +100,7 @@ from grpc_server import MLInferenceService
 
 grpc_server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
 ml_service_pb2_grpc.add_MLInferenceServicer_to_server(MLInferenceService(), grpc_server)
-grpc_addr = f"0.0.0.0:{int(os.getenv('GRPC_PORT', '8091'))}"
+grpc_addr = f"0.0.0.0:{{int(os.getenv('GRPC_PORT', '8091'))}}"
 grpc_server.add_insecure_port(grpc_addr)
 grpc_server.start()
 print(f"gRPC server listening on {{grpc_addr}}")

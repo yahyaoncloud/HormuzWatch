@@ -39,8 +39,6 @@ export async function clientLoader() {
   };
 }
 
-export const loader = clientLoader;
-
 const TIMELINE_OPTIONS = ['1hr', '3hr', '6hr', '12hr', '24hr', 'all'] as const;
 
 const TABS = [

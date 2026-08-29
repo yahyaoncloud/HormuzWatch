@@ -1,0 +1,27 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  # ── Go Backend Server Metrics ──────────────────────────────
+  - job_name: "hormuzwatch-server"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["server:10020", "host.docker.internal:10020", "localhost:10020"]
+        labels:
+          tier: "backend"
+          env: "dev"
+
+  # ── Python ML Anomaly Detection Service ────────────────────
+  - job_name: "hormuzwatch-ml"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["ml:8090", "host.docker.internal:8090", "localhost:8090"]
+        labels:
+          tier: "ml-service"
+          env: "dev"
+
+  # ── Prometheus Internal Metrics ────────────────────────────
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]

@@ -69,7 +69,8 @@ func registerSystemRoutes(router *gin.Engine, handlers *api.Handlers) {
 	router.GET("/health/live", handlers.LiveHealth)
 	router.GET("/health/ready", handlers.ReadyHealth)
 
-	// Observability metrics (expvar /debug/vars, no auth)
+	// Observability metrics (Prometheus & expvar /debug/vars, no auth)
+	router.GET("/metrics", observability.PrometheusHandler)
 	router.Any("/debug/vars", gin.WrapH(observability.MetricsHandler()))
 
 	// Authentication endpoints (always public)

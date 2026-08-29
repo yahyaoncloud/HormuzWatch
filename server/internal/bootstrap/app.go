@@ -60,7 +60,7 @@ func New(ver, buildTime, gitCommit string) (*App, error) {
 
 	// Initialize PostgreSQL (Supabase)
 	if err := db.InitDB(); err != nil {
-		return nil, err
+		log.Printf("[db] Warning: Database connection failed (%v). Continuing in standalone in-memory mode.", err)
 	}
 
 	// Initialize WebSocket hub
