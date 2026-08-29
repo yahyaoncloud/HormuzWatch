@@ -106,11 +106,32 @@ export const env = {
 
   // ── Maps ──────────────────────────────────────────────────────────
   map: {
+    /** Primary dark basemap tile URL template (XYZ format). Default: CartoDB Dark Matter. */
+    tileUrlDark:
+      import.meta.env.VITE_MAP_TILE_URL_DARK ||
+      import.meta.env.VITE_MAP_TILE_URL ||
+      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    /** Primary light basemap tile URL template (XYZ format). Default: CartoDB Positron. */
+    tileUrlLight:
+      import.meta.env.VITE_MAP_TILE_URL_LIGHT ||
+      "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    /** Fallback dark basemap URL if primary tile provider experiences network or quota failure. */
+    tileUrlFallback:
+      import.meta.env.VITE_MAP_TILE_URL_FALLBACK ||
+      "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png",
+    /** Subdomains for tile rotation. Default: 'abcd'. */
+    subdomains: (import.meta.env.VITE_MAP_SUBDOMAINS as string) || "abcd",
+    /** Map copyright & attribution HTML. */
+    attribution:
+      import.meta.env.VITE_MAP_ATTRIBUTION ||
+      '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
+    /** Optional public client-side API key / token (e.g., for Stadia Maps, MapTiler, or Jawg). */
+    apiKey: (import.meta.env.VITE_MAP_API_KEY as string) || "",
     /** MapLibre style JSON URL. */
     styleUrl:
       import.meta.env.VITE_MAP_STYLE_URL ||
       "/map-styles/hormuz-dark.json",
-    /** Raster tile server URL (XYZ template). */
+    /** Raster tile server URL (legacy compatibility alias). */
     tilesUrl: import.meta.env.VITE_MAP_TILES_URL || "",
     /** Default center [lon, lat]. */
     defaultCenter: [54.5, 25.5] as [number, number],
