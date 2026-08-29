@@ -14,8 +14,11 @@ export interface BaseTrack {
   speed: number;
   heading: number;
   score: number;
-  severity: AnomalySeverity;
-  updatedAt: string;
+  severity: AnomalySeverity | string;
+  reasons?: string | string[];
+  updatedAt?: string;
+  altitude?: number;
+  squawk?: string;
 }
 
 export interface VesselTrack extends BaseTrack {

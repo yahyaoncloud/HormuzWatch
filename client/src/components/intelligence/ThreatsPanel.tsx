@@ -1,18 +1,9 @@
 import { AlertTriangle, Eye, LocateFixed, X } from 'lucide-react';
 import { Link } from 'react-router';
 import { cn } from '@/utils/cn';
+import type { ThreatItem } from '@/types/threats';
 
-export interface ThreatItem {
-  id: string;
-  title: string;
-  description: string;
-  severity: 'critical' | 'high' | 'medium' | 'low';
-  region: string;
-  time: string;
-  score: number;
-  trackId: string;
-  assetName: string;
-}
+export type { ThreatItem };
 
 interface ThreatsPanelProps {
   topThreats: ThreatItem[];

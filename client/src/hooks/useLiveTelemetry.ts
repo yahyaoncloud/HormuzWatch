@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useWebSocket } from '@/providers';
 import { useHealthStore } from '@/stores/slices/health.store';
 import type { BaseTrack } from '@/types/telemetry';

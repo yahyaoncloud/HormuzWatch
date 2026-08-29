@@ -2,6 +2,10 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 import { create } from 'zustand';
 import { persist, subscribeWithSelector } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
+import { enableMapSet } from 'immer';
+
+// Enable Map and Set support for Immer across all Zustand stores
+enableMapSet();
 
 // ============================================================
 // UI Store (Global UI state)

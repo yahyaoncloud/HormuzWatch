@@ -114,7 +114,7 @@ export function HomePage() {
     () => typeof window !== 'undefined' && window.localStorage.getItem('hw-show-areas') !== '0'
   );
   const [showMetrics, setShowMetrics] = useState(
-    () => typeof window !== 'undefined' && window.localStorage.getItem('hw-show-metrics') === '1'
+    () => typeof window !== 'undefined' && window.localStorage.getItem('hw-show-metrics') !== '0'
   );
   const [reduceMotion, setReduceMotion] = useState(
     () => typeof window !== 'undefined' && window.localStorage.getItem('hw-reduce-motion') === '1'
@@ -141,10 +141,9 @@ export function HomePage() {
     return localStorage.getItem('hw-disclaimer-dismissed') !== '1';
   });
 
-  // Telemetry Hook
+  // Telemetry Hook reacting dynamically to layer toggles
   const {
     metrics,
-    rawMetrics,
     isMetricsLoading,
     topThreats,
     newsItems,
@@ -159,12 +158,17 @@ export function HomePage() {
     wsStatus,
     latestLogs,
   } = useHomeTelemetry({
-    initialMetrics: loaderData?.initialMetrics,
-    initialTraces: loaderData?.initialTraces,
-    initialNews: loaderData?.initialNews,
+    initialMetrics: loaderData?.initialMetrics ?? undefined,
+    initialTraces: loaderData?.initialTraces ?? undefined,
+    initialNews: loaderData?.initialNews ?? undefined,
     severityFilter,
     regionFilter,
     timeline,
+    showVessels,
+    showAircraft,
+    showConflicts,
+    showAreas,
+    showMetrics,
   });
 
   // Settings & effects
@@ -350,16 +354,18 @@ export function HomePage() {
             onRegionFilterChange={handleRegionFilterChange}
           />
 
-          {/* Floating metrics panel */}
-          <div className="absolute bottom-3 left-5 right-5 z-20 flex justify-center pointer-events-none md:bottom-4 md:left-8 md:right-8 lg:left-[calc(18rem+1.5rem)] lg:right-[calc(20rem+1.5rem)]">
-            <div className="w-full max-w-5xl glass-card pointer-events-auto">
-              <LiveStatStrip
-                metrics={metrics}
-                isLoading={isMetricsLoading}
-                onMetricClick={setSelectedMetric}
-              />
+          {/* Floating metrics panel (toggled via Show: Metrics button) */}
+          {showMetrics && (
+            <div className="absolute bottom-3 left-5 right-5 z-20 flex justify-center pointer-events-none md:bottom-4 md:left-8 md:right-8 lg:left-[calc(18rem+1.5rem)] lg:right-[calc(20rem+1.5rem)]">
+              <div className="w-full max-w-5xl glass-card pointer-events-auto animate-in fade-in slide-in-from-bottom-3 duration-200">
+                <LiveStatStrip
+                  metrics={metrics}
+                  isLoading={isMetricsLoading}
+                  onMetricClick={setSelectedMetric}
+                />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -387,7 +393,7 @@ export function HomePage() {
       <MetricDetailSheet
         selectedMetric={selectedMetric}
         onClose={() => setSelectedMetric(null)}
-        metrics={rawMetrics}
+        metrics={metrics}
       />
       <SettingsSheet
         open={settingsOpen}

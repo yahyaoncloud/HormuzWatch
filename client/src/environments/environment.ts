@@ -29,13 +29,13 @@ const num = (v: string | undefined, fallback: number): number => {
 // Environment singleton
 // ---------------------------------------------------------------------------
 
-// Dynamic URL Resolvers for Dev, LAN, and Cloudflare / Vercel Production
+// Dynamic URL Resolvers for Dev, LAN, and Cloudflare / Production
 const getDefaultApiUrl = (): string => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
   if (typeof window === "undefined") return "https://api.hormuzwatch.aburcloud.com";
   const host = window.location.hostname;
-  if (host === "localhost" || host === "127.0.0.1") return "http://localhost:10020";
   if (host === "192.168.1.51") return "http://192.168.1.51:10020";
+  // Default localhost / LAN / Cloudflare to live Cloudflare edge API
   return "https://api.hormuzwatch.aburcloud.com";
 };
 
@@ -43,7 +43,6 @@ const getDefaultMlUrl = (): string => {
   if (import.meta.env.VITE_ML_SERVICE_URL) return import.meta.env.VITE_ML_SERVICE_URL;
   if (typeof window === "undefined") return "https://ml.hormuzwatch.aburcloud.com";
   const host = window.location.hostname;
-  if (host === "localhost" || host === "127.0.0.1") return "http://localhost:8090";
   if (host === "192.168.1.51") return "http://192.168.1.51:8090";
   return "https://ml.hormuzwatch.aburcloud.com";
 };
@@ -52,7 +51,6 @@ const getDefaultWsUrl = (): string => {
   if (import.meta.env.VITE_WS_TELEMETRY_URL) return import.meta.env.VITE_WS_TELEMETRY_URL;
   if (typeof window === "undefined") return "wss://api.hormuzwatch.aburcloud.com/ws/stream";
   const host = window.location.hostname;
-  if (host === "localhost" || host === "127.0.0.1") return "ws://localhost:10020/ws/stream";
   if (host === "192.168.1.51") return "ws://192.168.1.51:10020/ws/stream";
   return "wss://api.hormuzwatch.aburcloud.com/ws/stream";
 };

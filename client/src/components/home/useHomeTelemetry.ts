@@ -1,10 +1,11 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   getTopTraces,
   getNews,
   getBlockadeIndicators,
   getTransits,
+  getPublicMetrics,
   type PublicMetricsResponse,
   type TopTracesResponse,
   type NewsResponse,
@@ -13,6 +14,7 @@ import {
 } from '@/lib/api';
 import { useRealtimeStore } from '@/stores';
 import { useHealthStore } from '@/stores/slices/health.store';
+import { useMapStateStore } from '@/stores/slices/map.store';
 import { useSystemHealth } from '@/hooks/useSystemHealth';
 import { useLiveTelemetry } from '@/hooks/useLiveTelemetry';
 import type { ThreatItem } from '@/types/threats';
@@ -24,27 +26,53 @@ export interface UseHomeTelemetryProps {
   severityFilter?: string;
   regionFilter?: string;
   timeline?: string;
+  showVessels?: boolean;
+  showAircraft?: boolean;
+  showConflicts?: boolean;
+  showAreas?: boolean;
+  showMetrics?: boolean;
 }
 
 export function useHomeTelemetry({
   initialMetrics,
   initialTraces,
   initialNews,
-  severityFilter = 'all',
-  regionFilter = 'all',
-  timeline = 'all',
+  severityFilter: severityFilterProp,
+  regionFilter: _regionFilterProp,
+  timeline: _timelineProp,
+  showVessels: showVesselsProp,
+  showAircraft: showAircraftProp,
+  showConflicts: showConflictsProp,
 }: UseHomeTelemetryProps = {}) {
-  // Use dedicated health polling hook
+  // Use map store for layer states and filters
+  const storeLayers = useMapStateStore((s) => s.layers);
+  const storeSeverity = useMapStateStore((s) => s.severityFilter);
+
+  const showVessels = showVesselsProp ?? storeLayers.vessels;
+  const showAircraft = showAircraftProp ?? storeLayers.aircraft;
+  const showConflicts = showConflictsProp ?? storeLayers.conflicts;
+  const severityFilter = severityFilterProp ?? storeSeverity;
+
+  // Real-time backend system health & HUD logs
   const { health: systemHealth } = useSystemHealth(10000);
   const latestLogs = useHealthStore((s) => s.latestLogs);
+
+  // Poll REST metrics every 10s as real-time baseline
+  const { data: metricsData } = useQuery<PublicMetricsResponse>({
+    queryKey: ['public-metrics-home'],
+    queryFn: getPublicMetrics,
+    initialData: initialMetrics ?? undefined,
+    refetchInterval: 10000,
+    staleTime: 5000,
+  });
 
   // Queries for background intelligence feeds
   const { data: tracesData } = useQuery({
     queryKey: ['public-traces-home'],
     queryFn: getTopTraces,
     initialData: initialTraces ?? undefined,
-    refetchInterval: false,
-    staleTime: Infinity,
+    refetchInterval: 30000,
+    staleTime: 15000,
   });
 
   const { data: newsData } = useQuery({
@@ -66,10 +94,9 @@ export function useHomeTelemetry({
     refetchInterval: 60000,
   });
 
-  // Use dedicated live telemetry ingestion hook
-  const { tracks: liveTraces, wsStatus } = useLiveTelemetry(tracesData?.traces ?? []);
+  // Live WebSocket streams
+  const { tracks: allLiveTraces, wsStatus } = useLiveTelemetry(tracesData?.traces ?? []);
   const liveStats = useRealtimeStore((s) => s.stats);
-
   const newsItems = newsData?.news ?? [];
 
   // Update News HUD log whenever news data arrives
@@ -87,47 +114,68 @@ export function useHomeTelemetry({
     }
   }, [newsItems, setMetricLog]);
 
-  // Merge & compute metrics
-  const displayMetrics = useMemo(() => {
-    if (liveStats) {
-      return {
-        maritimeCount: liveStats.maritimeCount,
-        aviationCount: liveStats.aviationCount,
-        totalTracks: liveStats.totalTracks,
-        criticalCount: liveStats.criticalCount,
-        highCount: liveStats.highCount,
-        mediumCount: liveStats.mediumCount,
-        lowCount: liveStats.lowCount,
-        avgScore: liveStats.avgScore,
-        activeRegions: liveStats.activeRegions ?? 4,
-        timestamp: liveStats.timestamp || new Date().toISOString(),
-      };
-    }
+  // Dynamically filter active traces based on show toggles & region filters
+  const activeVisibleTraces = useMemo(() => {
+    return allLiveTraces.filter((t) => {
+      const isAir = String(t.trackId || '').startsWith('FLIGHT') || (t as any).altitude !== undefined;
+      if (isAir && !showAircraft) return false;
+      if (!isAir && !showVessels) return false;
+      if (!showConflicts && (t.severity === 'critical' || t.severity === 'high')) return false;
+      return true;
+    });
+  }, [allLiveTraces, showVessels, showAircraft, showConflicts]);
 
-    const vessels = liveTraces.filter((t) => !String(t.trackId || '').startsWith('FLIGHT'));
-    const aircraft = liveTraces.filter((t) => String(t.trackId || '').startsWith('FLIGHT'));
-    const critical = liveTraces.filter((t) => t.severity === 'critical').length;
-    const high = liveTraces.filter((t) => t.severity === 'high').length;
-    const medium = liveTraces.filter((t) => t.severity === 'medium').length;
-    const low = liveTraces.filter((t) => t.severity === 'low' || !t.severity).length;
+  // Compute live dynamic metrics reflecting active toggles & real-time telemetry
+  const displayMetrics = useMemo(() => {
+    const rawMetrics = metricsData?.metrics;
+    const baseVesselCount =
+      liveStats?.maritimeCount ??
+      rawMetrics?.maritimeCount ??
+      allLiveTraces.filter((t) => !String(t.trackId || '').startsWith('FLIGHT')).length ??
+      18;
+    const baseAircraftCount =
+      liveStats?.aviationCount ??
+      rawMetrics?.aviationCount ??
+      allLiveTraces.filter((t) => String(t.trackId || '').startsWith('FLIGHT')).length ??
+      8;
+
+    const effectiveVessels = showVessels ? baseVesselCount : 0;
+    const effectiveAircraft = showAircraft ? baseAircraftCount : 0;
+    const effectiveTotal = effectiveVessels + effectiveAircraft;
+
+    const critical = showConflicts
+      ? (rawMetrics?.criticalCount ??
+        liveStats?.highAnomalyCount ??
+        activeVisibleTraces.filter((t) => t.severity === 'critical').length)
+      : 0;
+    const high = showConflicts
+      ? (rawMetrics?.highCount ??
+        (liveStats?.totalAnomalies ? Math.max(0, liveStats.totalAnomalies - (liveStats.highAnomalyCount || 0)) : 0) ??
+        activeVisibleTraces.filter((t) => t.severity === 'high').length)
+      : 0;
+    const medium = activeVisibleTraces.filter((t) => t.severity === 'medium').length;
+    const low = activeVisibleTraces.filter((t) => t.severity === 'low' || !t.severity).length;
+
     const avgScore =
-      liveTraces.length > 0
-        ? Math.round(liveTraces.reduce((acc, t) => acc + (t.score || 0), 0) / liveTraces.length)
-        : 12;
+      activeVisibleTraces.length > 0
+        ? Math.round(
+            activeVisibleTraces.reduce((acc, t) => acc + (t.score || 0), 0) / activeVisibleTraces.length
+          )
+        : (rawMetrics?.avgScore ?? 12);
 
     return {
-      maritimeCount: vessels.length || 18,
-      aviationCount: aircraft.length || 8,
-      totalTracks: liveTraces.length || 26,
+      maritimeCount: effectiveVessels,
+      aviationCount: effectiveAircraft,
+      totalTracks: effectiveTotal,
       criticalCount: critical,
       highCount: high,
       mediumCount: medium,
       lowCount: low,
       avgScore,
-      activeRegions: 4,
+      activeRegions: rawMetrics?.activeRegions ?? 4,
       timestamp: new Date().toISOString(),
     };
-  }, [liveStats, liveTraces]);
+  }, [metricsData, liveStats, allLiveTraces, activeVisibleTraces, showVessels, showAircraft, showConflicts]);
 
   // Derived counts
   const vesselCount = displayMetrics.maritimeCount;
@@ -138,30 +186,48 @@ export function useHomeTelemetry({
 
   // Filtered top threats for right intelligence drawer
   const topThreats: ThreatItem[] = useMemo(() => {
-    return liveTraces
+    return activeVisibleTraces
       .filter((t) => {
         if (severityFilter !== 'all' && t.severity !== severityFilter) return false;
         return true;
       })
       .slice(0, 15)
-      .map((t) => ({
-        id: t.trackId,
-        trackId: t.trackId,
-        assetName: t.assetName || t.trackId,
-        anomalyScore: t.score || 0,
-        severity: t.severity || 'low',
-        reasons: typeof t.reasons === 'string' ? JSON.parse(t.reasons || '[]') : t.reasons || [],
-        timestamp: t.updatedAt || t.timestamp || new Date().toISOString(),
-        lat: t.lat,
-        lon: t.lon,
-        speed: t.speed,
-        heading: t.heading,
-      }));
-  }, [liveTraces, severityFilter]);
+      .map((t) => {
+        const reasonsList: string[] =
+          typeof t.reasons === 'string'
+            ? JSON.parse(t.reasons || '[]')
+            : Array.isArray(t.reasons)
+            ? t.reasons
+            : [];
+        const isAir = String(t.trackId || '').startsWith('FLIGHT');
+        const severityVal = (t.severity || 'low') as 'critical' | 'high' | 'medium' | 'low';
+        const scoreVal = t.score || 0;
+
+        return {
+          id: t.trackId,
+          trackId: t.trackId,
+          assetName: t.assetName || t.trackId,
+          title: `${isAir ? 'Air Corridor Anomaly' : 'Vessel Deviation'}: ${t.assetName || t.trackId}`,
+          description: reasonsList.join('; ') || 'Elevated behavioral anomaly detected by ML ensemble',
+          severity: severityVal,
+          region: 'Strait of Hormuz',
+          time: t.updatedAt ? new Date(t.updatedAt).toLocaleTimeString() : new Date().toLocaleTimeString(),
+          score: scoreVal,
+          anomalyScore: scoreVal,
+          reasons: reasonsList,
+          timestamp: t.updatedAt || t.timestamp || new Date().toISOString(),
+          lat: t.lat,
+          lon: t.lon,
+          speed: t.speed,
+          heading: t.heading,
+          domain: isAir ? 'aviation' : 'maritime',
+        };
+      });
+  }, [activeVisibleTraces, severityFilter]);
 
   return {
     metrics: displayMetrics,
-    isMetricsLoading: false,
+    isMetricsLoading: !metricsData && allLiveTraces.length === 0,
     topThreats,
     newsItems,
     blockade,
@@ -174,5 +240,8 @@ export function useHomeTelemetry({
     systemHealth,
     wsStatus,
     latestLogs,
+    showVessels,
+    showAircraft,
+    showConflicts,
   };
 }

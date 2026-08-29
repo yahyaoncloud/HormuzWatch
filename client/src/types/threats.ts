@@ -2,16 +2,19 @@
 // Canonical Threat & Incident Feed Types
 // ==============================================================================
 
-import type { AnomalySeverity } from './telemetry';
-
 export interface ThreatItem {
   id: string;
   trackId: string;
   assetName: string;
-  anomalyScore: number;
-  severity: AnomalySeverity | string;
-  reasons: string[];
-  timestamp: string;
+  title: string;
+  description: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  region: string;
+  time: string;
+  score: number;
+  anomalyScore?: number;
+  reasons?: string[];
+  timestamp?: string;
   lat?: number;
   lon?: number;
   speed?: number;
@@ -26,5 +29,5 @@ export interface ThreatCluster {
   centerLon: number;
   threatCount: number;
   maxScore: number;
-  severity: AnomalySeverity;
+  severity: 'critical' | 'high' | 'medium' | 'low';
 }

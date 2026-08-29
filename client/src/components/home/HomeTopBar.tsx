@@ -12,7 +12,7 @@ import {
   ShieldAlert,
   Ship,
 } from 'lucide-react';
-import type { BlockadeIndicators, HealthResponse, TransitSummary } from '@/lib/api';
+import type { BlockadeIndicators, TransitSummary } from '@/lib/api';
 import { cn } from '@/utils/cn';
 import { HudMetricBadge, type HudMetricConfig } from './HudMetricBadge';
 import { LayerToggleGroup } from './LayerToggleGroup';
@@ -59,7 +59,7 @@ export interface HomeTopBarProps {
   totalTracks?: number;
   blockade?: BlockadeIndicators | null;
   transits?: TransitSummary | null;
-  systemHealth?: HealthResponse | null;
+  systemHealth?: any;
   wsStatus?: 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
   latestLogs?: SystemMetricLogs;
 }
