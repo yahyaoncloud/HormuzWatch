@@ -1,12 +1,15 @@
 package intelligence
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
@@ -35,7 +38,6 @@ type mlResultCache struct {
 //     unset). Optional mTLS via ML_SERVICE_TLS_CERT / ML_SERVICE_TLS_KEY.
 //   - Dev fallback: when ML_SERVICE_ADDR points at localhost and ML_SERVICE_TLS
 //     is "off" (or unset), an insecure channel is used.
-//
 type CircuitState int
 
 const (
@@ -515,6 +517,105 @@ func localHeuristicScore(f FeatureVector) float64 {
 type MLTrainRequest struct {
 	Data          []MLFeaturePayload `json:"data"`
 	Contamination float64            `json:"contamination"`
+}
+
+// PredictBlockade sends blockade features to the ML service via REST API (domain="blockade")
+// and returns the anomaly score.
+func (c *MLClient) PredictBlockade(features BlockadeFeatures) (float64, *MLExplanation) {
+	// Use REST API for blockade domain since gRPC doesn't support it yet
+	mlURL := os.Getenv("ML_SERVICE_URL")
+	if mlURL == "" {
+		mlURL = "http://localhost:8090"
+	}
+
+	reqBody := map[string]interface{}{
+		"domain":   "blockade",
+		"features": features,
+		"explain":  false,
+	}
+
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		log.Printf("[ML] blockade request marshal error: %v", err)
+		return 0.0, nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "POST", mlURL+"/api/predict", bytes.NewReader(jsonBody))
+	if err != nil {
+		log.Printf("[ML] blockade request create error: %v", err)
+		return 0.0, nil
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("[ML] blockade POST error: %v — using local heuristic", err)
+		return localBlockadeHeuristic(features), nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[ML] blockade HTTP %d — using local heuristic", resp.StatusCode)
+		return localBlockadeHeuristic(features), nil
+	}
+
+	var result struct {
+		Probability  float64        `json:"probability"`
+		AnomalyScore float64        `json:"anomaly_score"`
+		IsAnomaly    bool           `json:"is_anomaly"`
+		ModelVersion string         `json:"model_version"`
+		Explanation  *MLExplanation `json:"shap_contributions,omitempty"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Printf("[ML] blockade response decode error: %v", err)
+		return localBlockadeHeuristic(features), nil
+	}
+
+	return result.AnomalyScore, result.Explanation
+}
+
+// localBlockadeHeuristic provides a fast local fallback for blockade scoring.
+func localBlockadeHeuristic(f BlockadeFeatures) float64 {
+	score := 0.0
+
+	// Strait transits (0-30): inverse relationship - fewer transits = higher anomaly
+	if f.StraitTransits24h == 0 {
+		score += 30
+	} else if f.StraitTransits24h <= 5 {
+		score += 20
+	} else if f.StraitTransits24h <= 15 {
+		score += 10
+	}
+
+	// Anchored ratio (0-25): higher = more anomalous
+	score += math.Min(f.AnchoredRatioPct/4, 25)
+
+	// Waiting fleets (0-25)
+	if f.WaitingFleet6h > 0 {
+		score += math.Min(float64(f.WaitingFleet6h)/20*15, 15)
+	}
+	if f.WaitingFleet24h > 0 {
+		score += math.Min(float64(f.WaitingFleet24h)/10*10, 10)
+	}
+
+	// Active vessels context (0-10): very low activity is anomalous
+	if f.ActiveVessels < 10 {
+		score += 10
+	} else if f.ActiveVessels < 50 {
+		score += 5
+	}
+
+	// Flag entropy (0-10): low diversity can indicate restricted flag states
+	score += (1.0 - f.FlagEntropy) * 10
+
+	if score > 100 {
+		score = 100
+	}
+	return score
 }
 
 // MLTrainResponse is the JSON body returned from POST /train (retained for compatibility).

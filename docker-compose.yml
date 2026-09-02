@@ -1,40 +1,20 @@
-# HormuzWatch v2.0.0 — Production Docker Compose
-#
-# Services:
-#   server  — Go backend (REST + WebSocket + gRPC client)
-#   ml      — Python ML inference (IsolationForest + LOF ensemble)
-#   client  — React SPA (Nginx, production build)
-#
-# Usage:
-#   docker compose up -d --build              # full stack
-#   docker compose up -d server ml            # backend only
-#   docker compose --profile full up -d       # with client
-#   docker compose logs -f server             # tail server logs
-#   docker compose ps                         # service status
-#
-# Access:
-#   Server API  → http://localhost:10020/health
-#   ML Health   → http://localhost:8090/health
-#   Client      → http://localhost:3000
-
-version: "3.9"
+# HormuzWatch — Production Docker Compose
+# Usage: docker compose -f docker-compose.yml up --build -d
 
 services:
-  # ═══════════════════════════════════════════════════════════
-  #  Go Backend — REST API + WebSocket + News Pipeline
-  # ═══════════════════════════════════════════════════════════
+  # ── Go Backend Server (Production) ─────────────────────────
   server:
     build:
       context: ./server
       dockerfile: Dockerfile
       args:
         VERSION: "${VERSION:-2.0.0}"
-        BUILD_TIME: "${BUILD_TIME:-unknown}"
-        GIT_COMMIT: "${GIT_COMMIT:-unknown}"
+        BUILD_TIME: "${BUILD_TIME}"
+        GIT_COMMIT: "${GIT_COMMIT}"
     image: hormuzwatch-server:${VERSION:-2.0.0}
     container_name: hormuzwatch-server
     ports:
-      - "${PORT:-10020}:10020"
+      - "10020:10020"
     environment:
       - PORT=10020
       - GIN_MODE=${GIN_MODE:-release}
@@ -58,6 +38,9 @@ services:
       - METRICS_API_KEY=${METRICS_API_KEY:-}
       # LLM (OpenRouter)
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      # ArcGIS Chokepoints API
+      - ARCGIS_CHOKEPOINTS_URL=https://services9.arcgis.com/weJ1QsnbMYJlCHdG/arcgis/rest/services/Daily_Chokepoints_Data/FeatureServer/0/query
+      - ARCGIS_FETCH_INTERVAL_HOURS=6
       # Observability
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     depends_on:
@@ -66,21 +49,8 @@ services:
     networks:
       - hormuzwatch
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:10020/health"]
-      interval: 15s
-      timeout: 5s
-      start_period: 15s
-      retries: 3
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "3"
 
-  # ═══════════════════════════════════════════════════════════
-  #  Python ML Service — Anomaly Detection Ensemble
-  # ═══════════════════════════════════════════════════════════
+  # ── Python ML Service (Production) ─────────────────────────
   ml:
     build:
       context: ./service/ml-service
@@ -90,8 +60,8 @@ services:
     image: hormuzwatch-ml:${VERSION:-2.0.0}
     container_name: hormuzwatch-ml
     ports:
-      - "${ML_PORT:-8090}:8090"    # FastAPI health/train/predict
-      - "${GRPC_PORT:-8091}:8091"  # gRPC inference
+      - "8090:8090"
+      - "8091:8091"
     environment:
       - ML_PORT=8090
       - GRPC_PORT=8091
@@ -104,27 +74,20 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8090/health"]
-      interval: 15s
-      timeout: 5s
-      start_period: 15s
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
       retries: 3
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "3"
 
-  # ═══════════════════════════════════════════════════════════
-  #  React Frontend — Production Nginx SPA
-  # ═══════════════════════════════════════════════════════════
+  # ── React Frontend (Production / Nginx) ────────────────────
   client:
     build:
       context: ./client
       dockerfile: Dockerfile
       args:
         VITE_API_BASE_URL: "${VITE_API_BASE_URL:-http://localhost:10020}"
-        VITE_SUPABASE_URL: "${SUPABASE_URL}"
-        VITE_SUPABASE_ANON_KEY: "${SUPABASE_ANON_KEY}"
+        VITE_SUPABASE_URL: "${VITE_SUPABASE_URL}"
+        VITE_SUPABASE_ANON_KEY: "${VITE_SUPABASE_ANON_KEY}"
         VITE_APP_VERSION: "${VERSION:-2.0.0}"
     image: hormuzwatch-client:${VERSION:-2.0.0}
     container_name: hormuzwatch-client
@@ -135,20 +98,7 @@ services:
         condition: service_started
     networks:
       - hormuzwatch
-    profiles:
-      - full
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/"]
-      interval: 15s
-      timeout: 5s
-      start_period: 5s
-      retries: 3
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "3"
 
 networks:
   hormuzwatch:

@@ -36,9 +36,9 @@ type Observation struct {
 	Lon               float64 `json:"lon" binding:"required"`
 	Speed             float64 `json:"speed"`
 	PreviousSpeed     float64 `json:"previousSpeed"`
-	COG               float64 `json:"cog,omitempty"`     // Course Over Ground (degrees 0-359.9)
-	Heading           float64 `json:"heading"`           // True Heading / Vessel Orientation (degrees 0-359 or 511 if unavailable)
-	CourseDelta       float64 `json:"courseDelta"`       // Shortest-arc change in COG / motion course (degrees)
+	COG               float64 `json:"cog,omitempty"` // Course Over Ground (degrees 0-359.9)
+	Heading           float64 `json:"heading"`       // True Heading / Vessel Orientation (degrees 0-359 or 511 if unavailable)
+	CourseDelta       float64 `json:"courseDelta"`   // Shortest-arc change in COG / motion course (degrees)
 	AisAgeMinutes     int     `json:"aisAgeMinutes"`
 	HotZoneDistanceNm float64 `json:"hotZoneDistanceNm"`
 	Altitude          float64 `json:"altitude,omitempty"`

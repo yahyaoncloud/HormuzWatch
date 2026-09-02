@@ -7,6 +7,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -110,14 +111,18 @@ func fetchAndProcessChokepoints(apiURL string, targetChokepoints map[string]bool
 	for portID := range targetChokepoints {
 		whereClauses = append(whereClauses, fmt.Sprintf("portid='%s'", portID))
 	}
-	whereClause := strings.Join(whereClauses, " OR ")
+	whereClause := "(" + strings.Join(whereClauses, " OR ") + ")"
 
 	// Add date filter for last 30 days
 	cutoff := time.Now().AddDate(0, 0, -30).Format("2006-01-02")
 	whereClause += fmt.Sprintf(" AND date >= DATE '%s'", cutoff)
 
-	queryURL := fmt.Sprintf("%s?where=%s&outFields=*&outSR=4326&f=json",
-		apiURL, whereClause)
+	params := url.Values{}
+	params.Set("where", whereClause)
+	params.Set("outFields", "*")
+	params.Set("outSR", "4326")
+	params.Set("f", "json")
+	queryURL := apiURL + "?" + params.Encode()
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Get(queryURL)
@@ -157,7 +162,7 @@ func fetchAndProcessChokepoints(apiURL string, targetChokepoints map[string]bool
 			TrackID:           trackID,
 			AssetName:         fmt.Sprintf("Chokepoint: %s", record.PortName),
 			Timestamp:         record.Date + "T12:00:00Z", // Midday timestamp for daily aggregate
-			Lat:               0, // Will be filled by geofence lookup
+			Lat:               0,                          // Will be filled by geofence lookup
 			Lon:               0,
 			Speed:             0,
 			COG:               0,
@@ -169,7 +174,7 @@ func fetchAndProcessChokepoints(apiURL string, targetChokepoints map[string]bool
 		}
 
 		// Enqueue with custom features for blockade detection
-		pipeline.EnqueueBlockadeObservation(trackID, blockadeFeatures, payload)
+		pipeline.EnqueueBlockadeObservation(trackID, blockadeFeatures, &payload)
 	}
 }
 
@@ -186,7 +191,7 @@ func createBlockadeFeatures(record ArcGISChokepointRecord) intelligence.Blockade
 	anchoredRatio := float64(waitingEstimate) / float64(totalVessels) * 100.0
 
 	// Estimate waiting fleets based on vessel counts
-	waiting6h := record.NTanker / 4  // rough estimate
+	waiting6h := record.NTanker / 4 // rough estimate
 	waiting24h := record.NTanker / 2
 
 	// Flag entropy: diversity of vessel types
@@ -194,13 +199,13 @@ func createBlockadeFeatures(record ArcGISChokepointRecord) intelligence.Blockade
 	flagEntropy := calculateTypeEntropy(types)
 
 	return intelligence.BlockadeFeatures{
-		StraitTransits24h:    record.NTotal,
-		AnchoredRatioPct:     anchoredRatio,
-		WaitingFleet6h:       waiting6h,
-		WaitingFleet24h:      waiting24h,
-		ActiveVessels:        record.NTotal,
-		AnchorageZoneCount:   1, // Each chokepoint is one zone
-		FlagEntropy:          flagEntropy,
+		StraitTransits24h:  record.NTotal,
+		AnchoredRatioPct:   anchoredRatio,
+		WaitingFleet6h:     waiting6h,
+		WaitingFleet24h:    waiting24h,
+		ActiveVessels:      record.NTotal,
+		AnchorageZoneCount: 1, // Each chokepoint is one zone
+		FlagEntropy:        flagEntropy,
 	}
 }
 

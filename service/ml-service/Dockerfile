@@ -26,13 +26,14 @@ RUN apt-get update \
 
 RUN groupadd -r hormuz && useradd -r -g hormuz hormuz
 
-COPY requirements.txt .
+# Install Python deps first (cached layer)
+COPY --chown=hormuz:hormuz requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
-RUN mkdir -p models /app/logs
+# Copy application code with ownership (single layer)
+COPY --chown=hormuz:hormuz . .
+RUN mkdir -p /app/models /app/logs
 
-RUN chown -R hormuz:hormuz /app
 USER hormuz
 
 EXPOSE 8090 8091

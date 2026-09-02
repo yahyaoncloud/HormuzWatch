@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -50,10 +51,11 @@ type Pipeline struct {
 	MLClient *MLClient
 
 	// ── Worker pool (bounded buffered channel work queue) ────────
-	jobQueue chan *telemetry.Observation
-	ctx      context.Context
-	cancel   context.CancelFunc
-	active   atomic.Int32 // current active workers
+	jobQueue         chan *telemetry.Observation
+	blockadeFeatures sync.Map
+	ctx              context.Context
+	cancel           context.CancelFunc
+	active           atomic.Int32 // current active workers
 }
 
 // NewPipeline is the single constructor for the intelligence pipeline.
@@ -111,7 +113,8 @@ func (p *Pipeline) EnqueueObservation(obs *telemetry.Observation) {
 // EnqueueBlockadeObservation creates a synthetic observation from blockade features
 // and enqueues it for ML prediction. Used for ArcGIS chokepoint daily aggregates.
 func (p *Pipeline) EnqueueBlockadeObservation(trackID string, features BlockadeFeatures, payload *telemetry.Observation) {
-	// Create a copy of the payload with blockade-specific track ID
+	p.blockadeFeatures.Store(trackID, features)
+
 	obs := &telemetry.Observation{
 		TrackID:           trackID,
 		AssetName:         payload.AssetName,
@@ -127,9 +130,6 @@ func (p *Pipeline) EnqueueBlockadeObservation(trackID string, features BlockadeF
 		Source:            payload.Source,
 	}
 
-	// Store blockade features in the observation for later ML processing
-	// We'll encode them in the JSON payload or use a separate field
-	// For now, we'll use the existing queue but the worker needs to handle blockade features
 	p.EnqueueObservation(obs)
 }
 
@@ -191,9 +191,13 @@ func (p *Pipeline) worker(id int) {
 }
 
 // ── Core pipeline (runs inside worker or synchronously) ────────────────────
-
 func (p *Pipeline) process(payload *telemetry.Observation) ThreatAssessment {
 	observability.ObservationsProcessed.Add(1)
+
+	// Handle ArcGIS blockade observations separately (no kinematic features)
+	if payload.Source == telemetry.SourceArcGIS {
+		return p.processBlockadeObservation(payload)
+	}
 
 	// Filter out impossible vessel positions on land (evaluating chart datum offset vs GPS multi-path)
 	if payload.Domain() == telemetry.DomainVessel && geo.IsOnLand(payload.Lat, payload.Lon) {
@@ -244,6 +248,66 @@ func (p *Pipeline) process(payload *telemetry.Observation) ThreatAssessment {
 	}
 
 	// ── 9. Publish & persist anomaly if above threshold ───────
+	if assessment.FinalScore > 0 {
+		observability.AnomaliesDetected.Add(1)
+		p.Hub.Publish(hub.Message{
+			Type: "anomaly",
+			Data: assessment,
+		})
+
+		reasonsJSON, _ := json.Marshal(assessment.Reasons)
+		actionsJSON, _ := json.Marshal(assessment.Actions)
+		db.Exec(
+			`INSERT INTO anomalies (track_id, score, severity, reasons, actions, last_updated)
+			 VALUES ($1, $2, $3, $4, $5, NOW())
+			 ON CONFLICT(track_id) DO UPDATE SET
+				score=EXCLUDED.score, severity=EXCLUDED.severity,
+				reasons=EXCLUDED.reasons, actions=EXCLUDED.actions,
+				last_updated=NOW()`,
+			assessment.TrackID, assessment.FinalScore, assessment.Severity,
+			string(reasonsJSON), string(actionsJSON),
+		)
+	}
+
+	return assessment
+}
+
+// processBlockadeObservation handles ArcGIS chokepoint daily aggregate data
+func (p *Pipeline) processBlockadeObservation(payload *telemetry.Observation) ThreatAssessment {
+	rawFeatures, ok := p.blockadeFeatures.LoadAndDelete(payload.TrackID)
+	if !ok {
+		log.Printf("[pipeline] missing blockade features for %s", payload.TrackID)
+		return ThreatAssessment{}
+	}
+	blockadeFeatures, ok := rawFeatures.(BlockadeFeatures)
+	if !ok {
+		log.Printf("[pipeline] invalid blockade feature payload for %s", payload.TrackID)
+		return ThreatAssessment{}
+	}
+
+	ruleScore := 0
+	mlScore, explanation := p.MLClient.PredictBlockade(blockadeFeatures)
+
+	geoScore := GeoStore.ScoreForLocation(payload.Lat, payload.Lon)
+	features := FeatureVector{
+		TrackID: payload.TrackID,
+		Lat:     payload.Lat,
+		Lon:     payload.Lon,
+	}
+
+	assessment := ComputeComposite(features, ruleScore, mlScore, geoScore, explanation)
+	assessment.TrackID = payload.TrackID
+
+	// Publish telemetry
+	p.Hub.Publish(hub.Message{
+		Type: "telemetry",
+		Data: payload,
+	})
+
+	if err := db.PersistTelemetry(context.Background(), *payload); err != nil {
+		log.Printf("[pipeline] persist telemetry %s: %v", payload.TrackID, err)
+	}
+
 	if assessment.FinalScore > 0 {
 		observability.AnomaliesDetected.Add(1)
 		p.Hub.Publish(hub.Message{

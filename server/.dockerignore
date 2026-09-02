@@ -1,0 +1,45 @@
+# VCS
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+vendor
+*.exe
+*.test
+
+# Build artifacts
+bin
+dist
+build
+
+# Config not needed in container
+docker-compose.yml
+docker-compose.dev.yml
+Dockerfile
+.env.example
+.env.local
+.env.*.local
+*.log
+
+# Data directories (mounted as volumes)
+data
+templates
+
+# Documentation
+README.md
+docs
+
+# Misc
+*.tmp
+*.temp

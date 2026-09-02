@@ -1,8 +1,6 @@
 # HormuzWatch — Development Docker Compose
 # Usage: docker compose -f docker-compose.dev.yml up --build
 
-version: "3.9"
-
 services:
   # ── Go Backend Server (Dev Mode) ───────────────────────────
   server:
@@ -35,6 +33,9 @@ services:
       - FIRMS_MAP_KEY=${FIRMS_MAP_KEY:-}
       - METRICS_API_KEY=${METRICS_API_KEY:-}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      # ArcGIS Chokepoints API
+      - ARCGIS_CHOKEPOINTS_URL=https://services9.arcgis.com/weJ1QsnbMYJlCHdG/arcgis/rest/services/Daily_Chokepoints_Data/FeatureServer/0/query
+      - ARCGIS_FETCH_INTERVAL_HOURS=6
     volumes:
       - ./server/data:/app/data
       - ./server/templates:/app/templates
@@ -63,7 +64,22 @@ services:
       - MODELS_DIR=/app/models
       - APP_VERSION=dev-2.0.0
     volumes:
-      - ./service/ml-service:/app
+      # Mount only source directories for live-reload dev, NOT the entire ml-service dir
+      # This avoids mounting host .venv/ into the container
+      - ./service/ml-service/app.py:/app/app.py:ro
+      - ./service/ml-service/api:/app/api:ro
+      - ./service/ml-service/lib:/app/lib:ro
+      - ./service/ml-service/grpc_server.py:/app/grpc_server.py:ro
+      - ./service/ml-service/ml_cli.py:/app/ml_cli.py:ro
+      - ./service/ml-service/service_entrypoint.py:/app/service_entrypoint.py:ro
+      - ./service/ml-service/requirements.txt:/app/requirements.txt:ro
+      - ./service/ml-service/ml_service_pb2.py:/app/ml_service_pb2.py:ro
+      - ./service/ml-service/ml_service_pb2_grpc.py:/app/ml_service_pb2_grpc.py:ro
+      - ./service/ml-service/model.py:/app/model.py:ro
+      - ./service/ml-service/pipeline.py:/app/pipeline.py:ro
+      - ./service/ml-service/conflict_predictor.py:/app/conflict_predictor.py:ro
+      - ./service/ml-service/analysis.py:/app/analysis.py:ro
+      - ./service/ml-service/train_gpu.py:/app/train_gpu.py:ro
       - ml-models-dev:/app/models
     networks:
       - hormuzwatch-dev

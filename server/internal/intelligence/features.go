@@ -10,13 +10,13 @@ import (
 // BlockadeFeatures matches the ML service blockade domain feature contract
 // (see service/ml-service/lib/features.py BLOCKADE_COLS)
 type BlockadeFeatures struct {
-	StraitTransits24h    int     `json:"strait_transits_24h"`
-	AnchoredRatioPct     float64 `json:"anchored_ratio_pct"`
-	WaitingFleet6h       int     `json:"waiting_fleet_6h"`
-	WaitingFleet24h      int     `json:"waiting_fleet_24h"`
-	ActiveVessels        int     `json:"active_vessels"`
-	AnchorageZoneCount   int     `json:"anchorage_zone_count"`
-	FlagEntropy          float64 `json:"flag_entropy"`
+	StraitTransits24h  int     `json:"strait_transits_24h"`
+	AnchoredRatioPct   float64 `json:"anchored_ratio_pct"`
+	WaitingFleet6h     int     `json:"waiting_fleet_6h"`
+	WaitingFleet24h    int     `json:"waiting_fleet_24h"`
+	ActiveVessels      int     `json:"active_vessels"`
+	AnchorageZoneCount int     `json:"anchorage_zone_count"`
+	FlagEntropy        float64 `json:"flag_entropy"`
 }
 
 // FeatureVector is the unified input for all scoring layers.

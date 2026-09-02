@@ -31,6 +31,9 @@ func StartWorkers(ctx context.Context, h *hub.Hub, tsm *intelligence.TrackStateM
 	// 5. Start FIRMS integration
 	go StartFIRMS(ctx, h)
 
+	// 6. Start ArcGIS Chokepoints for daily transit aggregates
+	go StartArcGISChokepointsWorker(ctx, pipeline)
+
 	// Periodic stale track purge
 	go func() {
 		ticker := time.NewTicker(10 * time.Minute)
