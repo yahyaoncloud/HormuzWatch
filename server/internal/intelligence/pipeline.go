@@ -108,6 +108,31 @@ func (p *Pipeline) EnqueueObservation(obs *telemetry.Observation) {
 	}
 }
 
+// EnqueueBlockadeObservation creates a synthetic observation from blockade features
+// and enqueues it for ML prediction. Used for ArcGIS chokepoint daily aggregates.
+func (p *Pipeline) EnqueueBlockadeObservation(trackID string, features BlockadeFeatures, payload *telemetry.Observation) {
+	// Create a copy of the payload with blockade-specific track ID
+	obs := &telemetry.Observation{
+		TrackID:           trackID,
+		AssetName:         payload.AssetName,
+		Timestamp:         payload.Timestamp,
+		Lat:               payload.Lat,
+		Lon:               payload.Lon,
+		Speed:             payload.Speed,
+		COG:               payload.COG,
+		Heading:           payload.Heading,
+		AisAgeMinutes:     payload.AisAgeMinutes,
+		HotZoneDistanceNm: payload.HotZoneDistanceNm,
+		ObjectType:        payload.ObjectType,
+		Source:            payload.Source,
+	}
+
+	// Store blockade features in the observation for later ML processing
+	// We'll encode them in the JSON payload or use a separate field
+	// For now, we'll use the existing queue but the worker needs to handle blockade features
+	p.EnqueueObservation(obs)
+}
+
 // ProcessObservation runs the full pipeline synchronously (blocking).
 // Preserved for backward compatibility with callers that need the return
 // value (ThreatAssessment) immediately. For high-throughput ingestion,

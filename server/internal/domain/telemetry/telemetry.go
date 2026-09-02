@@ -16,6 +16,7 @@ const (
 	SourceOpenSky    = "opensky"
 	SourceKystverket = "kystverket"
 	SourceSimulator  = "simulator"
+	SourceArcGIS     = "arcgis"
 
 	// HeadingUnavailable is the standard AIS sentinel value (511°) indicating heading is unavailable.
 	HeadingUnavailable = 511.0
