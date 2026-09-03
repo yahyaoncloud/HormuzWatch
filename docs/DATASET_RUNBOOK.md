@@ -67,6 +67,26 @@ From the server directory:
   --out ./datasets
 ```
 
+### C. 24/7 Autonomous Daemon Mode (Background Service)
+To run autonomous continuous snapshotting on the production host (`tunkstun`):
+```bash
+# Direct CLI daemon execution:
+./dataset-generator \
+  -daemon \
+  -domain vessel,aircraft \
+  -interval 6h \
+  -retention 14 \
+  -lookback-hours 2.0 \
+  -out ./datasets
+
+# Via systemd user unit (production standard):
+systemctl --user status hormuzwatch-dataset-daemon.service
+journalctl --user -u hormuzwatch-dataset-daemon.service -f
+```
+* **Auto-Routing Invariant**: Automatically detects and switches Supabase session pooler (`:5432`) connections to the transaction pooler (`:6543`), ensuring zero drops and eliminating `(EMAXCONNSESSION)` errors.
+* **Retention Policy**: Keeps the newest `retention` dataset folders (default: 14) and automatically prunes older ones.
+* **Catalog Indexing**: Updates `server/datasets/manifest.json` after every cycle.
+
 ---
 
 ## 4. Python ML Workflow Integration
