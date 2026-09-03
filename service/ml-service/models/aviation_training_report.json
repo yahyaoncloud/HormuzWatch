@@ -1,0 +1,40 @@
+{
+  "status": "SUCCESS",
+  "domain": "aviation",
+  "dataset": "dataset_aircraft_20260902_2200_20260903_2200",
+  "model_path": "v1.20260903231620",
+  "metrics": {
+    "domain": "aviation",
+    "version": "v1.20260903231620",
+    "n_samples": 9996,
+    "n_samples_total": 9996,
+    "n_train": 6997,
+    "n_val": 749,
+    "n_calib": 750,
+    "n_test": 1500,
+    "n_features": 9,
+    "split_method": "custom_authoritative_split",
+    "contamination": 0.04,
+    "calibration_mode": "supervised_calibration_set",
+    "f1": 0.6536,
+    "precision": 0.5814,
+    "recall": 0.7465,
+    "anomaly_rate": 0.04,
+    "test_precision": 0.5814,
+    "test_recall": 0.7465,
+    "test_f1": 0.6536,
+    "test_specificity": 0.2932,
+    "test_balanced_accuracy": 0.5198,
+    "test_roc_auc": 0.5188,
+    "test_pr_auc": 0.5771,
+    "test_brier_score": 0.2517,
+    "test_ece": 0.0632,
+    "confusion_matrix": {
+      "tp": 636,
+      "fp": 458,
+      "tn": 190,
+      "fn": 216
+    },
+    "hardware_device": "CPU (Vectorized SIMD Engine)"
+  }
+}

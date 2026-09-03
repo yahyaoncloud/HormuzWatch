@@ -1,0 +1,40 @@
+{
+  "status": "SUCCESS",
+  "domain": "vessel",
+  "dataset": "dataset_vessel_20260902_2200_20260903_2200",
+  "model_path": "v1.20260903231627",
+  "metrics": {
+    "domain": "vessel",
+    "version": "v1.20260903231627",
+    "n_samples": 153052,
+    "n_samples_total": 153052,
+    "n_train": 107136,
+    "n_val": 11479,
+    "n_calib": 11479,
+    "n_test": 22958,
+    "n_features": 9,
+    "split_method": "custom_authoritative_split",
+    "contamination": 0.04,
+    "calibration_mode": "supervised_calibration_set",
+    "f1": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "anomaly_rate": 0.04,
+    "test_precision": 0.0,
+    "test_recall": 0.0,
+    "test_f1": 0.0,
+    "test_specificity": 1.0,
+    "test_balanced_accuracy": 0.5,
+    "test_roc_auc": 0.6695,
+    "test_pr_auc": 0.0219,
+    "test_brier_score": 0.0102,
+    "test_ece": 0.0005,
+    "confusion_matrix": {
+      "tp": 0,
+      "fp": 0,
+      "tn": 22721,
+      "fn": 237
+    },
+    "hardware_device": "CPU (Vectorized SIMD Engine)"
+  }
+}

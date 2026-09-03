@@ -30,6 +30,8 @@ htmlcov/
 analysis_output/
 *.joblib
 *.pkl
+datasets/
+server/datasets/
 
 # Go
 bin/
