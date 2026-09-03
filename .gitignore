@@ -40,6 +40,7 @@ bin/
 *.prof
 server/cmd/main
 server/dataset-generator
+server/hormuzwatch-server
 
 # OS & IDE
 .DS_Store
