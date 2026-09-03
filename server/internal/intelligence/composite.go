@@ -14,15 +14,16 @@ const (
 
 // ThreatAssessment is the final, composite output of the intelligence pipeline.
 type ThreatAssessment struct {
-	TrackID           string   `json:"id"`
-	FinalScore        int      `json:"score"`
-	RuleScore         int      `json:"rule_score"`
-	MLScore           float64  `json:"ml_score"`
-	GeopoliticalScore float64  `json:"geopolitical_score"`
+	TrackID           string         `json:"id"`
+	FinalScore        int            `json:"score"`
+	RuleScore         int            `json:"rule_score"`
+	MLScore           float64        `json:"ml_score"`
+	GeopoliticalScore float64        `json:"geopolitical_score"`
 	Severity          string         `json:"severity"`
 	Reasons           []string       `json:"reasons"`
 	Actions           []string       `json:"actions"`
 	MLExplanation     *MLExplanation `json:"ml_explanation,omitempty"`
+	ModelVersion      string         `json:"model_version,omitempty"`
 }
 
 // ComputeComposite produces the final threat score.
@@ -48,6 +49,11 @@ func ComputeComposite(features FeatureVector, ruleScore int, mlScore float64, ge
 	)
 	actions := anomaly.GetActions(severity)
 
+	var modelVersion string
+	if explanation != nil {
+		modelVersion = explanation.ModelVersion
+	}
+
 	return ThreatAssessment{
 		TrackID:           features.TrackID,
 		FinalScore:        finalInt,
@@ -58,5 +64,6 @@ func ComputeComposite(features FeatureVector, ruleScore int, mlScore float64, ge
 		Reasons:           reasons,
 		Actions:           actions,
 		MLExplanation:     explanation,
+		ModelVersion:      modelVersion,
 	}
 }

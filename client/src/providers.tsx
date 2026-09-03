@@ -630,32 +630,12 @@ const TimeContext = createContext<TimeContextValue | null>(null);
 
 export function TimeProvider({ children }: { children: ReactNode }) {
   const [serverTime, setServerTime] = useState(Date.now());
-  const [timeOffset, setTimeOffset] = useState(0);
+  const [timeOffset] = useState(0);
   const [timezone, setTimezone] = useState('UTC');
 
-  // Sync with server time periodically
+  // Initialize server time with local timestamp
   useEffect(() => {
-    const syncTime = async () => {
-      try {
-        const start = Date.now();
-        const response = await fetch('/api/v1/time');
-        const end = Date.now();
-
-        if (response.ok) {
-          const data = await response.json();
-          const latency = end - start;
-          const serverTime = data.timestamp + latency / 2;
-          setServerTime(serverTime);
-          setTimeOffset(serverTime - Date.now());
-        }
-      } catch {
-        // Ignore errors, use local time
-      }
-    };
-
-    syncTime();
-    const interval = setInterval(syncTime, 60000); // Every minute
-    return () => clearInterval(interval);
+    setServerTime(Date.now());
   }, []);
 
   // Update local time every second

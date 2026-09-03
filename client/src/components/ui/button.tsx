@@ -4,21 +4,21 @@ import { cn } from '@/utils/cn';
 
 const VARIANTS: Record<string, string> = {
   default:
-    'bg-[var(--color-primary-600)] text-white hover:bg-[var(--color-primary-700)] border border-transparent',
+    'bg-[#0284c7] text-white hover:bg-[#0369a1] border-t border-l border-white/20 border-r border-b border-black/50 shadow-sm active:translate-y-px',
   outline:
-    'border border-[var(--color-border)] bg-transparent text-[var(--color-fg)] hover:bg-[var(--color-bg-elevated)]',
+    'border border-[#1f2c40] bg-[#0c1322] text-slate-200 hover:bg-[#162134] hover:border-[#38bdf8]/60 active:translate-y-px',
   ghost:
-    'text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-fg)]',
+    'text-slate-400 hover:bg-[#131d2c] hover:text-slate-200',
   secondary:
-    'bg-[var(--color-bg-elevated)] text-[var(--color-fg)] hover:bg-[var(--color-bg-hover)] border border-[var(--color-border)]',
-  link: 'text-[var(--color-primary-600)] underline-offset-4 hover:underline',
+    'bg-[#131d2c] text-slate-200 hover:bg-[#1c293d] border border-[#1f2c40] active:translate-y-px',
+  link: 'text-[#38bdf8] underline-offset-4 hover:underline',
 };
 
 const SIZES: Record<string, string> = {
-  default: 'h-9 px-3.5 text-[13px]',
-  sm: 'h-8 px-3 text-xs',
-  lg: 'h-10 px-5 text-sm',
-  icon: 'h-8 w-8',
+  default: 'h-8 px-3 text-xs font-mono font-semibold uppercase tracking-wider',
+  sm: 'h-7 px-2.5 text-[11px] font-mono font-semibold uppercase tracking-wider',
+  lg: 'h-9 px-4 text-xs font-mono font-bold uppercase tracking-wider',
+  icon: 'h-7 w-7',
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -34,8 +34,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <Comp
         ref={ref}
         className={cn(
-          'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md font-ui font-medium transition-colors',
-          'focus-visible:outline-none focus-visible:ring-1.5 focus-visible:ring-[var(--color-primary-600)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--color-bg)]',
+          'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-none font-mono font-medium transition-all select-none',
+          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#38bdf8]',
           'disabled:pointer-events-none disabled:opacity-40',
           VARIANTS[variant],
           SIZES[size],

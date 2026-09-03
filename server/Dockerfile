@@ -39,8 +39,10 @@ USER hormuz
 WORKDIR /app
 
 COPY --from=builder /out/hormuz-server .
-COPY data/ ./data/
-COPY templates/ ./templates/
+
+# data/ and templates/ are mounted as volumes at runtime (see docker-compose)
+# COPY data/ ./data/
+# COPY templates/ ./templates/
 
 ENV GIN_MODE=release \
     PORT=10020 \

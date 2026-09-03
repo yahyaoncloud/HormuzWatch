@@ -27,19 +27,19 @@ export function SiteFooter() {
 
         <nav className="flex items-center gap-6" aria-label="Footer navigation">
           <Link
-            to="/about"
+            to="/?tab=about"
             className="font-ui text-xs text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] transition-colors"
           >
             About
           </Link>
           <Link
-            to="/intelligence"
+            to="/?tab=intelligence"
             className="font-ui text-xs text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] transition-colors"
           >
             Intelligence
           </Link>
           <Link
-            to="/learn"
+            to="/?tab=docs"
             className="font-ui text-xs text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] transition-colors"
           >
             Documentation

@@ -287,6 +287,7 @@ type MLFeatureExplanation struct {
 type MLExplanation struct {
 	TopFeatures    []MLFeatureExplanation `json:"top_features"`
 	IsolationDepth float64                `json:"isolation_depth"`
+	ModelVersion   string                 `json:"model_version,omitempty"`
 }
 
 // MLPredictResponse is retained for backward compatibility with internal callers.
@@ -433,7 +434,11 @@ func mlExplanationFromProto(resp *mlgrpc.PredictResponse) *MLExplanation {
 			Direction: sc.GetDirection(),
 		})
 	}
-	return &MLExplanation{TopFeatures: top, IsolationDepth: resp.GetRawIforestScore()}
+	return &MLExplanation{
+		TopFeatures:    top,
+		IsolationDepth: resp.GetRawIforestScore(),
+		ModelVersion:   resp.GetModelVersion(),
+	}
 }
 
 // storeCache saves a prediction result in the local cache.

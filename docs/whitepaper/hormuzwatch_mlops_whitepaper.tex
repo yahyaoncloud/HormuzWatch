@@ -1,0 +1,168 @@
+\documentclass[11pt,a4paper]{article}
+
+% Typography and Geometry
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{microtype}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+
+% Mathematics & Symbols
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+
+% Tables & Formatting
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{subcaption}
+
+% Graphics & Visuals
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows, positioning, fit, calc}
+
+% Syntax-Highlighted Listings
+\usepackage{listings}
+
+% Palette matching HormuzWatch Tactical Theme
+\definecolor{bgprimary}{HTML}{050816}
+\definecolor{bgsecondary}{HTML}{0F172A}
+\definecolor{textprimary}{HTML}{0F172A}
+\definecolor{textsecondary}{HTML}{475569}
+\definecolor{indigoprimary}{HTML}{312E81}
+\definecolor{copperprimary}{HTML}{9A3412}
+\definecolor{accentblue}{HTML}{1D4ED8}
+\definecolor{codebg}{HTML}{F8FAFC}
+\definecolor{codeborder}{HTML}{E2E8F0}
+
+% Hyperlink Setup
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=accentblue,
+    citecolor=copperprimary,
+    filecolor=copperprimary,
+    urlcolor=accentblue,
+    pdftitle={HormuzWatch MLOps and Machine Learning Technical Whitepaper},
+    pdfauthor={HormuzWatch Intelligence Engineering Team},
+    pdfsubject={Maritime Domain Awareness, Anomaly Detection, Probability Calibration, MLOps},
+    pdfkeywords={AIS, Maritime Intelligence, Isolation Forest, LOF, Isotonic Calibration, MLOps, Go, React},
+    pdfpagemode=UseOutlines
+}
+
+% Section Titles Styling
+\titleformat{\section}
+  {\normalfont\Large\bfseries\color{indigoprimary}}{\thesection}{1em}{}
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\color{copperprimary}}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+  {\normalfont\normalsize\bfseries\color{textprimary}}{\thesubsubsection}{1em}{}
+
+% Listings Styling
+\lstset{
+    backgroundcolor=\color{codebg},
+    basicstyle=\ttfamily\footnotesize\color{textprimary},
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    commentstyle=\color{textsecondary}\itshape,
+    frame=single,
+    rulecolor=\color{codeborder},
+    keepspaces=true,
+    keywordstyle=\color{accentblue}\bfseries,
+    language=Python,
+    numbers=left,
+    numbersep=7pt,
+    numberstyle=\tiny\color{textsecondary},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    stringstyle=\color{copperprimary},
+    tabsize=2,
+    xleftmargin=12pt,
+    framexleftmargin=8pt
+}
+
+% Custom Go definition for listings
+\lstdefinelanguage{Go}{
+  morekeywords={
+    func, package, import, type, struct, return, if, else, for, range,
+    var, const, nil, true, false, make, len, cap, select, case, default,
+    go, chan, defer, switch, map
+  },
+  sensitive=true,
+  morecomment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]",
+  morestring=[b]'
+}
+
+% Document Metadata
+\title{\vspace{-1.5cm}\textbf{\huge\color{indigoprimary}HormuzWatch: Technical Whitepaper}\\[0.4cm]
+\Large\textbf{Multi-Domain Geospatial Surveillance, Probabilistic Anomaly Detection, and Continuous-Training MLOps for Contested Maritime Chokepoints}}
+
+\author{\textbf{HormuzWatch Engineering and Applied Intelligence Team}\\[0.1cm]
+\small Autonomous Maritime Surveillance Architecture | Geospatial Intelligence Division}
+\date{September 2026}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+\vspace{-0.5cm}
+\noindent\textcolor{textsecondary}{\rule{\textwidth}{0.8pt}}
+
+% 0. Abstract & Executive Summary
+\input{modules/00_abstract.tex}
+
+\noindent\textcolor{textsecondary}{\rule{\textwidth}{0.8pt}}
+\vspace{0.4cm}
+
+% Table of Contents, Figures, and Tables
+\tableofcontents
+\vspace{0.5cm}
+\listoffigures
+\listoftables
+\newpage
+
+% 1. Introduction & Operational Threat Environment
+\input{modules/01_introduction.tex}
+
+% 2. End-to-End System Architecture
+\input{modules/02_system_architecture.tex}
+
+% 3. Machine Learning Domain & Methodological Foundations
+\input{modules/03_ml_domain_and_methodology.tex}
+
+% 4. Kinematic Feature Engineering on the Circular Manifold
+\input{modules/04_feature_engineering.tex}
+
+% 5. Continuous Training, Grouped Entity Partitioning, and Drift Monitoring
+\input{modules/05_continuous_training_and_drift.tex}
+
+% 6. Model Governance, Evaluation Gates, and Zero-Downtime Deployment
+\input{modules/06_governance_and_deployment.tex}
+
+% 7. Server and Client Implementation Deep Dive
+\input{modules/07_server_and_client_implementation.tex}
+
+% 8. Empirical Benchmark and Technical Audit Results
+\input{modules/08_empirical_benchmark_and_audit.tex}
+
+% 9. Conclusion and Future Research Directions
+\input{modules/09_conclusion_and_future_work.tex}
+
+\newpage
+% 10. Appendix: Production Code Listings
+\input{modules/10_appendix_code_listings.tex}
+
+\end{document}

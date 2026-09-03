@@ -32,7 +32,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code with ownership (single layer)
 COPY --chown=hormuz:hormuz . .
-RUN mkdir -p /app/models /app/logs
+RUN mkdir -p /app/models /app/logs /app/analysis_output && chown -R hormuz:hormuz /app
 
 USER hormuz
 

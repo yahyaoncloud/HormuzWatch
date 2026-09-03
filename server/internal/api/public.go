@@ -132,8 +132,29 @@ func PublicTopTracesStream(c *gin.Context) {
 	}
 }
 
-// queryTopTraces fetches up to 3500 tracks joined with anomaly data, ordered by score desc.
+// queryTopTraces fetches top scored anomaly tracks from in-memory state (0 DB egress), falling back to DB only if empty.
 func queryTopTraces() []TopTrace {
+	if GlobalTSM != nil && GlobalTSM.TrackCount() > 0 {
+		snapshots := GlobalTSM.GetTopTracesSnapshot(3500)
+		traces := make([]TopTrace, 0, len(snapshots))
+		for _, s := range snapshots {
+			traces = append(traces, TopTrace{
+				TrackID:   s.TrackID,
+				AssetName: s.AssetName,
+				Timestamp: s.Timestamp,
+				Lat:       s.Lat,
+				Lon:       s.Lon,
+				Speed:     s.Speed,
+				Heading:   s.Heading,
+				Score:     float64(s.Score),
+				Severity:  s.Severity,
+				Reasons:   s.Reasons,
+				UpdatedAt: s.UpdatedAt,
+			})
+		}
+		return traces
+	}
+
 	query := `
 		SELECT 
 			t.track_id, t.asset_name, t.timestamp, t.lat, t.lon, 
@@ -223,6 +244,26 @@ func GetPublicMetrics(c *gin.Context) {
 
 func queryPublicMetrics() PublicMetrics {
 	m := PublicMetrics{Timestamp: time.Now().UTC().Format(time.RFC3339)}
+
+	if GlobalTSM != nil && GlobalTSM.TrackCount() > 0 {
+		total, maritime, aviation, critical, high, medium, low, activeRegions, avgScore := GlobalTSM.GetPublicMetricsSnapshot()
+		m.TotalTracks = total
+		m.MaritimeCount = maritime
+		m.AviationCount = aviation
+		m.CriticalCount = critical
+		m.HighCount = high
+		m.MediumCount = medium
+		m.LowCount = low
+		m.AvgScore = avgScore
+		m.ActiveRegions = activeRegions
+
+		qm := intelligence.QueueMetrics()
+		m.QueueEnqueued = qm["enqueued"]
+		m.QueueDropped = qm["dropped"]
+		m.QueueProcessed = qm["processed"]
+		m.QueueDepth = qm["depth"]
+		return m
+	}
 
 	// Total active tracks in last 15 minutes (fresh data only)
 	db.DB.QueryRow(`SELECT COUNT(*) FROM tracks WHERE last_updated >= NOW() - INTERVAL '15 minutes'`).Scan(&m.TotalTracks)

@@ -1,0 +1,18 @@
+\section{Conclusion and Future Research Directions}
+\label{sec:conclusion}
+
+\subsection{Conclusion}
+The HormuzWatch platform represents a significant advancement in real-time maritime domain awareness and operational anomaly detection. By establishing an authoritative, leakage-free MLOps workflow, we have demonstrated that:
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Leakage-Free Partitioning is Non-Negotiable:} Random train/test splits severely compromise tracking model evaluation by leaking entity-level kinematic profiles across partitions. Grouped entity splitting by MMSI is essential for establishing genuine out-of-distribution performance.
+    \item \textbf{Probability Calibration Unlocks Multi-Factor Fusion:} Raw anomaly scores cannot be safely integrated into composite threat frameworks without severe probability distortion. By implementing non-parametric Isotonic Regression on an isolated calibration split, HormuzWatch achieved a \textbf{69.2\% reduction in Expected Calibration Error} (down to $4.57\%$), enabling mathematically sound composite risk scoring ($40\%$ Rule $+ 40\%$ ML $+ 20\%$ Geo).
+    \item \textbf{Rigorous Governance Ensures Operational Safety:} The implementation of atomic POSIX file promotions, automated champion backups, rollback capabilities, and mtime-based hot-reloading guarantees that autonomous continuous training cycles can execute without compromising live mission-critical intelligence streams.
+\end{enumerate}
+
+\subsection{Future Research and Technical Roadmap}
+Future platform evolution will focus on three primary research frontiers:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Multi-Modal Spaceborne SAR Imagery Fusion:} Integrating Synthetic Aperture Radar (SAR) imagery from Sentinel-1 and commercial constellations (e.g., ICEYE, Capella Space). By cross-correlating ship wake detections and vessel hull radar cross-sections against broadcast AIS coordinates, the platform will automatically detect and localize ``dark fleets'' operating without active transponders.
+    \item \textbf{Edge Quantization for Patrol Craft Deployment:} Quantizing the ensemble pipeline using ONNX Runtime and TensorRT for deployment on low-power naval edge hardware (e.g., NVIDIA Jetson Orin) aboard littoral patrol vessels and uncrewed surface vessels (USVs).
+    \item \textbf{Deep Kinematic Trajectory Transformers:} Exploring Spatio-Temporal Graph Neural Networks (ST-GNNs) and Trajectory Transformers to model multi-vessel collision avoidance interactions and cooperative swarm maneuvers across dense chokepoints.
+\end{itemize}

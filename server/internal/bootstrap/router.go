@@ -80,6 +80,7 @@ func registerSystemRoutes(router *gin.Engine, handlers *api.Handlers) {
 
 func registerPublicRoutes(router *gin.Engine, handlers *api.Handlers) {
 	cache30s := api.CacheMiddleware(30 * time.Second)
+	cache2m := api.CacheMiddleware(2 * time.Minute)
 
 	// Public streaming & metrics endpoints (no auth required)
 	router.GET("/public/top-traces", api.GetTopTraces)
@@ -101,9 +102,16 @@ func registerPublicRoutes(router *gin.Engine, handlers *api.Handlers) {
 	router.GET("/public/zones/restricted", cache30s, api.GetRestrictedZones)
 
 	// Public vessel/track endpoints
-	router.GET("/public/vessels", cache30s, api.GetActiveVessels)
-	router.GET("/public/aircraft", cache30s, api.GetActiveAircraft)
-	router.GET("/public/tracks/active", cache30s, api.GetAllActiveTracks)
+	router.GET("/public/vessels", cache2m, api.GetActiveVessels)
+	router.GET("/public/vessels/:mmsi", api.GetAISVesselByMMSI)
+	router.GET("/public/vessels/:mmsi/track", api.GetAISVesselTrack)
+	router.GET("/public/aircraft", cache2m, api.GetActiveAircraft)
+	router.GET("/public/tracks/active", cache2m, api.GetAllActiveTracks)
+
+	// AIS service health & incident correlation
+	router.GET("/public/ais/status", api.GetAISHealth)
+	router.GET("/public/conflicts/:id/traffic", api.GetIncidentNearbyVessels)
+	router.GET("/public/incidents/:id/nearby-vessels", api.GetIncidentNearbyVessels)
 
 	// Public news feeds
 	router.GET("/public/news", api.GetNews)

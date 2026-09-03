@@ -1,0 +1,74 @@
+\section{End-to-End System Architecture}
+\label{sec:system_architecture}
+
+HormuzWatch implements a tri-tier microservices architecture engineered for high-frequency telemetry ingestion, sub-10ms analytical latency, zero-downtime model updates, and high visual responsiveness.
+
+\subsection{Architectural Overview}
+Figure~\ref{fig:system_arch} illustrates the physical and logical interaction between system tiers:
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    node distance=1.5cm and 2cm,
+    box/.style={rectangle, draw=indigoprimary, fill=bgsecondary, thick, text=textprimary, align=center, rounded corners, minimum height=1cm, minimum width=2.8cm, font=\small\sffamily},
+    databox/.style={cylinder, shape border rotate=90, draw=copperprimary, fill=bgsecondary, thick, text=textprimary, align=center, minimum height=1cm, minimum width=2.2cm, font=\small\sffamily},
+    arrow/.style={thick, ->, >=stealth, draw=indigoprimary},
+    dashedarrow/.style={thick, dashed, ->, >=stealth, draw=copperprimary}
+]
+    % Nodes
+    \node[box] (ingest) {External AIS / ADS-B\\Feeds \& Simulators};
+    \node[box, right=of ingest] (goserver) {\textbf{Go Server (Port 10020)}\\Ingestion \& TSM\\Rule Engine \& Fusion};
+    \node[box, right=of goserver] (mlservice) {\textbf{Python ML Service}\\\texttt{grpc\_server.py} (8091)\\\texttt{app.py} REST (8090)};
+    \node[box, below=of goserver] (client) {\textbf{Tactical UI Client}\\React 19 / TypeScript\\Leaflet Tactical Map};
+    \node[databox, above=of goserver] (postgres) {PostgreSQL / PostGIS\\Telemetry \& History};
+    \node[box, below=of mlservice] (pipeline) {\textbf{MLOps CT Pipeline}\\Optuna HPO Retraining\\Atomic Deployer};
+
+    % Connections
+    \draw[arrow] (ingest) -- node[above, font=\scriptsize\color{textsecondary}] {HTTP/WS} (goserver);
+    \draw[arrow] (goserver) -- node[above, font=\scriptsize\color{textsecondary}] {gRPC (2ms)} (mlservice);
+    \draw[arrow] (mlservice) -- node[below, font=\scriptsize\color{textsecondary}] {SHAP + Probs} (goserver);
+    \draw[arrow] (goserver) -- node[left, font=\scriptsize\color{textsecondary}] {WebSocket Broadcast (2s)} (client);
+    \draw[arrow] (goserver) -- node[right, font=\scriptsize\color{textsecondary}] {Batch Egress} (postgres);
+    \draw[dashedarrow] (postgres) -- node[right, font=\scriptsize\color{copperprimary}] {Feature Extraction} (pipeline);
+    \draw[dashedarrow] (pipeline) -- node[right, font=\scriptsize\color{copperprimary}] {POSIX Atomic Deploy} (mlservice);
+\end{tikzpicture}
+\caption{HormuzWatch Multi-Tier System Topology and Synchronous/Asynchronous Data Flows.}
+\label{fig:system_arch}
+\end{figure}
+
+\subsection{Backend Infrastructure: Go High-Concurrency Engine}
+The backend service (\texttt{server/}) is authored in Go 1.23 utilizing the Gin HTTP web framework and native concurrency primitives:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{In-Memory Time-Series State Manager (TSM):} Ingested observations are indexed in a concurrent, mutex-guarded ring buffer retaining the last 20 observations per track. The TSM continuously computes online first moments $\mu$ and second moments $\sigma^2$ (via Welford's algorithm) to detect acceleration jumps and course anomalies without database disk egress.
+    \item \textbf{High-Frequency WebSocket Broadcast Hub:} Maintains persistent, concurrent client sessions. As composite threat assessments are finalized, a dedicated broadcasting routine fans out state deltas to connected operational displays every 2 seconds.
+    \item \textbf{Geospatial Geofence Store:} Incorporates spatial bounding polygons for sensitive territorial waters, Traffic Separation Schemes (TSS), and historical maritime incident coordinates using vectorized Haversine and point-in-polygon ray-casting algorithms.
+\end{itemize}
+
+\subsection{Machine Learning Inference Microservice: Python Service}
+The ML service (\texttt{service/ml-service/}) executes within a dedicated Python 3.11 runtime:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{gRPC Transport (\texttt{grpc\_server.py}):} Operates over TCP port 8091 using HTTP/2 multiplexing. The Go backend communicates directly via the compiled Protocol Buffer specification (\texttt{ml\_service.proto}), minimizing protocol serialization overhead to $<0.2\text{ms}$.
+    \item \textbf{Diagnostic REST API (\texttt{app.py}):} Operates over HTTP port 8090, exposing model health metrics, statistical drift summaries, online retraining endpoints (\texttt{POST /api/train}), and cache eviction endpoints (\texttt{POST /models/reload}).
+    \item \textbf{Dual-Algorithm In-Memory Cache:} Artifacts are loaded as self-contained serialized bundles (\texttt{\{domain\}\_ensemble.joblib}). An in-memory dictionary cache (\texttt{\_BUNDLE\_CACHE}) serves predictions with zero disk I/O, guarded by file modification timestamp (\texttt{mtime}) tracking to support zero-downtime hot-reloading.
+\end{itemize}
+
+\subsection{Client-Side Tactical Interface: Modern React 19 Engine}
+The user interface (\texttt{client/}) is built with React 19, TypeScript, Vite, and React Router v7:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Geospatial Visualization:} Custom Leaflet rendering engine optimized for handling up to 1,000 simultaneous maritime contacts without frame-rate degradation.
+    \item \textbf{Tactical Contact Dossier:} Modal HUD inspecting individual vessel kinematic moments, historical tracks, AIS transponder health, and TreeSHAP feature contribution breakdowns.
+    \item \textbf{Dynamic Anomaly Density Heatmap:} Aggregates normalized anomaly probabilities across spatial grids to project regional risk intensity over the Strait of Hormuz.
+\end{itemize}
+
+\subsection{Resilient Inter-Service Communication and Circuit Breaking}
+Because maritime surveillance is a life-safety operational system, the Go backend cannot block or fail if the ML microservice experiences network latency or crash restarts.
+
+To ensure continuous operation, \texttt{server/internal/intelligence/ml\_client.go} implements an active Circuit Breaker state machine:
+\begin{equation}
+\text{State}(t) = 
+\begin{cases} 
+\text{CLOSED} & \text{if consecutive failures} < 3 \\
+\text{OPEN} & \text{if consecutive failures} \ge 3 \quad (\text{tripped for } \tau = 50\text{ms}) \\
+\text{HALF-OPEN} & \text{after } \tau \text{ expires; permits 1 canary probe}
+\end{cases}
+\end{equation}
+When in the \texttt{OPEN} state, RPC calls are immediately aborted, and the Go server executes a local heuristic fallback (\texttt{localFallback()}) derived from rule baselines. Once the ML microservice recovers, the canary probe resets the circuit to \texttt{CLOSED} with zero service downtime.

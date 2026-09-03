@@ -41,6 +41,7 @@ export default [
     ]),
     route("research", "routes/public/research.tsx"),
     route("deploy", "routes/public/deploy.tsx"),
+    route("status", "routes/public/status.tsx"),
     route("about", "routes/public/about.tsx"),
   ]),
 

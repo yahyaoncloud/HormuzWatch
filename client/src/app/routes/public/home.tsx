@@ -1,7 +1,7 @@
-import { BarChart3, Globe, Newspaper, Info } from 'lucide-react';
+import { BarChart3, Globe, Newspaper, Info, BookOpen } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLoaderData, useSearchParams } from 'react-router';
-import { LiveStatStrip, type MetricKey } from '@/components/data/LiveStatStrip';
+import { type MetricKey } from '@/components/data/LiveStatStrip';
 import { IntelligenceDashboard } from '@/components/intelligence/IntelligenceDashboard';
 import { MetricDetailSheet } from '@/components/intelligence/MetricDetailSheet';
 import { ReportProgressModal } from '@/components/intelligence/ReportProgressModal';
@@ -10,8 +10,10 @@ import { ThreatDetailModal, type ThreatItem } from '@/components/intelligence/Th
 import { DisclaimerModal } from '@/components/ui/DisclaimerModal';
 import { DesktopOnlyOverlay } from '@/components/ui/DesktopOnlyOverlay';
 import { HomeTopBar } from '@/components/home/HomeTopBar';
-import { HomeMapLayout, HomeFeedView } from '@/components/home/HomePanels';
+import { HomeMapLayout } from '@/components/home/HomePanels';
+import { FeedPage } from '@/components/feed/FeedPage';
 import AboutPage from '@/app/routes/public/about';
+import LearnIndex from '@/app/routes/public/learn/index';
 
 import { useHomeTelemetry } from '@/components/home/useHomeTelemetry';
 import {
@@ -30,10 +32,10 @@ export async function clientLoader() {
   const timeout = (ms: number) => new Promise<null>((r) => setTimeout(() => r(null), ms));
 
   const [metricsResponse, tracksResponse, tracesResponse, newsResponse] = await Promise.all([
-    Promise.race([getPublicMetrics().catch(() => null), timeout(800)]),
-    Promise.race([getPublicTracks().catch(() => null), timeout(800)]),
-    Promise.race([getTopTraces().catch(() => null), timeout(800)]),
-    Promise.race([getNews().catch(() => null), timeout(800)]),
+    Promise.race([getPublicMetrics().catch(() => null), timeout(3000)]),
+    Promise.race([getPublicTracks().catch(() => null), timeout(3000)]),
+    Promise.race([getTopTraces().catch(() => null), timeout(3000)]),
+    Promise.race([getNews().catch(() => null), timeout(3000)]),
   ]);
 
   return {
@@ -50,6 +52,7 @@ const TABS = [
   { id: 'map' as const, label: 'Map', icon: Globe },
   { id: 'intelligence' as const, label: 'Intelligence', icon: BarChart3 },
   { id: 'feed' as const, label: 'Feed', icon: Newspaper },
+  { id: 'docs' as const, label: 'Docs', icon: BookOpen },
   { id: 'about' as const, label: 'About', icon: Info },
 ];
 
@@ -60,26 +63,48 @@ export function HomePage() {
   const addToast = useUIStore((s) => s.addToast);
   const [_searchParams, setSearchParams] = useSearchParams();
 
-  // Tab navigation
-  const [activeTab, setActiveTab] = useState<'map' | 'intelligence' | 'feed' | 'about'>(() => {
+  // Tab navigation with URL query synchronization (?tab=docs, ?tab=about, etc.)
+  const [activeTab, setActiveTab] = useState<'map' | 'intelligence' | 'feed' | 'docs' | 'about'>(() => {
     if (typeof window === 'undefined') return 'map';
+    const tabParam = new URLSearchParams(window.location.search).get('tab');
+    if (tabParam && ['map', 'intelligence', 'feed', 'docs', 'about'].includes(tabParam)) {
+      return tabParam as any;
+    }
     return (localStorage.getItem('hw-active-tab') as any) || 'map';
   });
 
-  // Timeline & Filters
-  const [timeline, setTimeline] = useState<TimelineOption>(() => {
-    if (typeof window === 'undefined') return 'all';
-    return (localStorage.getItem('hw-timeline-filter') as TimelineOption) || 'all';
-  });
-  const [severityFilter, setSeverityFilter] = useState<string>(() => {
-    if (typeof window === 'undefined') return 'all';
-    return localStorage.getItem('hw-severity-filter') || 'all';
-  });
+  // Sync activeTab with URL search params whenever ?tab changes
+  useEffect(() => {
+    const tabParam = _searchParams.get('tab');
+    if (tabParam && ['map', 'intelligence', 'feed', 'docs', 'about'].includes(tabParam) && tabParam !== activeTab) {
+      setActiveTab(tabParam as any);
+    }
+  }, [_searchParams, activeTab]);
+
+  const handleTabChange = useCallback((tab: 'map' | 'intelligence' | 'feed' | 'docs' | 'about') => {
+    setActiveTab(tab);
+    try {
+      localStorage.setItem('hw-active-tab', tab);
+    } catch {}
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tab !== 'map') {
+        next.set('tab', tab);
+      } else {
+        next.delete('tab');
+      }
+      return next;
+    });
+  }, [setSearchParams]);
+
+  // Timeline & Filters (default to 'all' on page refresh so all fleet contacts remain visible)
+  const [timeline, setTimeline] = useState<TimelineOption>('all');
+  const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [regionFilter, setRegionFilter] = useState<string>(() => {
     if (typeof window === 'undefined') return 'all';
     const param = new URLSearchParams(window.location.search).get('region');
     if (param) return param;
-    return localStorage.getItem('hw-region-filter') || 'all';
+    return 'all';
   });
 
   const handleRegionFilterChange = useCallback((region: string) => {
@@ -126,8 +151,8 @@ export function HomePage() {
     () => typeof window !== 'undefined' && window.localStorage.getItem('hw-reduce-motion') === '1'
   );
 
-  // Drag-resize panel widths
-  const [leftPanelW, setLeftPanelW] = useState(240);
+  // Drag-resize panel widths (Intel Console default 285px to prevent header clipping)
+  const [leftPanelW, setLeftPanelW] = useState(285);
   const [rightPanelW, setRightPanelW] = useState(288);
   const dragState = useRef<'left' | 'right' | null>(null);
   const startX = useRef(0);
@@ -209,8 +234,8 @@ export function HomePage() {
       const delta = e.clientX - startX.current;
       const newW = startW.current + (dragState.current === 'left' ? delta : -delta);
       const clamped = Math.max(
-        dragState.current === 'left' ? 200 : 240,
-        Math.min(dragState.current === 'left' ? 400 : 500, newW)
+        dragState.current === 'left' ? 260 : 240,
+        Math.min(dragState.current === 'left' ? 440 : 500, newW)
       );
       if (dragState.current === 'left') setLeftPanelW(clamped);
       else setRightPanelW(clamped);
@@ -289,12 +314,7 @@ export function HomePage() {
       <HomeTopBar
         tabs={TABS}
         activeTab={activeTab}
-        onTabChange={(tab) => {
-          setActiveTab(tab);
-          try {
-            localStorage.setItem('hw-active-tab', tab);
-          } catch {}
-        }}
+        onTabChange={handleTabChange}
         timelineOptions={TIMELINE_OPTIONS}
         timeline={timeline}
         onTimelineChange={setTimeline}
@@ -347,6 +367,9 @@ export function HomePage() {
             onHoverThreat={(t) => {
               if (t?.trackId) setSearchParams({ trackId: t.trackId });
             }}
+            metrics={metrics}
+            isMetricsLoading={isMetricsLoading}
+            onMetricClick={setSelectedMetric}
             showHeatmap={showHeatmap}
             onHeatmapChange={setShowHeatmap}
             showVessels={showVessels}
@@ -362,37 +385,40 @@ export function HomePage() {
             regionFilter={regionFilter}
             onRegionFilterChange={handleRegionFilterChange}
           />
-
-          {/* Floating metrics panel (toggled via Show: Metrics button) */}
-          {showMetrics && (
-            <div className="absolute bottom-3 left-5 right-5 z-20 flex justify-center pointer-events-none md:bottom-4 md:left-8 md:right-8 lg:left-[calc(18rem+1.5rem)] lg:right-[calc(20rem+1.5rem)]">
-              <div className="w-full max-w-5xl glass-card pointer-events-auto animate-in fade-in slide-in-from-bottom-3 duration-200">
-                <LiveStatStrip
-                  metrics={metrics}
-                  isLoading={isMetricsLoading}
-                  onMetricClick={setSelectedMetric}
-                />
-              </div>
-            </div>
-          )}
         </div>
       )}
 
       {/* View: Intelligence */}
       {activeTab === 'intelligence' && (
         <div className="flex-1 min-h-0 overflow-y-auto">
-          <IntelligenceDashboard />
+          <IntelligenceDashboard
+            onViewOnMap={(trackId) => {
+              handleTabChange('map');
+              if (trackId) setSearchParams({ trackId });
+            }}
+          />
         </div>
       )}
 
       {/* View: Feed */}
       {activeTab === 'feed' && (
         <div className="flex-1 min-h-0 overflow-y-auto">
-          <HomeFeedView
-            topThreats={topThreats}
-            newsItems={newsItems}
-            blockade={blockade}
-            transits={transits}
+          <FeedPage
+            onViewOnMap={(id) => {
+              handleTabChange('map');
+              if (id) setSearchParams({ trackId: id });
+            }}
+          />
+        </div>
+      )}
+
+      {/* View: Documentation */}
+      {activeTab === 'docs' && (
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 max-w-5xl mx-auto w-full">
+          <LearnIndex
+            onOpenAbout={() => handleTabChange('about')}
+            onOpenIntelligence={() => handleTabChange('intelligence')}
+            onOpenMap={() => handleTabChange('map')}
           />
         </div>
       )}
@@ -400,12 +426,23 @@ export function HomePage() {
       {/* View: About */}
       {activeTab === 'about' && (
         <div className="flex-1 min-h-0 overflow-y-auto p-4">
-          <AboutPage />
+          <AboutPage
+            onOpenDocs={() => handleTabChange('docs')}
+            onOpenIntelligence={() => handleTabChange('intelligence')}
+            onOpenMap={() => handleTabChange('map')}
+          />
         </div>
       )}
 
       {/* Modals & Detail Sheets */}
-      <ThreatDetailModal selectedThreat={selectedThreat} onClose={() => setSelectedThreat(null)} />
+      <ThreatDetailModal
+        selectedThreat={selectedThreat}
+        onClose={() => setSelectedThreat(null)}
+        onOpenIntelligence={() => {
+          handleTabChange('intelligence');
+          setSelectedThreat(null);
+        }}
+      />
       <MetricDetailSheet
         selectedMetric={selectedMetric}
         onClose={() => setSelectedMetric(null)}

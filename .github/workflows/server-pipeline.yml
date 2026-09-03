@@ -30,7 +30,7 @@ jobs:
         run: |
           cd server
           go vet ./...
-          go test -v ./tests/... || true
+          go test -v ./...
 
   deploy-to-tunkstun:
     name: Deploy Server Container to Tunkstun Workstation
@@ -47,8 +47,18 @@ jobs:
           script: |
             cd ~/SHARED/Projects/HormuzWatch
             echo "==> Rebuilding and restarting Server container..."
-            docker compose up -d --build server
+            docker compose -f docker-compose.dev.yml up -d --build server
             echo "==> Waiting for Go backend to become healthy..."
-            sleep 8
-            curl -sf http://localhost:10020/health || exit 1
-            echo "==> Server deployment successful!"
+            READY=0
+            for i in $(seq 1 10); do
+              if curl -sf http://localhost:10020/health >/dev/null; then
+                READY=1
+                break
+              fi
+              sleep 3
+            done
+            if [ $READY -ne 1 ]; then
+              echo "Server health check failed!"
+              exit 1
+            fi
+            echo "==> Server deployment successful and healthy!"

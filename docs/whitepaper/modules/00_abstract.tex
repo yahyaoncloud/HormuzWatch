@@ -1,0 +1,16 @@
+\begin{abstract}
+The Strait of Hormuz is the world's most critical maritime petroleum transit chokepoint, facilitating the passage of over 20 million barrels of crude oil per day—approximately 20\% of global petroleum consumption. Operating within this geostrategically contested corridor presents severe challenges for Maritime Domain Awareness (MDA): commercial and military vessels routinely encounter electronic warfare, GPS spoofing, automated identification system (AIS) transponder blackouts, and non-linear asymmetrical threats. 
+
+This whitepaper presents the comprehensive architecture, mathematical foundations, and MLOps engineering lifecycle of \textbf{HormuzWatch}, a real-time, multi-domain geospatial intelligence platform. We detail the end-to-end telemetry pipeline comprising a high-concurrency Go backend, a microservice-based Python Machine Learning (ML) inference engine, and a modern React/TypeScript tactical interface. 
+
+Crucially, this paper provides an exhaustive technical analysis of our Machine Learning anomaly detection workflow:
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Dual-Algorithm Ensembling:} Synergistic fusion of global geometric partitioning via Isolation Forest (200 trees) with local k-nearest neighbor density estimation via Local Outlier Factor (LOF, $k=20$), overcoming the individual blind spots of axis-aligned cuts and spatial clustering.
+    \item \textbf{Monotonic Probability Calibration:} Post-processing raw anomaly scores through non-parametric Isotonic Regression fitted strictly on an independent calibration split, achieving a \textbf{69.2\% reduction in Expected Calibration Error} (ECE from $0.1486$ to $0.0457$) and enabling defensible probabilistic threat assessment.
+    \item \textbf{Leakage-Free Grouped Entity Partitioning:} Mathematical proof and implementation of Maritime Mobile Service Identity (MMSI) grouped partitioning, demonstrating how standard random splits introduce fatal data leakage that invalidates out-of-distribution evaluation.
+    \item \textbf{Hardened Continuous Training (CT) Governance:} An automated continuous retraining pipeline governed by multi-metric candidate gates, cryptographic SHA-256 manifests, atomic POSIX file replacement, automated champion backup and rollback, and file-modification-time auto-reloading.
+    \item \textbf{Tri-Partite Intelligence Fusion:} Production risk synthesis integrating deterministic rule heuristics ($40\%$), calibrated machine learning probability ($40\%$), and dynamic geopolitical threat scores ($20\%$) to eliminate single points of failure in mission-critical decision support.
+\end{enumerate}
+
+Complete empirical benchmarks, architectural diagrams, mathematical formulations, production code listings, and user interface walkthroughs are included to establish a rigorous operational standard for maritime anomaly detection.
+\end{abstract}

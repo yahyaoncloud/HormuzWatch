@@ -305,6 +305,65 @@ async def api_models():
     }
 
 
+@app.post("/models/reload")
+@app.post("/api/models/reload")
+async def models_reload(domain: Optional[str] = None):
+    """
+    Evict cached model bundles across both FastAPI and gRPC inference engines,
+    forcing zero-downtime atomic reload of updated champion artifacts on next prediction.
+    """
+    if domain:
+        _MODEL_CACHE.pop(domain, None)
+    else:
+        _MODEL_CACHE.clear()
+
+    try:
+        import grpc_server
+        grpc_server.reload_bundle(domain)
+    except Exception as exc:
+        logger.warning("Could not signal grpc_server directly: %s", exc)
+
+    return {
+        "status": "reloaded",
+        "domain": domain or "all",
+        "timestamp": time.time(),
+    }
+
+
+@app.get("/models/champion")
+async def models_champion(domain: Optional[str] = "vessel"):
+    """
+    Inspect the currently active Champion model artifact, metadata, and metrics.
+    """
+    manifest_path = _MODELS_DIR / "manifest.json"
+    manifest = {}
+    if manifest_path.exists():
+        try:
+            with open(manifest_path, "r", encoding="utf-8") as f:
+                manifest = json.load(f)
+        except Exception:
+            manifest = {}
+
+    artifact_path = _MODELS_DIR / f"{domain}_ensemble.joblib"
+    if not artifact_path.exists():
+        raise HTTPException(404, f"No champion model exists for domain '{domain}'")
+
+    import joblib
+    try:
+        bundle = joblib.load(artifact_path)
+    except Exception as exc:
+        raise HTTPException(500, f"Champion model artifact corrupt: {exc}")
+
+    return {
+        "domain": domain,
+        "version": bundle.get("version", "unknown"),
+        "metrics": bundle.get("metrics", {}),
+        "score_bounds": bundle.get("score_bounds", {}),
+        "feature_cols": bundle.get("feature_cols", []),
+        "manifest_entry": manifest.get("models", {}).get(f"{domain}_ensemble", {}),
+    }
+
+
 @app.get("/drift/status")
 async def drift_status():
     """Evaluate and report feature drift status across all active domains."""

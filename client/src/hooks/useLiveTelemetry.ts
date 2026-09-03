@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useWebSocket } from '@/providers';
 import { useHealthStore } from '@/stores/slices/health.store';
 import type { BaseTrack } from '@/types/telemetry';
@@ -9,21 +9,42 @@ export function useLiveTelemetry(initialTraces: any[] = []) {
   const setMetricLog = useHealthStore((s) => s.setMetricLog);
   const [realtimeTracesMap, setRealtimeTracesMap] = useState<Map<string, any>>(new Map());
 
+  // Buffer incoming live messages to throttle state updates (max 2Hz flush)
+  const pendingBufferRef = useRef<Map<string, any>>(new Map());
+  const hasPendingUpdatesRef = useRef(false);
+  const lastLogTimeRef = useRef<Record<string, number>>({});
+
   // Keep health store WS status synchronized
   useEffect(() => {
     setWsStatus(wsStatus);
   }, [wsStatus, setWsStatus]);
 
-  // Update WS HUD log whenever message arrives
+  // Update WS HUD log with throttling (max once per second)
   useEffect(() => {
-    setMetricLog('ws', {
-      time: new Date().toLocaleTimeString(),
-      category: 'ws',
-      message: `WebSocket ${wsStatus.toUpperCase()}: frame received [type="${lastMessage?.type || 'telemetry'}"]`,
-      details: `Payload: ${lastMessage?.payload ? JSON.stringify(lastMessage.payload).slice(0, 120) : 'Active stream heartbeat'}`,
-      status: wsStatus === 'connected' ? 'ok' : wsStatus === 'connecting' ? 'warn' : 'error',
-    });
+    const now = Date.now();
+    if (now - (lastLogTimeRef.current['ws'] || 0) > 1000) {
+      lastLogTimeRef.current['ws'] = now;
+      setMetricLog('ws', {
+        time: new Date().toLocaleTimeString(),
+        category: 'ws',
+        message: `WebSocket ${wsStatus.toUpperCase()}: frame received [type="${lastMessage?.type || 'telemetry'}"]`,
+        details: `Payload: ${lastMessage?.payload ? JSON.stringify(lastMessage.payload).slice(0, 120) : 'Active stream heartbeat'}`,
+        status: wsStatus === 'connected' ? 'ok' : wsStatus === 'connecting' ? 'warn' : 'error',
+      });
+    }
   }, [lastMessage, wsStatus, setMetricLog]);
+
+  // Periodic flush of buffered telemetry frames (every 500ms)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (hasPendingUpdatesRef.current) {
+        hasPendingUpdatesRef.current = false;
+        setRealtimeTracesMap(new Map(pendingBufferRef.current));
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Subscribe to raw WebSocket streams
   useEffect(() => {
@@ -31,12 +52,14 @@ export function useLiveTelemetry(initialTraces: any[] = []) {
       if (!payload) return;
       const items = Array.isArray(payload) ? payload : [payload];
       const now = new Date().toLocaleTimeString();
+      const nowMs = Date.now();
 
       if (items.length > 0) {
         const lastItem = items[items.length - 1];
         const isAir = String(lastItem.trackId || '').startsWith('FLIGHT') || lastItem.altitude !== undefined;
 
-        if (isAir) {
+        if (isAir && nowMs - (lastLogTimeRef.current['adsb'] || 0) > 1500) {
+          lastLogTimeRef.current['adsb'] = nowMs;
           setMetricLog('adsb', {
             time: now,
             category: 'adsb',
@@ -44,7 +67,8 @@ export function useLiveTelemetry(initialTraces: any[] = []) {
             details: `Coords: ${Number(lastItem.lat).toFixed(3)}°N, ${Number(lastItem.lon).toFixed(3)}°E | Squawk: ${lastItem.squawk || '2104'} | Severity: ${lastItem.severity || 'low'}`,
             status: lastItem.severity === 'critical' ? 'error' : lastItem.severity === 'high' ? 'warn' : 'ok',
           });
-        } else {
+        } else if (!isAir && nowMs - (lastLogTimeRef.current['ais'] || 0) > 1500) {
+          lastLogTimeRef.current['ais'] = nowMs;
           setMetricLog('ais', {
             time: now,
             category: 'ais',
@@ -55,35 +79,34 @@ export function useLiveTelemetry(initialTraces: any[] = []) {
         }
       }
 
-      setRealtimeTracesMap((prev) => {
-        const next = new Map(prev);
-        for (const t of items) {
-          const id = String(t.trackId || t.id || '');
-          if (!id) continue;
-          const existing = next.get(id) || {};
-          next.set(id, {
-            ...existing,
-            trackId: id,
-            assetName: t.assetName || id,
-            timestamp: t.timestamp || new Date().toISOString(),
-            lat: t.lat,
-            lon: t.lon,
-            speed: t.speed,
-            heading: t.heading || 0,
-            score: t.anomalyScore ?? existing.score ?? 0,
-            severity: t.severity || existing.severity || 'low',
-            reasons: t.reasons ? JSON.stringify(t.reasons) : existing.reasons || '[]',
-            updatedAt: new Date().toISOString(),
-          });
-        }
-        return next;
-      });
+      for (const t of items) {
+        const id = String(t.trackId || t.id || '');
+        if (!id) continue;
+        const existing = pendingBufferRef.current.get(id) || {};
+        pendingBufferRef.current.set(id, {
+          ...existing,
+          trackId: id,
+          assetName: t.assetName || id,
+          timestamp: t.timestamp || new Date().toISOString(),
+          lat: t.lat,
+          lon: t.lon,
+          speed: t.speed,
+          heading: t.heading || 0,
+          score: t.anomalyScore ?? existing.score ?? 0,
+          severity: t.severity || existing.severity || 'low',
+          reasons: t.reasons ? JSON.stringify(t.reasons) : existing.reasons || '[]',
+          updatedAt: new Date().toISOString(),
+        });
+        hasPendingUpdatesRef.current = true;
+      }
     });
 
     const unsubAnomaly = subscribe('anomaly', (payload: any) => {
       if (!payload) return;
       const items = Array.isArray(payload) ? payload : [payload];
-      if (items.length > 0) {
+      const nowMs = Date.now();
+      if (items.length > 0 && nowMs - (lastLogTimeRef.current['ml'] || 0) > 1500) {
+        lastLogTimeRef.current['ml'] = nowMs;
         const lastA = items[items.length - 1];
         setMetricLog('ml', {
           time: new Date().toLocaleTimeString(),
@@ -94,23 +117,20 @@ export function useLiveTelemetry(initialTraces: any[] = []) {
         });
       }
 
-      setRealtimeTracesMap((prev) => {
-        const next = new Map(prev);
-        for (const a of items) {
-          const id = String(a.trackId || a.id || '');
-          if (!id) continue;
-          const existing = next.get(id) || {};
-          next.set(id, {
-            ...existing,
-            trackId: id,
-            score: a.score ?? a.final_score ?? existing.score ?? 0,
-            severity: a.severity || existing.severity || 'medium',
-            reasons: Array.isArray(a.reasons) ? JSON.stringify(a.reasons) : a.reasons || existing.reasons || '[]',
-            updatedAt: new Date().toISOString(),
-          });
-        }
-        return next;
-      });
+      for (const a of items) {
+        const id = String(a.trackId || a.id || '');
+        if (!id) continue;
+        const existing = pendingBufferRef.current.get(id) || {};
+        pendingBufferRef.current.set(id, {
+          ...existing,
+          trackId: id,
+          score: a.score ?? a.final_score ?? existing.score ?? 0,
+          severity: a.severity || existing.severity || 'medium',
+          reasons: Array.isArray(a.reasons) ? JSON.stringify(a.reasons) : a.reasons || existing.reasons || '[]',
+          updatedAt: new Date().toISOString(),
+        });
+        hasPendingUpdatesRef.current = true;
+      }
     });
 
     return () => {

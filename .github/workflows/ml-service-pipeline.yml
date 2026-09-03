@@ -50,8 +50,18 @@ jobs:
           script: |
             cd ~/SHARED/Projects/HormuzWatch
             echo "==> Rebuilding and restarting ML Inference container..."
-            docker compose up -d --build ml
+            docker compose -f docker-compose.dev.yml up -d --build ml
             echo "==> Verifying ML service health..."
-            sleep 8
-            curl -sf http://localhost:8090/health || exit 1
+            READY=0
+            for i in $(seq 1 10); do
+              if curl -sf http://localhost:8090/health >/dev/null; then
+                READY=1
+                break
+              fi
+              sleep 3
+            done
+            if [ $READY -ne 1 ]; then
+              echo "ML service health check failed!"
+              exit 1
+            fi
             echo "==> ML Service successfully deployed and healthy!"

@@ -52,14 +52,14 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
       {ping && (
         <span
           className={cn(
-            'absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping',
+            'absolute inline-flex h-full w-full rounded-none opacity-75 animate-ping',
             colorClasses.bg
           )}
         />
       )}
       <span
         className={cn(
-          'inline-block rounded-full',
+          'inline-block rounded-none border border-black/50 shadow-inner',
           sizeMap[size],
           colorClasses.bg,
           pulse && !ping && 'animate-pulse'

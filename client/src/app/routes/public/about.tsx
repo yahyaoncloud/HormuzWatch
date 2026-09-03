@@ -4,26 +4,75 @@ import { Section } from '@/components/layout/Section';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Prose } from '@/components/ui/prose';
+import { BookOpen, BarChart3, Globe } from 'lucide-react';
 
 const principles = [
-  { title: 'Transparency', body: 'Every methodology is documented and open for inspection. Scoring formulas are published, models are versioned, data sources are named, and every severity judgment includes the rationale that produced it.' },
-  { title: 'Documentation-First', body: 'The written record is the primary output. Maps, charts, and metrics serve the narrative — they illustrate conclusions, not replace them.' },
-  { title: 'Methodological Honesty', body: 'We report confidence intervals alongside predictions. We do not imply precision where the underlying data or models do not support it.' },
-  { title: 'Behavioral Monitoring', body: 'We analyze patterns in shared waterways using publicly broadcast telemetry, deliberately avoiding tracking individuals or enriching profiles with proprietary data.' },
-  { title: 'Open Infrastructure', body: 'The entire stack — ingestion, scoring, API, frontend, and documentation — is open source. No feature is gated behind a paid tier.' },
-  { title: 'Reproducibility', body: 'Every published result can be reproduced. Models ship with training data snapshots, evaluation metrics, and hyperparameter configurations.' },
+  {
+    title: 'Methodological Transparency',
+    body: 'Every methodology is documented and open for inspection. Anomaly scoring formulas are published, models are versioned, data sources are named, and every severity judgment provides explainable feature attributions.'
+  },
+  {
+    title: 'Zero Data Leakage Invariant',
+    body: 'Tracking models are strictly evaluated on unseen entities via Maritime Mobile Service Identity (MMSI) grouped partitioning, guaranteeing that reported benchmark numbers reflect authentic out-of-distribution performance.'
+  },
+  {
+    title: 'Calibrated Probabilities over Raw Scores',
+    body: 'We reject arbitrary heuristic scoring. Raw decision scores are passed through non-parametric Isotonic Regression to output empirical, mathematically sound anomaly probabilities (ECE 0.0457).'
+  },
+  {
+    title: 'Calibrated Anomaly ≠ Hostile Intent',
+    body: 'A kinematic outlier indicates a physical telemetry anomaly, not necessarily hostile intent. Real-world maneuvers (COLREGs collision avoidance, engine trouble) are synthesized through a multi-factor intelligence engine.'
+  },
+  {
+    title: 'Open Public Infrastructure',
+    body: 'The entire stack — Go ingestion, Python ML service, React 19 tactical UI, and technical whitepaper documentation — is open source and reproducible.'
+  },
+  {
+    title: 'Continuous Governance & Rollback',
+    body: 'Every candidate model is subjected to automated smoke testing, key validation, and champion degradation guards before atomic POSIX file promotion, backed by automated rollback.'
+  },
 ];
 
 const milestones = [
-  { period: 'Q1 2024', title: 'Conceptual Design', desc: 'Identified the gap between real-time maritime awareness tools and accessible public documentation. Defined three-service architecture: Go ingestion, Python ML, document-first React frontend.' },
-  { period: 'Q3 2024', title: 'Initial Pipeline', desc: 'Go backend with Gin + WebSocket hub. Integrated AIS (AISStream), ADS-B (OpenSky), GDELT. Deployed Isolation Forest for anomaly detection. PostgreSQL persistence.' },
-  { period: 'Q1 2025', title: 'ML Ensemble', desc: 'Added LOF, isotonic calibration, SHAP attribution. Extended coverage across vessel, aviation, and heatmap domains. Automated hourly training cycle.' },
-  { period: 'Q3 2025', title: 'Conflict Intelligence', desc: 'Launched conflict pipeline aggregating OSINT from 22+ sources. Integrated LLM-based situational briefing. Added XGBoost + RandomForest ensemble for escalation forecasting.' },
-  { period: 'Q1 2026', title: 'Documentation-First Redesign', desc: 'Rearchitected frontend around long-form editorial pages. Added Learn section, interactive model charts, extended watch zones to Red Sea and Bab-el-Mandeb.' },
-  { period: 'Q3 2026', title: 'Production Hardening', desc: 'Automated dataset backup, model versioning + registry, real-time conflict markers, segmented timeline filters, collapsible zone overlays.' },
+  {
+    period: 'Q1 2024',
+    title: 'Conceptual Design',
+    desc: 'Identified the gap between real-time maritime awareness tools and accessible public documentation. Defined three-service architecture: Go ingestion, Python ML, document-first React frontend.'
+  },
+  {
+    period: 'Q3 2024',
+    title: 'Initial Telemetry Pipeline',
+    desc: 'Go backend with Gin + WebSocket hub. Integrated AIS (AISStream), ADS-B (OpenSky), GDELT. Deployed Isolation Forest for anomaly detection. PostgreSQL persistence.'
+  },
+  {
+    period: 'Q1 2025',
+    title: 'Dual Ensemble & Calibration',
+    desc: 'Added LOF, isotonic calibration, SHAP attribution. Extended coverage across vessel, aviation, and heatmap domains. Automated hourly training cycle.'
+  },
+  {
+    period: 'Q3 2025',
+    title: 'Conflict Intelligence Fusion',
+    desc: 'Launched conflict pipeline aggregating OSINT from 22+ sources. Integrated LLM-based situational briefing. Added composite threat scoring (40% Rule + 40% ML + 20% Geo).'
+  },
+  {
+    period: 'Q1 2026',
+    title: 'Documentation-First Redesign',
+    desc: 'Rearchitected frontend around long-form editorial pages and interactive tactical HUD. Added Learn section, interactive model charts, extended watch zones to Red Sea and Bab-el-Mandeb.'
+  },
+  {
+    period: 'Q3 2026',
+    title: 'MLOps Continuous Training & Technical Whitepaper',
+    desc: 'Authored 22-page technical whitepaper. Benchmarked dual Isolation Forest + LOF ensemble, achieving 69.2% reduction in Expected Calibration Error (0.0457 ECE). Implemented authoritative grouped MMSI partitioning (zero data leakage), POSIX atomic promotion, and sub-5ms inference.'
+  },
 ];
 
-export default function AboutPage() {
+export interface AboutPageProps {
+  onOpenDocs?: () => void;
+  onOpenIntelligence?: () => void;
+  onOpenMap?: () => void;
+}
+
+export default function AboutPage({ onOpenDocs, onOpenIntelligence, onOpenMap }: AboutPageProps) {
   return (
     <PageContainer>
       {/* ── Mission ──────────────────────────────────────────────── */}
@@ -32,32 +81,44 @@ export default function AboutPage() {
           <p>
             HormuzWatch exists to make the world's most critical waterways legible to the people and
             institutions who depend on them. The Strait of Hormuz, the Red Sea and Bab-el-Mandeb
-            corridor, the Suez Canal approaches, and the Persian Gulf collectively carry a
-            disproportionate share of global energy trade and container traffic.
+            corridor, the Suez Canal approaches, and the Persian Gulf collectively carry over 20%
+            of global energy trade and container traffic.
           </p>
           <p>
-            We believe this opacity represents a structural information gap. When a crisis occurs — a
-            tanker seizure, a subsea cable disruption, a corridor rerouting — the global public learns
-            of it through headlines, stripped of the weeks of behavioral signals that would have
-            contextualized the event. HormuzWatch addresses this by publishing a continuously updated,
-            methodologically transparent record of what is happening at sea.
+            Operating within these contested maritime corridors presents acute challenges: electronic warfare,
+            GPS spoofing, automated identification system (AIS) transponder blackouts, and asymmetric tactical threats.
+            HormuzWatch provides a calm, methodologically transparent, and continuously updated record of what is happening at sea.
           </p>
           <blockquote>
-            Our objective is not to replace operational command centers. It is to serve as a public
-            reference: a calm, well-documented account that anyone — from logistics analysts and
-            academic researchers to journalists and policy staff — can consult.
+            Our objective is not to replace operational naval command centers. It is to serve as an authoritative public
+            reference: a calm, well-documented account that analysts, logistics coordinators, academic researchers,
+            and journalists can consult with confidence.
           </blockquote>
         </Prose>
 
-        <div className="prose-callout info mt-6">
-          <strong>Watch Zone Coverage:</strong> Real-time analytics powered by in-memory track
-          state manager and WebSocket pipeline. Visit the Intelligence dashboard for live vessel
-          counts by region.
+        <div className="prose-callout info mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <strong>Watch Zone Coverage:</strong> Real-time analytics powered by an in-memory Time-Series State
+            Manager (TSM) and high-concurrency WebSocket broadcasting.
+          </div>
+          {onOpenIntelligence ? (
+            <Button size="sm" variant="outline" onClick={onOpenIntelligence} className="cursor-pointer shrink-0">
+              <BarChart3 className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
+              View Intelligence Tab
+            </Button>
+          ) : (
+            <Button asChild size="sm" variant="outline" className="shrink-0">
+              <Link to="/?tab=intelligence">
+                <BarChart3 className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
+                View Intelligence Tab
+              </Link>
+            </Button>
+          )}
         </div>
       </Section>
 
       {/* ── The Problem ──────────────────────────────────────────── */}
-      <Section id="problem" title="The Information Gap" subtitle="Why the waterways are difficult to observe">
+      <Section id="problem" title="The Information Gap" subtitle="Why contested littoral waterways are difficult to observe">
         <Prose>
           <p>
             Critical maritime corridors present a paradox: they are simultaneously the most
@@ -65,32 +126,61 @@ export default function AboutPage() {
           </p>
           <h3>Three structural factors</h3>
           <ol>
-            <li><strong>Telemetry Fragmentation</strong> — Vessel positions (AIS), aircraft tracks (ADS-B), geopolitical events (GDELT), satellite fire detection (NASA FIRMS), weather (Open-Meteo), and news (RSS) exist across incompatible systems with no shared schema.</li>
-            <li><strong>Institutional Incentives</strong> — Government agencies and commercial providers maintain sophisticated monitoring but distribute through classified channels or expensive subscriptions.</li>
-            <li><strong>Signal-to-Noise Complexity</strong> — Tens of thousands of daily AIS transmissions. Isolating anomalous signals without false positives requires calibrated scoring across behavioral context, geography, and corroborating sources.</li>
+            <li><strong>Telemetry Fragmentation</strong> — Vessel positions (AIS), aircraft tracks (ADS-B), geopolitical events (GDELT), satellite fire detection (NASA FIRMS), and maritime news exist across incompatible schemas with no unified fusion.</li>
+            <li><strong>Institutional Barriers</strong> — Commercial tracking platforms gate vital intelligence behind opaque subscriptions or classified military command feeds.</li>
+            <li><strong>Alert Fatigue and Raw ML Failure</strong> — Commercial tankers routinely maneuver for safety or weather. Naive threshold rules generate thousands of false alarms, while uncalibrated raw anomaly scores produce severe overconfidence.</li>
           </ol>
 
           <div className="prose-callout info">
-            <strong>Scope Boundaries:</strong> HormuzWatch is <em>not</em> a real-time alerting service, operational command platform, or source of classified information. It is a reference publication — prioritize accuracy over sub-second latency.
+            <strong>Scope Boundaries:</strong> HormuzWatch prioritizes scientific reproducibility and calibration accuracy. We report calibrated probabilities alongside TreeSHAP feature attributions so every alert can be audited.
           </div>
         </Prose>
       </Section>
 
       {/* ── Methodology ───────────────────────────────────────────── */}
-      <Section id="approach" title="Methodology" subtitle="Open telemetry, transparent scoring, narrative output">
+      <Section id="approach" title="Methodology" subtitle="Open telemetry, calibrated ML ensemble, tri-partite threat fusion">
         <Prose>
-          <p>Three integrated layers form the HormuzWatch pipeline. Each is independently testable, documented, and replaceable.</p>
-          <h3>1. Ingestion & Normalization</h3>
-          <p>Six dedicated workers pull from public telemetry sources continuously: AIS vessel positions, ADS-B aircraft, GDELT events, NASA FIRMS fires, Open-Meteo weather, and RSS maritime security news. Each stream is normalized into a unified JSON schema and broadcast via WebSocket.</p>
-          <h3>2. Scoring & Detection</h3>
-          <p>Every track is evaluated against a multi-layered framework: geofence proximity checks, a six-signal composite score (course deviation, AIS age, speed anomaly, hot-zone distance, restricted presence, attack proximity), and an ML ensemble (Isolation Forest + LOF + isotonic calibration) returning calibrated probabilities with SHAP attributions.</p>
-          <h3>3. Narrative & Publication</h3>
-          <p>The React frontend prioritizes reading over monitoring. Maps and charts are embedded inline with prose. Every severity judgment includes the reasoning chain, and every chart links to underlying data.</p>
+          <p>Three integrated layers form the HormuzWatch intelligence pipeline:</p>
+          
+          <h3>1. High-Concurrency Ingestion & State Engine (Go 1.23)</h3>
+          <p>
+            Six integration workers pull from public telemetry feeds continuously. Ingested pings are managed in an in-memory Time-Series State Manager (TSM) maintaining online moments via Welford's algorithm. Circular angular statistics on the 1-sphere manifold ($S^1$) eliminate $359^\circ \leftrightarrow 0^\circ$ boundary discontinuities.
+          </p>
+
+          <h3>2. Dual Ensemble & Isotonic Calibration (Python 3.11 / gRPC :8091)</h3>
+          <p>
+            A synergistic ensemble combining <strong>Isolation Forest (200 trees)</strong> for global geometric space partitioning with <strong>Local Outlier Factor (k=20)</strong> for local neighborhood density estimation. Raw scores are blended (0.55 * IF + 0.45 * LOF) and transformed via non-parametric <strong>Isotonic Regression</strong>, reducing Expected Calibration Error (ECE) by <strong>69.2%</strong> (down to 4.57%).
+          </p>
+
+          <h3>3. Tri-Partite Threat Intelligence Fusion</h3>
+          <p>
+            To prevent single points of failure, the Go backend synthesizes risk across three distinct operational pillars:
+          </p>
+          <code className="block my-2 p-2 bg-slate-900/80 border border-slate-800 rounded font-mono text-xs text-indigo-300">
+            FinalScore = round( 0.40 * Score_Rule + 0.40 * Score_ML + 0.20 * Score_Geo )
+          </code>
+          <p>
+            This guarantees that statistical outliers are never confused with hostile rogue intent without geopolitical and regulatory corroboration.
+          </p>
         </Prose>
 
-        <div className="prose-callout info mt-6">
-          <strong>ML Performance:</strong> Model evaluation metrics are published in real-time.
-          Refer to the API documentation and Research section for current benchmark data.
+        <div className="prose-callout info mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <strong>Technical Whitepaper & Benchmarks:</strong> Complete mathematical formulations, benchmark datasets, and architecture diagrams are published in our 22-page technical whitepaper.
+          </div>
+          {onOpenDocs ? (
+            <Button size="sm" variant="outline" onClick={onOpenDocs} className="cursor-pointer shrink-0">
+              <BookOpen className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
+              Open Docs Tab
+            </Button>
+          ) : (
+            <Button asChild size="sm" variant="outline" className="shrink-0">
+              <Link to="/?tab=docs">
+                <BookOpen className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
+                Open Docs Tab
+              </Link>
+            </Button>
+          )}
         </div>
       </Section>
 
@@ -98,9 +188,9 @@ export default function AboutPage() {
       <Section id="principles" title="Operating Principles" subtitle="The standards that govern every published result">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {principles.map((p) => (
-            <Card key={p.title}>
-              <CardHeader>
-                <CardTitle className="text-[var(--color-primary-600)]">{p.title}</CardTitle>
+            <Card key={p.title} className="border border-indigo-500/20 bg-[var(--color-bg-card)]">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-indigo-400 text-base font-semibold">{p.title}</CardTitle>
               </CardHeader>
               <CardContent className="font-ui text-sm text-[var(--color-fg-muted)] leading-relaxed">
                 <p>{p.body}</p>
@@ -114,18 +204,18 @@ export default function AboutPage() {
       <Section id="timeline" title="Project History" subtitle="Development milestones from conception to production">
         <Prose>
           <p>
-            HormuzWatch is an independently developed open-source project. The timeline below
+            HormuzWatch is an independently developed open-source geospatial intelligence initiative. The timeline below
             documents major architectural milestones and feature deliveries.
           </p>
         </Prose>
         <div className="mt-6 space-y-4">
           {milestones.map((m) => (
-            <div key={m.title} className="flex flex-col gap-2 border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 sm:flex-row sm:items-baseline sm:gap-6">
-              <span className="font-data text-sm font-semibold text-[var(--color-primary-600)] sm:w-20 sm:shrink-0">
+            <div key={m.title} className="flex flex-col gap-2 border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 sm:flex-row sm:items-baseline sm:gap-6 rounded-xl">
+              <span className="font-mono text-xs font-bold text-indigo-400 sm:w-24 sm:shrink-0">
                 {m.period}
               </span>
               <div>
-                <h3 className="font-display text-lg font-semibold text-[var(--color-fg)]">{m.title}</h3>
+                <h3 className="font-display text-base font-semibold text-[var(--color-fg)]">{m.title}</h3>
                 <p className="mt-1 font-ui text-sm text-[var(--color-fg-muted)] leading-relaxed">{m.desc}</p>
               </div>
             </div>
@@ -134,70 +224,100 @@ export default function AboutPage() {
       </Section>
 
       {/* ── Data Pipeline Overview ─────────────────────────────────── */}
-      <Section id="data" title="Data Pipeline" subtitle="Six sources, one unified record">
+      <Section id="data" title="Data Pipeline" subtitle="Six public sources, one unified record">
         <Prose>
           <p>
-            Every figure in HormuzWatch begins as a public feed. We deliberately prefer open and
-            well-documented sources so the record can be audited.
+            Every observation in HormuzWatch begins as a public feed. We deliberately prefer open and
+            auditable sources so intelligence assessments can be independently verified.
           </p>
 
           <div className="prose-metric-row">
             <div className="prose-metric">
-              <div className="prose-metric-value">~5,000</div>
+              <div className="prose-metric-value text-indigo-400">~5,000</div>
               <div className="prose-metric-label">AIS msgs/min</div>
             </div>
             <div className="prose-metric">
-              <div className="prose-metric-value">~800</div>
+              <div className="prose-metric-value text-indigo-400">~800</div>
               <div className="prose-metric-label">ADS-B tracks/hr</div>
             </div>
             <div className="prose-metric">
-              <div className="prose-metric-value">1,200+</div>
+              <div className="prose-metric-value text-indigo-400">1,200+</div>
               <div className="prose-metric-label">GDELT events/day</div>
             </div>
             <div className="prose-metric">
-              <div className="prose-metric-value">22+</div>
+              <div className="prose-metric-value text-indigo-400">22+</div>
               <div className="prose-metric-label">RSS news sources</div>
             </div>
           </div>
 
-          <h3>Data retention</h3>
+          <h3>Data retention & Continuous Retraining</h3>
           <p>
-            Telemetry records older than 72 hours are purged on a configurable interval. Backup
-            archives are retained for 30 days and can be uploaded to Supabase Storage for off-site
-            archival. A background retention worker exports a complete dataset snapshot before each
-            purge cycle.
+            Telemetry records are cached in memory for sub-10ms queries. Historical observation windows
+            feed the Continuous Training (CT) pipeline with automated Population Stability Index (PSI)
+            and Kolmogorov-Smirnov drift monitoring.
           </p>
 
           <div className="prose-callout warn">
-            <strong>Disclaimer:</strong> HormuzWatch provides intelligence for situational awareness only.
-            No liability is accepted for decisions made based on this data. Always consult official
-            maritime authorities for operational guidance.
+            <strong>Operational Disclaimer:</strong> HormuzWatch provides geospatial intelligence for situational awareness and research. Always consult official International Maritime Organization (IMO) and national coastal authorities for navigation commands.
           </div>
         </Prose>
       </Section>
 
-      {/* ── Contributing ───────────────────────────────────────────── */}
-      <Section id="contribute" title="Contributing" subtitle="How to participate in the project">
+      {/* ── Contributing & Tab Navigation Buttons ─────────────────── */}
+      <Section id="contribute" title="Platform Navigation & Contributions" subtitle="Explore the platform tabs or participate in development">
         <Prose>
           <p>
-            HormuzWatch welcomes contributions across multiple disciplines. The project spans
-            backend engineering, machine learning, geospatial analysis, frontend development, and
-            technical writing.
+            HormuzWatch welcomes contributions across engineering disciplines — Go telemetry ingestors,
+            Python ML pipelines, React UI development, and technical documentation.
           </p>
-          <ul>
-            <li><strong>Code Contributions</strong> — Go backend, Python ML service, React frontend. Each has contribution guides and test suites.</li>
-            <li><strong>Data & Analysis</strong> — Validated datasets, labeled anomaly examples, verified conflict records directly improve model accuracy.</li>
-            <li><strong>Documentation</strong> — Clear, accurate documentation is as important as correct code. Explanatory diagrams, API reference improvements, translations.</li>
-            <li><strong>Deployment</strong> — Docker Compose, Makefile, CI/CD improvements. Support for additional cloud providers.</li>
-          </ul>
         </Prose>
 
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Button asChild variant="default">
-            <Link to="/learn">Start with the documentation</Link>
-          </Button>
-          <Button asChild variant="link">
-            <a href="mailto:hello@hormuzwatch.com">hello@hormuzwatch.com</a>
+        {/* Action Buttons Routing to Tabs */}
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          {onOpenDocs ? (
+            <Button onClick={onOpenDocs} variant="default" className="bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer shadow-sm">
+              <BookOpen className="w-4 h-4 mr-2" />
+              Open Documentation Tab
+            </Button>
+          ) : (
+            <Button asChild variant="default" className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm">
+              <Link to="/?tab=docs">
+                <BookOpen className="w-4 h-4 mr-2" />
+                Open Documentation Tab
+              </Link>
+            </Button>
+          )}
+
+          {onOpenIntelligence ? (
+            <Button onClick={onOpenIntelligence} variant="outline" className="cursor-pointer border-slate-700 hover:border-indigo-400">
+              <BarChart3 className="w-4 h-4 mr-2 text-indigo-400" />
+              Open Intelligence Tab
+            </Button>
+          ) : (
+            <Button asChild variant="outline" className="border-slate-700 hover:border-indigo-400">
+              <Link to="/?tab=intelligence">
+                <BarChart3 className="w-4 h-4 mr-2 text-indigo-400" />
+                Open Intelligence Tab
+              </Link>
+            </Button>
+          )}
+
+          {onOpenMap ? (
+            <Button onClick={onOpenMap} variant="outline" className="cursor-pointer border-slate-700 hover:border-indigo-400">
+              <Globe className="w-4 h-4 mr-2 text-indigo-400" />
+              Open Live Tactical Map
+            </Button>
+          ) : (
+            <Button asChild variant="outline" className="border-slate-700 hover:border-indigo-400">
+              <Link to="/?tab=map">
+                <Globe className="w-4 h-4 mr-2 text-indigo-400" />
+                Open Live Tactical Map
+              </Link>
+            </Button>
+          )}
+
+          <Button asChild variant="link" className="text-indigo-400 hover:text-indigo-300">
+            <a href="mailto:hello@hormuzwatch.com">Contact Engineering Team</a>
           </Button>
         </div>
       </Section>

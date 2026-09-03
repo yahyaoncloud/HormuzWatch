@@ -34,6 +34,8 @@ func safeSendNonBlocking(ch chan hub.Message, msg hub.Message) (sent bool) {
 	}
 }
 
+var GlobalTSM *intelligence.TrackStateManager
+
 type Handlers struct {
 	hub      *hub.Hub
 	tsm      *intelligence.TrackStateManager
@@ -41,6 +43,7 @@ type Handlers struct {
 }
 
 func NewHandlers(h *hub.Hub, tsm *intelligence.TrackStateManager, ml *intelligence.MLClient) *Handlers {
+	GlobalTSM = tsm
 	return &Handlers{hub: h, tsm: tsm, mlClient: ml}
 }
 

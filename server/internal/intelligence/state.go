@@ -1,6 +1,7 @@
 package intelligence
 
 import (
+	"encoding/json"
 	"math"
 	"strings"
 	"sync"
@@ -30,10 +31,17 @@ type Observation struct {
 
 // TrackState holds the sliding window for a single track
 type TrackState struct {
-	TrackID     string
-	AssetName   string
-	History     []Observation // Ring buffer, most recent last
-	LastUpdated time.Time
+	TrackID      string
+	AssetName    string
+	Lat          float64
+	Lon          float64
+	Speed        float64
+	Heading      float64
+	AnomalyScore int
+	Severity     string
+	Reasons      []string
+	History      []Observation // Ring buffer, most recent last
+	LastUpdated  time.Time
 
 	// EWMA adaptive baselines (first moments μ and second moments σ²)
 	// Course delta moments
@@ -125,6 +133,10 @@ func (m *TrackStateManager) Update(trackID, assetName string, lat, lon, speed, h
 	state.History = append(state.History, obs)
 	state.LastUpdated = now
 	state.AssetName = assetName
+	state.Lat = lat
+	state.Lon = lon
+	state.Speed = speed
+	state.Heading = heading
 
 	return deltas
 }
@@ -358,3 +370,172 @@ func (m *TrackStateManager) GetStats() RealtimeStats {
 
 	return s
 }
+
+// SetAssessment records the composite anomaly evaluation on the active in-memory track state.
+func (m *TrackStateManager) SetAssessment(trackID string, score int, severity string, reasons []string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if state, ok := m.tracks[trackID]; ok {
+		state.AnomalyScore = score
+		state.Severity = severity
+		state.Reasons = reasons
+	}
+}
+
+// ActiveTrackSnapshot represents an active track for in-memory API delivery.
+type ActiveTrackSnapshot struct {
+	TrackID      string  `json:"trackId"`
+	AssetName    string  `json:"assetName"`
+	Timestamp    string  `json:"timestamp"`
+	Lat          float64 `json:"lat"`
+	Lon          float64 `json:"lon"`
+	Speed        float64 `json:"speed"`
+	Heading      float64 `json:"heading"`
+	AnomalyScore int     `json:"anomalyScore"`
+	Severity     string  `json:"severity"`
+	LastUpdated  string  `json:"lastUpdated"`
+}
+
+// GetActiveTracksSnapshot returns active tracks directly from in-memory state with zero DB egress.
+func (m *TrackStateManager) GetActiveTracksSnapshot(filter string) []ActiveTrackSnapshot {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	res := make([]ActiveTrackSnapshot, 0, len(m.tracks))
+	for _, t := range m.tracks {
+		isAir := strings.HasPrefix(t.TrackID, "FLIGHT-") || strings.HasPrefix(t.TrackID, "ADS-") || strings.HasPrefix(t.TrackID, "ICAO-") || t.Speed > 80.0
+		if filter == "aircraft" && !isAir {
+			continue
+		}
+		if filter == "vessel" && isAir {
+			continue
+		}
+
+		sev := t.Severity
+		if sev == "" {
+			sev = "low"
+		}
+
+		res = append(res, ActiveTrackSnapshot{
+			TrackID:      t.TrackID,
+			AssetName:    t.AssetName,
+			Timestamp:    t.LastUpdated.UTC().Format(time.RFC3339),
+			Lat:          t.Lat,
+			Lon:          t.Lon,
+			Speed:        t.Speed,
+			Heading:      t.Heading,
+			AnomalyScore: t.AnomalyScore,
+			Severity:     sev,
+			LastUpdated:  t.LastUpdated.UTC().Format(time.RFC3339),
+		})
+	}
+	return res
+}
+
+// TopTraceSnapshot represents a top anomaly trace for in-memory streaming.
+type TopTraceSnapshot struct {
+	TrackID   string  `json:"trackId"`
+	AssetName string  `json:"assetName"`
+	Timestamp string  `json:"timestamp"`
+	Lat       float64 `json:"lat"`
+	Lon       float64 `json:"lon"`
+	Speed     float64 `json:"speed"`
+	Heading   float64 `json:"heading"`
+	Score     int     `json:"score"`
+	Severity  string  `json:"severity"`
+	Reasons   string  `json:"reasons"`
+	UpdatedAt string  `json:"lastUpdated"`
+}
+
+// GetTopTracesSnapshot returns top scored anomaly tracks in memory without querying PostgreSQL.
+func (m *TrackStateManager) GetTopTracesSnapshot(limit int) []TopTraceSnapshot {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var traces []TopTraceSnapshot
+	for _, t := range m.tracks {
+		sev := t.Severity
+		if sev == "" {
+			sev = "low"
+		}
+		reasonsStr := "[]"
+		if len(t.Reasons) > 0 {
+			if b, err := json.Marshal(t.Reasons); err == nil {
+				reasonsStr = string(b)
+			} else {
+				reasonsStr = "[]"
+			}
+		}
+
+		traces = append(traces, TopTraceSnapshot{
+			TrackID:   t.TrackID,
+			AssetName: t.AssetName,
+			Timestamp: t.LastUpdated.UTC().Format(time.RFC3339),
+			Lat:       t.Lat,
+			Lon:       t.Lon,
+			Speed:     t.Speed,
+			Heading:   t.Heading,
+			Score:     t.AnomalyScore,
+			Severity:  sev,
+			Reasons:   reasonsStr,
+			UpdatedAt: t.LastUpdated.UTC().Format(time.RFC3339),
+		})
+	}
+
+	if limit > 0 && len(traces) > limit {
+		traces = traces[:limit]
+	}
+	return traces
+}
+
+// GetPublicMetricsSnapshot computes dashboard metrics directly in memory with 0 DB egress.
+func (m *TrackStateManager) GetPublicMetricsSnapshot() (total, maritime, aviation, critical, high, medium, low, activeRegions int, avgScore float64) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	total = len(m.tracks)
+	var totalScore float64
+	seenRegions := make(map[string]bool)
+
+	for _, t := range m.tracks {
+		isAir := strings.HasPrefix(t.TrackID, "FLIGHT-") || strings.HasPrefix(t.TrackID, "ADS-") || strings.HasPrefix(t.TrackID, "ICAO-")
+		if isAir {
+			aviation++
+		} else {
+			maritime++
+		}
+
+		switch t.Severity {
+		case "critical":
+			critical++
+		case "high":
+			high++
+		case "medium":
+			medium++
+		default:
+			low++
+		}
+		totalScore += float64(t.AnomalyScore)
+
+		if t.Lon > 0 {
+			switch {
+			case t.Lon < 56.0:
+				seenRegions["persian_gulf"] = true
+			case t.Lon < 59.0:
+				seenRegions["hormuz"] = true
+			default:
+				seenRegions["gulf_of_oman"] = true
+			}
+		}
+	}
+
+	if total > 0 {
+		avgScore = totalScore / float64(total)
+	}
+	activeRegions = len(seenRegions)
+	if activeRegions == 0 && total > 0 {
+		activeRegions = 3
+	}
+	return
+}
+

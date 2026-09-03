@@ -1,6 +1,6 @@
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import { useSearchParams } from 'react-router';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
@@ -16,9 +16,9 @@ import { useWebSocket } from '@/providers';
 import { useSettingsStore, useRealtimeStore } from '@/stores';
 import type { ConflictEvent } from '@/types/websocket';
 
-const CENTER: [number, number] = [26.06, 56.28];
-const ZOOM = 6;
-const DEFAULT_MIN_ZOOM = 3;
+const CENTER: [number, number] = [26.20, 56.10];
+const ZOOM = 7;
+const DEFAULT_MIN_ZOOM = 5.5;
 const DEFAULT_MAX_ZOOM = 16;
 
 function getTileLayerConfig(isDarkMode: boolean, useFallback = false) {
@@ -57,17 +57,17 @@ function getTileLayerConfig(isDarkMode: boolean, useFallback = false) {
 }
 
 export const DEFAULT_GULF_BOUNDS: L.LatLngBoundsExpression = [
-  [5.0, 32.0],   // SW: Sri Lanka, Red Sea
-  [36.0, 95.0],  // NE: Bay of Bengal, Myanmar
+  [21.5, 47.0],   // SW: UAE / Oman / Southern Gulf
+  [31.5, 61.5],   // NE: Northern Gulf / Shatt al-Arab / Gulf of Oman
 ];
 
 export const LOCKED_BOUNDS: L.LatLngBoundsExpression = [
-  [5.0, 32.0],
-  [36.0, 95.0],
+  [21.5, 47.0],
+  [31.5, 61.5],
 ];
 
-const LOCKED_MIN_ZOOM = 6;
-const LOCKED_MAX_ZOOM = 13;
+const LOCKED_MIN_ZOOM = 6.0;
+const LOCKED_MAX_ZOOM = 14.0;
 
 function parseCoord(val: any): number | null {
   if (val === undefined || val === null) return null;
@@ -84,46 +84,174 @@ function classifyTrackObject(track: any): 'vessel' | 'aircraft' {
   if (typeof track === 'string') {
     const s = track.toUpperCase();
     if (s.startsWith('FLIGHT') || s.startsWith('ADS-') || s.startsWith('ICAO-')) return 'aircraft';
+    if (/^[0-9A-F]{6}$/i.test(s)) return 'aircraft';
     return 'vessel';
   }
-  if (track.objectType === 'aircraft') return 'aircraft';
-  if (track.objectType === 'vessel') return 'vessel';
+  if (track.objectType === 'aircraft' || track.domain === 'aviation') return 'aircraft';
+  if (track.objectType === 'vessel' || track.domain === 'maritime') return 'vessel';
+
   const idStr = String(track.trackId || track.id || '').toUpperCase();
   if (idStr.startsWith('FLIGHT') || idStr.startsWith('ADS-') || idStr.startsWith('ICAO-')) {
     return 'aircraft';
   }
+  if (/^[0-9A-F]{6}$/i.test(idStr)) {
+    return 'aircraft';
+  }
+
+  const assetName = String(track.assetName || track.name || track.callsign || '').toUpperCase();
+  if (/^(FDB|ETD|SVA|UAE|QTR|GFA|OMA|BOX|FAD|CHZ|KNE|THY|BAW|DLH|AFR|MSR|RJA|JZR|ABY|KAC)[0-9A-Z]+/i.test(assetName)) {
+    return 'aircraft';
+  }
+  if (assetName.startsWith('ICAO-') || assetName.startsWith('FLIGHT-') || assetName.startsWith('ADS-')) {
+    return 'aircraft';
+  }
+
   if (track.altitude !== undefined && track.altitude !== null && Number(track.altitude) > 0) {
+    return 'aircraft';
+  }
+  if (track.speed !== undefined && track.speed !== null && Number(track.speed) > 80) {
     return 'aircraft';
   }
   return 'vessel';
 }
 
 function getRegionNameByCoords(lat: number, lon: number): string {
-  // Red Sea & Suez Corridor
-  if (lat >= 12 && lat <= 32 && lon >= 32 && lon <= 48) return 'Red Sea';
-  // Persian Gulf
-  if (lat >= 24 && lat <= 32 && lon >= 48 && lon <= 57) return 'Persian Gulf';
-  // Strait of Hormuz
-  if (lat >= 24 && lat <= 28 && lon >= 55 && lon <= 59) return 'Strait of Hormuz';
+  // Strait of Hormuz TSS
+  if (lat >= 25.8 && lat <= 27.3 && lon >= 55.5 && lon <= 57.1) return 'Strait of Hormuz';
+  // Fujairah Anchorage
+  if (lat >= 24.8 && lat <= 25.6 && lon >= 56.2 && lon <= 56.8) return 'Fujairah Anchorage';
+  // Persian Gulf Basin
+  if (lat >= 24.0 && lat <= 30.5 && lon >= 48.0 && lon <= 56.0) return 'Persian Gulf';
   // Gulf of Oman
-  if (lat >= 22 && lat <= 27 && lon >= 57 && lon <= 63) return 'Gulf of Oman';
-  // Pakistan Coast
-  if (lat >= 22 && lat <= 27 && lon >= 60 && lon <= 72) return 'Pakistan Coast';
-  // India West Coast
-  if (lat >= 8 && lat <= 23 && lon >= 68 && lon <= 78) return 'India West';
-  // Sri Lanka
-  if (lat >= 5 && lat <= 10 && lon >= 78 && lon <= 82) return 'Sri Lanka';
-  // Bay of Bengal / India East
-  if (lat >= 5 && lat <= 23 && lon >= 78 && lon <= 95) return 'Bay of Bengal';
-  // Arabian Sea
-  if (lat >= 5 && lat <= 25 && lon >= 56 && lon <= 78) return 'Arabian Sea';
-  // Gulf of Aden
-  if (lat >= 10 && lat <= 17 && lon >= 42 && lon <= 54) return 'Gulf of Aden';
+  if (lat >= 22.5 && lat <= 26.5 && lon >= 56.5 && lon <= 61.5) return 'Gulf of Oman';
+  // Arabian Sea Entrance
+  if (lat >= 20.5 && lat <= 24.0 && lon >= 57.5 && lon <= 62.0) return 'Arabian Sea Ingress';
 
-  return 'Regional Waters';
+  return 'Gulf Waters';
+}
+
+export function isInsideGulf(lat: number, lon: number): boolean {
+  return lat >= 21.0 && lat <= 32.5 && lon >= 46.5 && lon <= 62.5;
 }
 
 import { createTacticalLeafletIcon } from '@/icons';
+
+function buildTrackPopupHTML(track: any): string {
+  if (!track) return '';
+  const isAircraft = classifyTrackObject(track) === 'aircraft';
+  const severityColor: Record<string, string> = {
+    critical: '#b91c1c',
+    high: '#b45309',
+    medium: '#d97706',
+    low: '#15803d',
+  };
+  const color = severityColor[track.severity || 'low'] || 'var(--color-primary-600)';
+
+  const altVal = (track as any).altitude;
+  const squawkVal = (track as any).squawk;
+  const onGroundVal = (track as any).onGround;
+
+  const altPill =
+    isAircraft && altVal !== undefined && altVal !== null
+      ? `<div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
+          <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">ALTITUDE</div>
+          <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${Number(altVal).toLocaleString()} ft</div>
+        </div>`
+      : '';
+  const squawkPill =
+    isAircraft && squawkVal
+      ? `<div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
+          <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">SQUAWK</div>
+          <div style="font-size:11px;font-weight:700;color:var(--color-primary-400, #38bdf8);font-family:var(--font-mono, monospace);margin-top:1px">${squawkVal}</div>
+        </div>`
+      : '';
+  const onGroundPill =
+    isAircraft && onGroundVal !== undefined
+      ? `<div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
+          <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">STATUS</div>
+          <div style="font-size:11px;font-weight:700;color:${onGroundVal ? 'var(--color-warning, #facc15)' : 'var(--color-success, #22c55e)'};font-family:var(--font-mono, monospace);margin-top:1px">${onGroundVal ? 'ON GROUND' : 'AIRBORNE'}</div>
+        </div>`
+      : '';
+  const aisAgePill =
+    !isAircraft && track.aisAgeMinutes !== undefined
+      ? `<div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
+          <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">AIS AGE</div>
+          <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${track.aisAgeMinutes} min</div>
+        </div>`
+      : '';
+
+  const lat = Number(track.lat || 0);
+  const lon = Number(track.lon || 0);
+
+  return `
+    <div style="font-family:var(--font-mono, monospace);color:var(--color-fg);padding:10px;border-radius:0;background:#0d1422;border:1px solid #1f2c40;box-shadow:inset 1px 1px 0 rgba(255,255,255,0.08), inset -1px -1px 0 rgba(0,0,0,0.6)">
+      <!-- Tactical Dossier Header -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;border-bottom:1px solid #1f2c40;padding-bottom:6px">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0">
+          <div style="width:26px;height:26px;background:${color}20;border:1px solid ${color}80;display:flex;align-items:center;justify-content:center;font-size:13px;color:${color};flex-shrink:0">
+            ${isAircraft ? '✈' : '▲'}
+          </div>
+          <div style="min-width:0">
+            <h4 style="margin:0;font-size:12px;font-weight:700;color:#f8fafc;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase">${track.assetName || track.name || track.id}</h4>
+            <div style="display:flex;align-items:center;gap:4px;margin-top:2px">
+              <span style="width:5px;height:5px;background:#22c55e;display:inline-block"></span>
+              <span style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em">${isAircraft ? 'ADS-B AIR CONTACT' : 'AIS MARITIME CONTACT'}</span>
+            </div>
+          </div>
+        </div>
+        <span style="padding:2px 6px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#fff;background:${color};border:1px solid ${color}90;flex-shrink:0">
+          ${track.severity || 'NOMINAL'}
+        </span>
+      </div>
+
+      <!-- Telemetry Grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px">
+        <div style="background:#080c14;border:1px solid #1a2536;padding:4px 6px">
+          <div style="font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase">TRACK ID</div>
+          <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-top:1px">${track.id}</div>
+        </div>
+        <div style="background:#080c14;border:1px solid #1a2536;padding:4px 6px">
+          <div style="font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase">SPEED</div>
+          <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-top:1px">${(track.speed || 0).toFixed(1)} kts</div>
+        </div>
+        <div style="background:#080c14;border:1px solid #1a2536;padding:4px 6px">
+          <div style="font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase">HEADING</div>
+          <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-top:1px">${(track.heading || 0).toFixed(0)}° TRUE</div>
+        </div>
+        <div style="background:#080c14;border:1px solid #1a2536;padding:4px 6px">
+          <div style="font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase">SECTOR</div>
+          <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${getRegionNameByCoords(lat, lon)}</div>
+        </div>
+        ${altPill}
+        ${squawkPill}
+        ${onGroundPill}
+        ${aisAgePill}
+        <div style="background:#080c14;border:1px solid #1a2536;padding:4px 6px">
+          <div style="font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase">POSITION N</div>
+          <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-top:1px">${lat.toFixed(4)}°N</div>
+        </div>
+        <div style="background:#080c14;border:1px solid #1a2536;padding:4px 6px">
+          <div style="font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase">POSITION E</div>
+          <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-top:1px">${lon.toFixed(4)}°E</div>
+        </div>
+      </div>
+
+      <!-- Provenance & Source Metadata -->
+      <div style="display:flex;align-items:center;justify-content:space-between;background:#080c14;border:1px solid #1a2536;padding:3px 6px;margin-bottom:6px;font-size:8px;color:#64748b">
+        <span>SRC: <strong style="color:#94a3b8">${((track as any).provider || track.source || 'AIS STREAM / OPEN WATERS').toUpperCase()}</strong></span>
+        ${(track as any).station ? `<span>STN: <strong style="color:#38bdf8">${(track as any).station}</strong></span>` : '<span>VERIFIED FEED</span>'}
+      </div>
+
+      <!-- Footer -->
+      <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid #1f2c40;padding-top:6px;font-size:9px;color:#64748b">
+        <span style="display:flex;align-items:center;gap:3px">
+          <span style="width:4px;height:4px;background:#22c55e;display:inline-block"></span>
+          LIVE TELEMETRY
+        </span>
+        <span style="color:#94a3b8">${new Date(track.timestamp || Date.now()).toLocaleTimeString()} UTC</span>
+      </div>
+    </div>`;
+}
 
 function makeIcon(track: any, severity: string, heading: number, selected: boolean) {
   const type = classifyTrackObject(track);
@@ -142,185 +270,69 @@ function makeIcon(track: any, severity: string, heading: number, selected: boole
 export const WATCH_ZONES = [
   {
     id: 'AREA-HORMUZ',
-    name: 'Strait of Hormuz',
+    name: 'Strait of Hormuz (TSS)',
     coords: [
-      [27.05, 56.1],
-      [27.05, 56.4],
-      [27.0, 56.8],
-      [26.85, 57.05],
-      [26.65, 57.1],
-      [26.3, 57.0],
-      [26.0, 56.75],
-      [25.85, 56.45],
-      [25.95, 56.15],
-      [26.15, 55.85],
-      [26.4, 55.6],
-      [26.75, 55.5],
+      [27.15, 55.95],
+      [27.20, 56.35],
+      [27.05, 56.75],
+      [26.75, 57.00],
+      [26.40, 56.90],
+      [26.15, 56.60],
+      [26.05, 56.15],
+      [26.30, 55.70],
+      [26.70, 55.65],
     ] as [number, number][],
     color: '#FF0055',
-    label: 'HORMUZ CHOKEPOINT',
+    label: 'HORMUZ TSS CHOKEPOINT',
   },
   {
     id: 'AREA-PGULF',
-    name: 'Persian Gulf (North)',
+    name: 'Persian Gulf Maritime Basin',
     coords: [
-      [30.0, 48.7],
-      [29.95, 49.3],
-      [29.6, 49.9],
-      [29.1, 50.5],
-      [28.5, 51.0],
-      [27.8, 51.8],
-      [27.2, 52.4],
-      [26.7, 53.5],
-      [26.4, 54.2],
-      [26.35, 54.8],
-      [26.2, 55.3],
-      [25.8, 55.2],
-      [25.3, 54.6],
-      [24.8, 53.5],
-      [24.4, 52.3],
-      [24.8, 51.4],
-      [25.5, 50.8],
-      [26.3, 50.4],
-      [27.2, 49.9],
-      [28.1, 49.3],
-      [29.2, 48.6],
-      [29.7, 48.3],
+      [29.90, 48.60],
+      [29.80, 50.20],
+      [28.60, 51.50],
+      [27.30, 52.80],
+      [26.30, 54.80],
+      [25.60, 55.00],
+      [24.70, 53.50],
+      [24.40, 52.00],
+      [25.40, 50.80],
+      [26.80, 50.10],
+      [28.20, 49.20],
+      [29.40, 48.40],
     ] as [number, number][],
     color: '#FF9900',
-    label: 'PERSIAN GULF',
+    label: 'PERSIAN GULF BASIN',
   },
   {
     id: 'AREA-GOMAN',
-    name: 'Gulf of Oman',
+    name: 'Gulf of Oman Approach',
     coords: [
-      [25.8, 56.85],
-      [26.2, 57.0],
-      [26.6, 57.1],
-      [26.5, 57.5],
-      [25.8, 58.2],
-      [25.4, 59.2],
-      [25.1, 60.5],
-      [24.8, 61.7],
-      [22.8, 60.5],
-      [22.5, 59.2],
-      [22.8, 58.3],
-      [23.6, 57.5],
-      [24.1, 56.9],
-      [24.5, 56.55],
-      [25.0, 56.3],
-      [25.5, 56.4],
+      [26.20, 56.80],
+      [26.40, 57.50],
+      [25.80, 58.60],
+      [25.20, 60.00],
+      [24.60, 61.20],
+      [23.40, 59.80],
+      [23.80, 58.40],
+      [24.40, 57.20],
+      [25.20, 56.60],
     ] as [number, number][],
     color: '#00E5FF',
-    label: 'GULF OF OMAN',
+    label: 'GULF OF OMAN APPROACH',
   },
   {
     id: 'AREA-FUJAIRAH',
-    name: 'Fujairah Anchorage Hub',
+    name: 'Fujairah Offshore Anchorage (FOA)',
     coords: [
-      [25.45, 56.35],
-      [25.45, 56.75],
-      [24.95, 56.75],
-      [24.95, 56.35],
+      [25.40, 56.38],
+      [25.40, 56.70],
+      [24.95, 56.70],
+      [24.95, 56.38],
     ] as [number, number][],
     color: '#00E676',
     label: 'FUJAIRAH ANCHORAGE',
-  },
-  {
-    id: 'AREA-JEBELALI',
-    name: 'Jebel Ali Corridor',
-    coords: [
-      [25.25, 54.85],
-      [25.25, 55.25],
-      [24.85, 55.25],
-      [24.85, 54.85],
-    ] as [number, number][],
-    color: '#10B981',
-    label: 'JEBEL ALI CORRIDOR',
-  },
-  {
-    id: 'AREA-RASTANURA',
-    name: 'Ras Tanura Terminal',
-    coords: [
-      [27.15, 49.95],
-      [27.15, 50.45],
-      [26.60, 50.45],
-      [26.60, 49.95],
-    ] as [number, number][],
-    color: '#F59E0B',
-    label: 'RAS TANURA HUB',
-  },
-  {
-    id: 'AREA-QATAR-LNG',
-    name: 'Ras Laffan / North Field',
-    coords: [
-      [26.45, 51.35],
-      [26.45, 52.35],
-      [25.80, 52.35],
-      [25.80, 51.35],
-    ] as [number, number][],
-    color: '#3B82F6',
-    label: 'RAS LAFFAN LNG',
-  },
-  {
-    id: 'AREA-KHARG',
-    name: 'Kharg Island Terminal',
-    coords: [
-      [29.40, 50.15],
-      [29.40, 50.55],
-      [29.10, 50.55],
-      [29.10, 50.15],
-    ] as [number, number][],
-    color: '#EC4899',
-    label: 'KHARG TERMINAL',
-  },
-  {
-    id: 'AREA-BANDARABBAS',
-    name: 'Bandar Abbas / Qeshm',
-    coords: [
-      [27.25, 55.80],
-      [27.25, 56.55],
-      [26.70, 56.55],
-      [26.70, 55.80],
-    ] as [number, number][],
-    color: '#E11D48',
-    label: 'BANDAR ABBAS',
-  },
-  {
-    id: 'AREA-RS-SOUTH',
-    name: 'Bab-el-Mandeb',
-    coords: [
-      [13.5, 42.8],
-      [13.5, 43.6],
-      [12.3, 43.6],
-      [12.3, 42.8],
-    ] as [number, number][],
-    color: '#DC2626',
-    label: 'BAB-EL-MANDEB',
-  },
-  {
-    id: 'AREA-RS-NORTH',
-    name: 'Red Sea & Suez Approach',
-    coords: [
-      [28.8, 32.8],
-      [28.8, 35.2],
-      [26.5, 36.5],
-      [26.5, 34.0],
-    ] as [number, number][],
-    color: '#8B5CF6',
-    label: 'SUEZ APPROACH',
-  },
-  {
-    id: 'AREA-ADEN-IRTC',
-    name: 'Gulf of Aden IRTC Corridor',
-    coords: [
-      [13.2, 45.0],
-      [13.2, 51.5],
-      [11.8, 51.5],
-      [11.8, 45.0],
-    ] as [number, number][],
-    color: '#06B6D4',
-    label: 'GULF OF ADEN IRTC',
   },
 ];
 
@@ -373,7 +385,7 @@ export default function LeafletMapInner({
 }: LeafletMapProps) {
   const minZoom = minZoomProp ?? (locked ? LOCKED_MIN_ZOOM : DEFAULT_MIN_ZOOM);
   const maxZoom = maxZoomProp ?? (locked ? LOCKED_MAX_ZOOM : DEFAULT_MAX_ZOOM);
-  const boundsViscosity = 0;
+  const boundsViscosity = 1.0;
   const [map, setMap] = useState<L.Map | null>(null);
   const [tileFailed, setTileFailed] = useState(false);
   const tileErrorCountRef = useRef(0);
@@ -528,6 +540,7 @@ export default function LeafletMapInner({
   const [tracks, setTracks] = useState<any[]>(tracksProp || []);
   const tracksRef = useRef<any[]>([]);
   tracksRef.current = tracks; // always latest for heatmap fallback
+  const trackMarkersRef = useRef<Map<string, { marker: L.Marker; track: any; lat: number; lon: number; heading: number; severity: string; selected: boolean }>>(new Map());
   const { subscribe } = useWebSocket();
   const wsConflicts = useRealtimeStore((s) => s.conflicts);
 
@@ -558,13 +571,12 @@ export default function LeafletMapInner({
     }
   }, [tracksProp]);
 
-  // REST fallback for initial load before WebSocket delivers conflicts
+  // Real-time conflict intelligence feed query
   const { data: conflictData } = useQuery({
     queryKey: ['conflict-feed'],
     queryFn: getConflictFeed,
-    enabled: wsConflicts.length === 0, // only fetch if WS hasn't delivered yet
-    refetchInterval: false,
-    staleTime: Infinity,
+    refetchInterval: 15000,
+    staleTime: 8000,
   });
 
   const { data: initialTracesData } = useQuery({
@@ -862,7 +874,7 @@ export default function LeafletMapInner({
         },
       });
     }
-  }, [map]);
+  }, [map, showAreas]);
 
   const animatePointTransition = (from: number[][], to: number[][], durationMs: number) => {
     if (interpRafRef.current) cancelAnimationFrame(interpRafRef.current);
@@ -960,23 +972,83 @@ export default function LeafletMapInner({
     };
   }, [map, showHeatmap]);
 
-  useEffect(() => {
-    if (!map || !clusterRef.current) return;
-    clusterRef.current.clearLayers();
+  const displayTracks = useMemo(() => {
+    const map = new Map<string, any>();
+    if (tracks && tracks.length > 0) {
+      for (const t of tracks) {
+        const id = String(t.trackId || t.id || t.mmsi || '');
+        if (id) map.set(id, t);
+      }
+    }
+    if (tracksProp && tracksProp.length > 0) {
+      for (const t of tracksProp) {
+        const id = String(t.trackId || t.id || t.mmsi || '');
+        if (id) map.set(id, t);
+      }
+    }
+    return Array.from(map.values());
+  }, [tracksProp, tracks]);
 
-    const filteredTracks = tracks.filter((track) => {
+  useEffect(() => {
+    if (!map) return;
+    if (!clusterRef.current) {
+      clusterRef.current = (L as any).markerClusterGroup({
+        chunkedLoading: true,
+        maxClusterRadius: 45,
+        spiderfyOnMaxZoom: false,
+        spiderfyDistanceMultiplier: 1,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        disableClusteringAtZoom: 12,
+        iconCreateFunction: (cluster: any) => {
+          const count = cluster.getChildCount();
+          const size = count < 10 ? 36 : count < 100 ? 42 : 48;
+          const anchor = Math.round(size / 2);
+          return L.divIcon({
+            html: `<div style="
+              position: relative;
+              width: ${size}px; height: ${size}px;
+              display: flex; align-items: center; justify-content: center;
+            ">
+              <div class="cluster-circle-outer" style="
+                position: absolute; inset: 0;
+                border-radius: 50%;
+              "></div>
+              <div class="cluster-circle-inner" style="
+                position: relative;
+                width: ${size - 8}px; height: ${size - 8}px;
+                border-radius: 50%;
+                display: flex; align-items: center; justify-content: center;
+                font-size: ${count < 100 ? '11px' : '10px'};
+              ">${count}</div>
+            </div>`,
+            className: 'leaflet-cluster-custom',
+            iconSize: [size, size],
+            iconAnchor: [anchor, anchor],
+          });
+        },
+      });
+      map.addLayer(clusterRef.current);
+    }
+    const activeIds = new Set<string>();
+    const toAdd: any[] = [];
+    const toRemove: any[] = [];
+
+    const filteredTracks = displayTracks.filter((track: any) => {
       const lat = parseCoord(track.lat) ?? parseCoord(track.latitude);
       const lon = parseCoord(track.lon) ?? parseCoord(track.longitude);
       if (lat === null || lon === null) return false;
+      if (!isInsideGulf(lat, lon)) return false;
 
       if (severityFilter && severityFilter !== 'all' && track.severity !== severityFilter) {
         return false;
       }
       if (regionFilter && regionFilter !== 'all') {
         const regionName = getRegionNameByCoords(lat, lon);
-        if (regionFilter === 'hormuz' && regionName !== 'Strait of Hormuz') return false;
-        if (regionFilter === 'pgulf' && regionName !== 'Persian Gulf') return false;
-        if (regionFilter === 'goman' && regionName !== 'Gulf of Oman') return false;
+        if ((regionFilter === 'hormuz' || regionFilter === 'AREA-HORMUZ') && regionName !== 'Strait of Hormuz') return false;
+        if ((regionFilter === 'pgulf' || regionFilter === 'AREA-PGULF') && regionName !== 'Persian Gulf') return false;
+        if ((regionFilter === 'goman' || regionFilter === 'AREA-GOMAN') && regionName !== 'Gulf of Oman') return false;
+        if ((regionFilter === 'fujairah' || regionFilter === 'AREA-FUJAIRAH') && regionName !== 'Fujairah Anchorage') return false;
         if (regionFilter === 'redsea' && !regionName.includes('Red Sea')) return false;
       }
       if (timeline && timeline !== 'all' && track.timestamp) {
@@ -993,7 +1065,7 @@ export default function LeafletMapInner({
       return true;
     });
 
-    filteredTracks.forEach((track) => {
+    filteredTracks.forEach((track: any) => {
       const lat = parseCoord(track.lat) ?? parseCoord(track.latitude);
       const lon = parseCoord(track.lon) ?? parseCoord(track.longitude);
       if (lat === null || lon === null) return;
@@ -1003,130 +1075,86 @@ export default function LeafletMapInner({
       if (isAircraft && !showAircraft) return;
       if (!isAircraft && !showVessels) return;
 
-      const selected = String(track.id) === String(selectedTrackId);
-      const marker = L.marker([lat, lon], {
-        icon: makeIcon(track, track.severity, track.heading || 0, selected),
-      });
+      const trackId = String(track.id || track.trackId || '');
+      if (!trackId) return;
+      activeIds.add(trackId);
 
-      const severityColor: Record<string, string> = {
-        critical: '#b91c1c',
-        high: '#b45309',
-        medium: '#d97706',
-        low: '#15803d',
-      };
-      const color = severityColor[track.severity || 'low'] || 'var(--color-primary-600)';
+      const selected = trackId === String(selectedTrackId);
+      const heading = Number(track.heading || 0);
+      const severity = track.severity || 'low';
+      const existing = trackMarkersRef.current.get(trackId);
 
-      const altVal = (track as any).altitude;
-      const squawkVal = (track as any).squawk;
-      const onGroundVal = (track as any).onGround;
+      if (existing) {
+        // In-place updates: avoids recreating DOM elements and re-rendering cluster
+        if (existing.lat !== lat || existing.lon !== lon) {
+          existing.marker.setLatLng([lat, lon]);
+          existing.lat = lat;
+          existing.lon = lon;
+        }
+        if (existing.heading !== heading || existing.severity !== severity || existing.selected !== selected) {
+          existing.marker.setIcon(makeIcon(track, severity, heading, selected));
+          existing.heading = heading;
+          existing.severity = severity;
+          existing.selected = selected;
+        }
+        existing.track = track;
 
-      const altPill =
-        isAircraft && altVal !== undefined && altVal !== null
-          ? `<div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
-              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">ALTITUDE</div>
-              <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${Number(altVal).toLocaleString()} ft</div>
-            </div>`
-          : '';
-      const squawkPill =
-        isAircraft && squawkVal
-          ? `<div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
-              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">SQUAWK</div>
-              <div style="font-size:11px;font-weight:700;color:var(--color-primary-400, #38bdf8);font-family:var(--font-mono, monospace);margin-top:1px">${squawkVal}</div>
-            </div>`
-          : '';
-      const onGroundPill =
-        isAircraft && onGroundVal !== undefined
-          ? `<div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
-              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">STATUS</div>
-              <div style="font-size:11px;font-weight:700;color:${onGroundVal ? 'var(--color-warning, #facc15)' : 'var(--color-success, #22c55e)'};font-family:var(--font-mono, monospace);margin-top:1px">${onGroundVal ? 'ON GROUND' : 'AIRBORNE'}</div>
-            </div>`
-          : '';
-      const aisAgePill =
-        !isAircraft && track.aisAgeMinutes !== undefined
-          ? `<div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
-              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">AIS AGE</div>
-              <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${track.aisAgeMinutes} min</div>
-            </div>`
-          : '';
+        if (selected && lastFlownTrackIdRef.current !== selectedTrackId) {
+          lastFlownTrackIdRef.current = selectedTrackId;
+          map.flyTo([lat, lon], 11, { duration: 1.5, animate: true });
+          existing.marker.openPopup();
+        }
+      } else {
+        // Create new marker with lazy popup builder function
+        const marker = L.marker([lat, lon], {
+          icon: makeIcon(track, severity, heading, selected),
+        });
 
-      marker.bindPopup(
-        `<div style="font-family:var(--font-ui, 'Inter', system-ui, sans-serif);color:var(--color-fg);padding:14px;border-radius:14px">
-          <!-- Header -->
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px">
-            <div style="display:flex;align-items:center;gap:10px;min-width:0">
-              <div style="width:34px;height:34px;border-radius:8px;background:${color}18;border:1px solid ${color}40;display:flex;align-items:center;justify-content:center;font-size:16px;color:${color};flex-shrink:0">
-                ${isAircraft ? '✈' : '🚢'}
-              </div>
-              <div style="min-width:0">
-                <h4 style="margin:0;font-size:13px;font-weight:700;color:var(--color-fg);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${track.assetName || track.name || track.id}</h4>
-                <div style="display:flex;align-items:center;gap:5px;margin-top:3px">
-                  <span style="width:6px;height:6px;border-radius:50%;background:#22c55e" class="tact-anim-pulse"></span>
-                  <span style="font-size:10px;font-weight:600;color:var(--color-fg-muted);text-transform:uppercase;letter-spacing:0.04em;font-family:var(--font-mono, monospace)">${isAircraft ? 'ADS-B AIR' : 'AIS MARITIME'}</span>
-                </div>
-              </div>
-            </div>
-            <span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#fff;background:${color};border:1px solid ${color}80;box-shadow:0 0 8px ${color}40;flex-shrink:0">
-              ${track.severity || 'NOMINAL'}
-            </span>
-          </div>
+        marker.bindPopup(
+          () => buildTrackPopupHTML(trackMarkersRef.current.get(trackId)?.track || track),
+          { maxWidth: 320, className: 'track-popup' }
+        );
 
-          <!-- Telemetry Grid -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
-            <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
-              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">TRACK ID</div>
-              <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${track.id}</div>
-            </div>
-            <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
-              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">SPEED</div>
-              <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${(track.speed || 0).toFixed(1)} kn</div>
-            </div>
-            <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
-              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">HEADING</div>
-              <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${(track.heading || 0).toFixed(0)}°</div>
-            </div>
-            <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
-              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">REGION</div>
-              <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${getRegionNameByCoords(track.lat, track.lon)}</div>
-            </div>
-            ${altPill}
-            ${squawkPill}
-            ${onGroundPill}
-            ${aisAgePill}
-            <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
-              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">LATITUDE</div>
-              <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${track.lat.toFixed(4)}°N</div>
-            </div>
-            <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
-              <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">LONGITUDE</div>
-              <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${track.lon.toFixed(4)}°E</div>
-            </div>
-          </div>
+        marker.on('click', () => {
+          handleTrackSelect(track.id || trackId);
+          marker.openPopup();
+        });
 
-          <!-- Footer -->
-          <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--color-border);padding-top:8px;font-size:10px;color:var(--color-fg-subtle)">
-            <span style="display:flex;align-items:center;gap:4px">
-              <span style="width:5px;height:5px;border-radius:50%;background:#22c55e"></span>
-              REALTIME FEED
-            </span>
-            <span style="font-family:var(--font-mono, monospace);color:var(--color-fg-muted)">${new Date(track.timestamp || Date.now()).toLocaleTimeString()}</span>
-          </div>
-        </div>`,
-        { maxWidth: 340, className: 'track-popup' }
-      );
+        trackMarkersRef.current.set(trackId, {
+          marker,
+          track,
+          lat,
+          lon,
+          heading,
+          severity,
+          selected,
+        });
 
-      marker.on('click', () => {
-        handleTrackSelect(track.id);
-        marker.openPopup();
-      });
+        toAdd.push(marker);
 
-      clusterRef.current.addLayer(marker);
-
-      if (selected && lastFlownTrackIdRef.current !== selectedTrackId) {
-        lastFlownTrackIdRef.current = selectedTrackId;
-        map.flyTo([lat, lon], 11, { duration: 1.5, animate: true });
-        marker.openPopup();
+        if (selected && lastFlownTrackIdRef.current !== selectedTrackId) {
+          lastFlownTrackIdRef.current = selectedTrackId;
+          map.flyTo([lat, lon], 11, { duration: 1.5, animate: true });
+          marker.openPopup();
+        }
       }
     });
+
+    // Remove stale markers not in activeIds
+    for (const [id, item] of trackMarkersRef.current.entries()) {
+      if (!activeIds.has(id)) {
+        toRemove.push(item.marker);
+        trackMarkersRef.current.delete(id);
+      }
+    }
+
+    // High-performance batch clustering operations
+    if (toRemove.length > 0) {
+      clusterRef.current.removeLayers(toRemove);
+    }
+    if (toAdd.length > 0) {
+      clusterRef.current.addLayers(toAdd);
+    }
 
     zoneLayersRef.current.forEach((polygon, id) => {
       const isSelected = id === selectedTrackId;
@@ -1150,14 +1178,12 @@ export default function LeafletMapInner({
         low: '#10b981',
       };
       const conflictSVG = (color: string) => `
-        <div style="position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-          <div style="position: absolute; inset: 0; border-radius: 9999px; background-color: ${color}; opacity: 0.35; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-          <div style="position: absolute; inset: 4px; border-radius: 9999px; border: 1.5px dashed ${color}; opacity: 0.6; animation: spin 8s linear infinite;"></div>
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" style="position: relative; z-index: 10; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
-            <path d="M12 2L1 21H23L12 2Z" fill="${color}" fill-opacity="0.3" stroke="${color}" stroke-width="2.2" stroke-linejoin="round"/>
-            <line x1="12" y1="9" x2="12" y2="14" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/>
-            <circle cx="12" cy="17.5" r="1.3" fill="${color}"/>
-          </svg>
+        <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+          <!-- Outward Beacon Pulse Waves -->
+          <div style="position: absolute; width: 42px; height: 42px; border-radius: 9999px; background: ${color}40; border: 1.5px solid ${color}99; animation: ping 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+          <div style="position: absolute; width: 28px; height: 28px; border-radius: 9999px; background: ${color}55; animation: ping 2.2s cubic-bezier(0, 0, 0.2, 1) 0.6s infinite;"></div>
+          <!-- Center Solid Red Dot -->
+          <div style="position: relative; z-index: 10; width: 12px; height: 12px; border-radius: 9999px; background: #ef4444; border: 2px solid #ffffff; box-shadow: 0 0 8px 2px rgba(239, 68, 68, 0.85);"></div>
         </div>`;
 
       const filteredConflicts = allConflicts.filter((c: ConflictEvent) => {
@@ -1194,6 +1220,62 @@ export default function LeafletMapInner({
         });
         const marker = L.marker([c.lat, c.lon], { icon });
 
+        // Spatial-temporal AIS vessel correlation within 15 Nautical Miles
+        const nearbyVessels = filteredTracks
+          .filter((t: any) => {
+            const isAir = classifyTrackObject(t) === 'aircraft';
+            if (isAir) return false;
+            const tLat = parseCoord(t.lat) ?? parseCoord(t.latitude);
+            const tLon = parseCoord(t.lon) ?? parseCoord(t.longitude);
+            if (tLat === null || tLon === null) return false;
+            // Haversine distance in NM
+            const dLat = ((tLat - c.lat) * Math.PI) / 180;
+            const dLon = ((tLon - c.lon) * Math.PI) / 180;
+            const a =
+              Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos((c.lat * Math.PI) / 180) *
+                Math.cos((tLat * Math.PI) / 180) *
+                Math.sin(dLon / 2) *
+                Math.sin(dLon / 2);
+            const distNm = 3440.065 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return distNm <= 15.0;
+          })
+          .map((t: any) => {
+            const tLat = parseCoord(t.lat) ?? parseCoord(t.latitude)!;
+            const tLon = parseCoord(t.lon) ?? parseCoord(t.longitude)!;
+            const dLat = ((tLat - c.lat) * Math.PI) / 180;
+            const dLon = ((tLon - c.lon) * Math.PI) / 180;
+            const a =
+              Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos((c.lat * Math.PI) / 180) *
+                Math.cos((tLat * Math.PI) / 180) *
+                Math.sin(dLon / 2) *
+                Math.sin(dLon / 2);
+            const distNm = 3440.065 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return {
+              name: t.assetName || t.trackId || 'Vessel',
+              mmsi: t.trackId || t.id,
+              dist: Math.round(distNm * 10) / 10,
+              speed: t.speed ? Math.round(Number(t.speed) * 10) / 10 : 0,
+              heading: t.heading ? Math.round(Number(t.heading)) : null,
+            };
+          })
+          .sort((a, b) => a.dist - b.dist)
+          .slice(0, 4);
+
+        const nearbyListHtml =
+          nearbyVessels.length > 0
+            ? nearbyVessels
+                .map(
+                  (v) =>
+                    `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:10px">
+                      <span style="font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace)">${v.name}</span>
+                      <span style="color:var(--color-primary-600);font-weight:600">${v.dist} NM (${v.speed} kn)</span>
+                    </div>`
+                )
+                .join('')
+            : '<div style="font-size:10px;color:var(--color-fg-muted);font-style:italic">No active AIS vessels within 15 NM</div>';
+
         const verifiedIcon = c.verified ? '✓ Verified' : '⚠ Unverified';
         const verifiedColor = c.verified ? '#15803d' : '#b45309';
 
@@ -1218,21 +1300,26 @@ export default function LeafletMapInner({
                 <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase">TYPE</div>
                 <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${c.conflictType}</div>
               </div>
-              <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
-                <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase">ASSETS</div>
-                <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${c.affectedAssets || 'N/A'}</div>
+            </div>
+
+            <!-- Spatial-Temporal AIS Traffic Correlation -->
+            <div style="background:var(--color-bg-input, rgba(0,0,0,0.25));border:1px solid var(--color-border);padding:8px 10px;border-radius:8px;margin-bottom:10px">
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:700;color:var(--color-primary-600);margin-bottom:6px">
+                <span>NEARBY AIS MARITIME TRAFFIC (15 NM)</span>
+                <span style="font-size:9px;background:var(--color-primary-600);color:#fff;padding:1px 6px;border-radius:4px">${nearbyVessels.length} VESSELS</span>
               </div>
-              <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
-                <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase">CASUALTIES</div>
-                <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${c.casualties || 'None'}</div>
+              ${nearbyListHtml}
+              <div style="font-size:9px;color:var(--color-fg-muted);margin-top:6px;line-height:1.3;font-style:italic">
+                Observed AIS proximity indicates spatial co-location in international waterways, not involvement or causality.
               </div>
             </div>
+
             <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--color-fg-subtle);border-top:1px solid var(--color-border);padding-top:8px">
               <span>Source: ${c.source} (${c.sourceType})</span>
               <span style="font-family:var(--font-mono, monospace)">${new Date(c.timestamp).toLocaleTimeString()}</span>
             </div>
           </div>`,
-          { maxWidth: 340, className: 'conflict-popup' }
+          { maxWidth: 360, className: 'conflict-popup' }
         );
 
         marker.on('click', () => {
@@ -1244,6 +1331,9 @@ export default function LeafletMapInner({
   }, [
     map,
     tracks,
+    tracksProp,
+    displayTracks,
+    wsConflicts,
     selectedTrackId,
     showAircraft,
     showVessels,
@@ -1273,11 +1363,70 @@ export default function LeafletMapInner({
     }
   }, [recenterTrigger, map, setSearchParams]);
 
+  const GULF_SECTORS = [
+    { label: 'Hormuz TSS', center: [26.45, 56.40] as [number, number], zoom: 8.5 },
+    { label: 'Persian Gulf', center: [26.60, 52.80] as [number, number], zoom: 7.2 },
+    { label: 'Gulf of Oman', center: [24.50, 58.20] as [number, number], zoom: 7.5 },
+    { label: 'Fujairah (FOA)', center: [25.18, 56.55] as [number, number], zoom: 9.0 },
+  ];
+
   return (
     <div
       className={className}
       style={{ position: 'absolute', inset: 0, background: 'var(--color-bg)' }}
     >
+      {/* Quick Gulf Sector Navigation Bar */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '12px',
+          left: '12px',
+          zIndex: 500,
+          display: 'flex',
+          gap: '4px',
+          background: 'var(--color-bg-card)',
+          border: '1px solid var(--color-border)',
+          borderRadius: '8px',
+          padding: '4px',
+          backdropFilter: 'blur(10px)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', padding: '0 6px', fontSize: '10px', fontWeight: 'bold', color: 'var(--color-primary-400)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Gulf Sectors:
+        </div>
+        {GULF_SECTORS.map((s) => (
+          <button
+            key={s.label}
+            type="button"
+            onClick={() => map?.flyTo(s.center, s.zoom, { duration: 1.2, animate: true })}
+            title={`Pan directly to ${s.label}`}
+            style={{
+              padding: '4px 8px',
+              background: 'var(--color-bg-elevated)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: 600,
+              color: 'var(--color-fg)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--color-primary-500)';
+              e.currentTarget.style.color = 'var(--color-primary-400)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'var(--color-border)';
+              e.currentTarget.style.color = 'var(--color-fg)';
+            }}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Map Zoom Controls */}
       <div
         style={{
           position: 'absolute',
@@ -1339,6 +1488,7 @@ export default function LeafletMapInner({
         style={{ height: '100%', width: '100%' }}
         minZoom={minZoom}
         maxZoom={maxZoom}
+        maxBounds={DEFAULT_GULF_BOUNDS}
         maxBoundsViscosity={boundsViscosity}
         zoomControl={false}
         ref={setMap as any}

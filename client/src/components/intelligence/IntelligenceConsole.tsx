@@ -27,6 +27,9 @@ interface IntelligenceConsoleProps {
   newsItems: NewsItem[];
   selectedRegion?: string;
   onSelectRegion?: (regionId: string) => void;
+  metrics?: any;
+  isMetricsLoading?: boolean;
+  onMetricClick?: (key: any) => void;
 }
 
 type ConsoleTab = 'zones' | 'notations' | 'legend';
@@ -36,6 +39,9 @@ export function IntelligenceConsole({
   newsItems,
   selectedRegion = 'all',
   onSelectRegion,
+  metrics,
+  isMetricsLoading = false,
+  onMetricClick,
 }: IntelligenceConsoleProps) {
   const [activeTab, setActiveTab] = useState<ConsoleTab>('zones');
 
@@ -53,78 +59,70 @@ export function IntelligenceConsole({
   }));
 
   const watchZones = [
-    { id: 'AREA-HORMUZ', name: 'Strait of Hormuz', color: '#FF0055', desc: 'Critical Maritime Chokepoint & TSS' },
-    { id: 'AREA-PGULF', name: 'Persian Gulf (North)', color: '#FF9900', desc: 'Northern Energy & Tanker Basin' },
+    { id: 'AREA-HORMUZ', name: 'Strait of Hormuz (TSS)', color: '#FF0055', desc: 'Critical Maritime Chokepoint & TSS' },
+    { id: 'AREA-PGULF', name: 'Persian Gulf Basin', color: '#FF9900', desc: 'Central & Northern Tanker Basin' },
     { id: 'AREA-GOMAN', name: 'Gulf of Oman', color: '#00E5FF', desc: 'Deep-Water Ingress & Egress' },
-    { id: 'AREA-FUJAIRAH', name: 'Fujairah Anchorage Hub', color: '#00E676', desc: 'Global Bunkering & STS Anchorage' },
-    { id: 'AREA-JEBELALI', name: 'Jebel Ali Corridor', color: '#10B981', desc: 'Container Terminal Approach' },
-    { id: 'AREA-RASTANURA', name: 'Ras Tanura Terminal', color: '#F59E0B', desc: 'Major Offshore Crude Loading Port' },
-    { id: 'AREA-QATAR-LNG', name: 'Ras Laffan / North Field', color: '#3B82F6', desc: 'LNG Export & Offshore Gas Basin' },
-    { id: 'AREA-KHARG', name: 'Kharg Island Terminal', color: '#EC4899', desc: 'Heavy Crude Deepwater Terminal' },
-    { id: 'AREA-BANDARABBAS', name: 'Bandar Abbas / Qeshm', color: '#E11D48', desc: 'Naval Station & Ingress Pass' },
-    { id: 'AREA-RS-SOUTH', name: 'Bab-el-Mandeb', color: '#DC2626', desc: 'Southern Red Sea Chokepoint' },
-    { id: 'AREA-RS-NORTH', name: 'Red Sea & Suez Approach', color: '#8B5CF6', desc: 'Suez Canal Maritime Approach' },
-    { id: 'AREA-ADEN-IRTC', name: 'Gulf of Aden IRTC Corridor', color: '#06B6D4', desc: 'Maritime Security Transit Corridor' },
+    { id: 'AREA-FUJAIRAH', name: 'Fujairah Anchorage (FOA)', color: '#00E676', desc: 'Global Bunkering & STS Anchorage' },
   ];
 
   return (
     <aside className="hidden lg:block w-full h-full flex-shrink-0">
       <div className="border-r border-[var(--color-border)] bg-[var(--color-bg-elevated)]/60 flex flex-col h-full">
         {/* Header */}
-        <div className="shrink-0 px-3 py-2.5 border-b border-[var(--color-border)] flex items-center justify-between">
-          <h3 className="font-display text-[13px] font-semibold text-[var(--color-fg)] flex items-center gap-2">
-            <Compass className="h-4 w-4 text-[var(--color-primary-600)]" />
-            Intel Console
+        <div className="shrink-0 px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-bg-card)] flex items-center justify-between">
+          <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-[var(--color-fg)] flex items-center gap-1.5">
+            <Compass className="h-3.5 w-3.5 text-[var(--color-primary-600)] dark:text-[#38bdf8]" />
+            INTEL CONSOLE
           </h3>
-          <span className="text-[10px] font-mono text-[var(--color-fg-muted)] uppercase tracking-wider">
-            Live
+          <span className="text-[9px] font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+            ● LIVE
           </span>
         </div>
 
         {/* Tab Navigation to eliminate vertical conflict */}
-        <div className="shrink-0 flex items-center border-b border-[var(--color-border)] bg-[var(--color-bg)]/50 p-1 gap-1">
+        <div className="shrink-0 flex items-center border-b border-[var(--color-border)] bg-[var(--color-bg-input)] p-1 gap-1">
           <button
             type="button"
             onClick={() => setActiveTab('zones')}
             className={cn(
-              'flex-1 flex items-center justify-center gap-1.5 py-1 px-2 text-[11px] font-medium transition-colors border',
+              'flex-1 flex items-center justify-center gap-1 py-1 px-1 text-[10px] font-mono font-bold uppercase transition-colors border truncate',
               activeTab === 'zones'
-                ? 'bg-[var(--color-bg-elevated)] text-[var(--color-fg)] border-[var(--color-border)] shadow-xs'
-                : 'text-[var(--color-fg-muted)] border-transparent hover:text-[var(--color-fg)] hover:bg-[var(--color-bg-elevated)]/40'
+                ? 'bg-[var(--color-bg-card)] text-[var(--color-primary-600)] dark:text-[#38bdf8] border-[var(--color-border-strong)] dark:border-[#38bdf8]/60 shadow-[inset_0_2px_0_var(--color-primary-600)]'
+                : 'text-[var(--color-fg-muted)] border-transparent hover:text-[var(--color-fg)] hover:bg-[var(--color-bg-hover)]'
             )}
           >
-            <Compass className="h-3 w-3 text-[var(--color-primary-600)]" />
-            <span>Zones</span>
-            <span className="text-[9px] font-mono opacity-70">({watchZones.length})</span>
+            <Compass className="h-3 w-3 shrink-0" />
+            <span>ZONES</span>
+            <span className="text-[9px] opacity-70">({watchZones.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('notations')}
             className={cn(
-              'flex-1 flex items-center justify-center gap-1.5 py-1 px-2 text-[11px] font-medium transition-colors border',
+              'flex-1 flex items-center justify-center gap-1 py-1 px-1 text-[10px] font-mono font-bold uppercase transition-colors border truncate',
               activeTab === 'notations'
-                ? 'bg-[var(--color-bg-elevated)] text-[var(--color-fg)] border-[var(--color-border)] shadow-xs'
-                : 'text-[var(--color-fg-muted)] border-transparent hover:text-[var(--color-fg)] hover:bg-[var(--color-bg-elevated)]/40'
+                ? 'bg-[var(--color-bg-card)] text-[var(--color-primary-600)] dark:text-[#38bdf8] border-[var(--color-border-strong)] dark:border-[#38bdf8]/60 shadow-[inset_0_2px_0_var(--color-primary-600)]'
+                : 'text-[var(--color-fg-muted)] border-transparent hover:text-[var(--color-fg)] hover:bg-[var(--color-bg-hover)]'
             )}
           >
-            <FileText className="h-3 w-3 text-[#00E5FF]" />
-            <span>Notations</span>
-            <span className="text-[9px] font-mono opacity-70">({notations.length})</span>
+            <FileText className="h-3 w-3 shrink-0 text-cyan-500 dark:text-[#00E5FF]" />
+            <span>NOTES</span>
+            <span className="text-[9px] opacity-70">({notations.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('legend')}
             className={cn(
-              'flex-1 flex items-center justify-center gap-1.5 py-1 px-2 text-[11px] font-medium transition-colors border',
+              'flex-1 flex items-center justify-center gap-1 py-1 px-1 text-[10px] font-mono font-bold uppercase transition-colors border truncate',
               activeTab === 'legend'
-                ? 'bg-[var(--color-bg-elevated)] text-[var(--color-fg)] border-[var(--color-border)] shadow-xs'
-                : 'text-[var(--color-fg-muted)] border-transparent hover:text-[var(--color-fg)] hover:bg-[var(--color-bg-elevated)]/40'
+                ? 'bg-[var(--color-bg-card)] text-[var(--color-primary-600)] dark:text-[#38bdf8] border-[var(--color-border-strong)] dark:border-[#38bdf8]/60 shadow-[inset_0_2px_0_var(--color-primary-600)]'
+                : 'text-[var(--color-fg-muted)] border-transparent hover:text-[var(--color-fg)] hover:bg-[var(--color-bg-hover)]'
             )}
           >
-            <Layers className="h-3 w-3 text-[#FF9900]" />
-            <span>Legend</span>
+            <Layers className="h-3 w-3 shrink-0 text-amber-500 dark:text-[#FF9900]" />
+            <span>LEGEND</span>
           </button>
         </div>
 
@@ -241,26 +239,26 @@ export function IntelligenceConsole({
           )}
 
           {/* ================================================ */}
-          {/* Tab 3: Tactical Symbology & Legend */}
+          {/* Tab 3: Tactical Symbology & Map Legend */}
           {/* ================================================ */}
           {activeTab === 'legend' && (
             <div className="space-y-3">
-              {/* Vessel Markers */}
+              {/* Maritime AIS Contacts */}
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-fg-muted)] mb-1.5 flex items-center gap-1.5">
-                  <Ship className="h-3 w-3 text-[#00E5FF]" />
-                  Vessel Anomaly Postures
+                <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--color-fg-muted)] mb-1.5 flex items-center gap-1.5">
+                  <Ship className="h-3 w-3 text-[var(--color-primary-600)] dark:text-[#38bdf8]" />
+                  <span>MARITIME AIS CONTACTS</span>
                 </div>
-                <div className="space-y-1.5 p-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xs">
+                <div className="space-y-1.5 p-2 bg-[var(--color-bg-input)] border border-[var(--color-border)] tactical-beveled">
                   {[
-                    { color: '#00E676', label: 'Nominal Transit', desc: 'Commercial course & speed within standard corridor' },
-                    { color: '#FFC800', label: 'Medium Posture', desc: 'Minor course delta or speed variance detected' },
-                    { color: '#FF9900', label: 'High Anomaly', desc: 'AIS gap or abnormal behavior pattern' },
-                    { color: '#FF0055', label: 'Critical Target', desc: 'Severe threat anomaly requiring immediate review', pulse: true },
+                    { color: '#22c55e', label: 'NOMINAL TRANSIT', desc: 'Standard SOG & course within shipping corridor' },
+                    { color: '#eab308', label: 'MEDIUM VARIANCE', desc: 'Minor course delta, deceleration or anchored' },
+                    { color: '#f97316', label: 'HIGH ANOMALY', desc: 'AIS dark period, erratic maneuvers or hot zone approach' },
+                    { color: '#ef4444', label: 'CRITICAL THREAT', desc: 'ML ensemble anomaly score ≥80 or kinetic proximity', pulse: true },
                   ].map((m) => (
-                    <div key={m.label} className="flex items-center gap-2.5">
+                    <div key={m.label} className="flex items-center gap-2">
                       <div
-                        className="relative w-5 h-5 bg-[var(--color-bg-elevated)] border flex items-center justify-center shrink-0"
+                        className="relative w-5 h-5 bg-[var(--color-bg-card)] border flex items-center justify-center shrink-0"
                         style={{ borderColor: m.color, boxShadow: `0 0 6px ${m.color}30` }}
                       >
                         {m.pulse && (
@@ -270,74 +268,163 @@ export function IntelligenceConsole({
                           />
                         )}
                         <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
-                          {m.pulse ? (
-                            <>
-                              <circle cx="7" cy="7" r="5" stroke={m.color} strokeWidth="1" />
-                              <line x1="7" y1="1" x2="7" y2="13" stroke={m.color} strokeWidth="1" />
-                              <line x1="1" y1="7" x2="13" y2="7" stroke={m.color} strokeWidth="1" />
-                            </>
-                          ) : (
-                            <path d="M7 1 L11 11 L7 8 L3 11 Z" fill={m.color} opacity="0.9" />
-                          )}
+                          <path d="M7 1 L11 11 L7 8 L3 11 Z" fill={m.color} />
                         </svg>
                       </div>
                       <div className="min-w-0">
-                        <div className="text-[11px] font-semibold text-[var(--color-fg)]">{m.label}</div>
-                        <div className="text-[10px] text-[var(--color-fg-muted)] leading-tight">{m.desc}</div>
+                        <div className="font-mono text-[10px] font-bold text-[var(--color-fg)] uppercase">{m.label}</div>
+                        <div className="font-mono text-[9px] text-[var(--color-fg-muted)] leading-tight">{m.desc}</div>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Aircraft Markers */}
+              {/* Aviation ADS-B Contacts */}
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-fg-muted)] mb-1.5 flex items-center gap-1.5">
-                  <Plane className="h-3 w-3 text-[#00E5FF]" />
-                  Aviation ADS-B Vectors
+                <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--color-fg-muted)] mb-1.5 flex items-center gap-1.5">
+                  <Plane className="h-3 w-3 text-cyan-600 dark:text-cyan-400" />
+                  <span>AVIATION ADS-B CONTACTS</span>
                 </div>
-                <div className="space-y-1.5 p-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xs">
-                  <div className="flex items-center gap-2.5">
-                    <div
-                      className="w-5 h-5 bg-[var(--color-bg-elevated)] border border-[#00E5FF] flex items-center justify-center shrink-0"
-                      style={{ boxShadow: '0 0 6px rgba(0,229,255,0.3)' }}
-                    >
+                <div className="space-y-1.5 p-2 bg-[var(--color-bg-input)] border border-[var(--color-border)] tactical-beveled">
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 bg-[var(--color-bg-card)] border border-cyan-500 flex items-center justify-center shrink-0">
                       <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
-                        <path d="M7 1 L10 5 L7 13 L4 5 Z" fill="#00E5FF" opacity="0.9" />
-                        <line x1="2" y1="6" x2="12" y2="6" stroke="#00E5FF" strokeWidth="1.5" />
+                        <path d="M7 1 L10 5 L7 13 L4 5 Z" fill="#06b6d4" />
+                        <line x1="2" y1="6" x2="12" y2="6" stroke="#06b6d4" strokeWidth="1.5" />
                       </svg>
                     </div>
                     <div className="min-w-0">
-                      <div className="text-[11px] font-semibold text-[var(--color-fg)]">Commercial & Cargo Flights</div>
-                      <div className="text-[10px] text-[var(--color-fg-muted)] leading-tight">ADS-B state vectors with heading and altitude telemetry</div>
+                      <div className="font-mono text-[10px] font-bold text-[var(--color-fg)] uppercase">AIR CORRIDOR FLIGHTS</div>
+                      <div className="font-mono text-[9px] text-[var(--color-fg-muted)] leading-tight">ADS-B transponder vectors, squawk & altitude</div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Conflict Reticles */}
+              {/* Conflict & Kinetic Incidents */}
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-fg-muted)] mb-1.5 flex items-center gap-1.5">
-                  <ShieldAlert className="h-3 w-3 text-[#FF0055]" />
-                  Verified Incidents & Hotspots
+                <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--color-fg-muted)] mb-1.5 flex items-center gap-1.5">
+                  <ShieldAlert className="h-3 w-3 text-rose-600 dark:text-rose-400" />
+                  <span>INCIDENTS & CONFLICT ZONES</span>
                 </div>
-                <div className="space-y-1.5 p-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xs">
-                  <div className="flex items-center gap-2.5">
-                    <div
-                      className="w-5 h-5 bg-[var(--color-bg-elevated)] border border-[#FF0055] flex items-center justify-center shrink-0"
-                      style={{ boxShadow: '0 0 6px rgba(255,0,85,0.3)' }}
-                    >
-                      <span className="text-[11px] font-bold text-[#FF0055]">⊕</span>
+                <div className="space-y-1.5 p-2 bg-[var(--color-bg-input)] border border-[var(--color-border)] tactical-beveled">
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 bg-[var(--color-bg-card)] border border-rose-500 flex items-center justify-center shrink-0">
+                      <span className="font-mono text-[11px] font-bold text-rose-500">⊕</span>
                     </div>
                     <div className="min-w-0">
-                      <div className="text-[11px] font-semibold text-[var(--color-fg)]">Verified Incident Marker</div>
-                      <div className="text-[10px] text-[var(--color-fg-muted)] leading-tight">UKMTO, NASA FIRMS, and georeferenced OSINT alert coordinates</div>
+                      <div className="font-mono text-[10px] font-bold text-[var(--color-fg)] uppercase">VERIFIED INCIDENT RETICLE</div>
+                      <div className="font-mono text-[9px] text-[var(--color-fg-muted)] leading-tight">UKMTO, NASA FIRMS, naval events & OSINT strikes</div>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Strategic Geofence Corridors */}
+              <div>
+                <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--color-fg-muted)] mb-1.5 flex items-center gap-1.5">
+                  <Compass className="h-3 w-3 text-[var(--color-primary-600)] dark:text-[#38bdf8]" />
+                  <span>WATCH ZONES & GEOFENCES</span>
+                </div>
+                <div className="space-y-1.5 p-2 bg-[var(--color-bg-input)] border border-[var(--color-border)] tactical-beveled font-mono text-[9px]">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 border border-[#FF0055] bg-[#FF0055]/20 inline-block" />
+                    <span className="font-bold text-[var(--color-fg)]">HORMUZ TSS / CHOKEPOINT</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 border border-[#FF9900] bg-[#FF9900]/20 inline-block" />
+                    <span className="font-bold text-[var(--color-fg)]">PERSIAN GULF TANKER BASIN</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 border border-[#00E5FF] bg-[#00E5FF]/20 inline-block" />
+                    <span className="font-bold text-[var(--color-fg)]">GULF OF OMAN INGRESS/EGRESS</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 border border-[#00E676] bg-[#00E676]/20 inline-block" />
+                    <span className="font-bold text-[var(--color-fg)]">FUJAIRAH ANCHORAGE (FOA)</span>
                   </div>
                 </div>
               </div>
             </div>
           )}
+        </div>
+
+        {/* Bottom Tactical Metrics Stack */}
+        <div className="shrink-0 border-t border-[var(--color-border)] bg-[var(--color-bg-card)] p-2">
+          <div className="flex items-center justify-between mb-1.5 px-0.5">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--color-fg-muted)] flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary-600)] dark:bg-[#38bdf8] animate-pulse inline-block" />
+              LIVE METRICS
+            </span>
+            {isMetricsLoading && (
+              <span className="text-[9px] font-mono text-[var(--color-primary-600)] dark:text-[#38bdf8] animate-pulse">
+                SYNCING...
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {/* Vessels */}
+            <button
+              type="button"
+              onClick={() => onMetricClick?.('vessels')}
+              className="p-1.5 text-left border border-[var(--color-border)] bg-[var(--color-bg-input)] hover:border-[var(--color-info)] hover:bg-[var(--color-bg-hover)] transition-all cursor-pointer group rounded-none"
+            >
+              <div className="flex items-center justify-between text-[9px] font-mono text-[var(--color-fg-muted)] uppercase">
+                <span>VESSELS</span>
+                <Ship className="h-3 w-3 text-cyan-500 group-hover:scale-110 transition-transform" />
+              </div>
+              <div className="text-sm font-mono font-bold text-[var(--color-fg)] mt-0.5">
+                {metrics?.maritimeCount ?? 0}
+              </div>
+            </button>
+
+            {/* Aircraft */}
+            <button
+              type="button"
+              onClick={() => onMetricClick?.('aircraft')}
+              className="p-1.5 text-left border border-[var(--color-border)] bg-[var(--color-bg-input)] hover:border-[var(--color-warning)] hover:bg-[var(--color-bg-hover)] transition-all cursor-pointer group rounded-none"
+            >
+              <div className="flex items-center justify-between text-[9px] font-mono text-[var(--color-fg-muted)] uppercase">
+                <span>AIRCRAFT</span>
+                <Plane className="h-3 w-3 text-amber-500 group-hover:scale-110 transition-transform" />
+              </div>
+              <div className="text-sm font-mono font-bold text-[var(--color-fg)] mt-0.5">
+                {metrics?.aviationCount ?? 0}
+              </div>
+            </button>
+
+            {/* Active Regions */}
+            <button
+              type="button"
+              onClick={() => onMetricClick?.('regions')}
+              className="p-1.5 text-left border border-[var(--color-border)] bg-[var(--color-bg-input)] hover:border-[var(--color-primary-600)] hover:bg-[var(--color-bg-hover)] transition-all cursor-pointer group rounded-none"
+            >
+              <div className="flex items-center justify-between text-[9px] font-mono text-[var(--color-fg-muted)] uppercase">
+                <span>REGIONS</span>
+                <Compass className="h-3 w-3 text-[var(--color-primary-600)] dark:text-[#38bdf8] group-hover:scale-110 transition-transform" />
+              </div>
+              <div className="text-sm font-mono font-bold text-[var(--color-fg)] mt-0.5">
+                {metrics?.activeRegions ?? 4}
+              </div>
+            </button>
+
+            {/* Risk Index */}
+            <button
+              type="button"
+              onClick={() => onMetricClick?.('risk')}
+              className="p-1.5 text-left border border-[var(--color-border)] bg-[var(--color-bg-input)] hover:border-[var(--color-danger)] hover:bg-[var(--color-bg-hover)] transition-all cursor-pointer group rounded-none"
+            >
+              <div className="flex items-center justify-between text-[9px] font-mono text-[var(--color-fg-muted)] uppercase">
+                <span>RISK</span>
+                <ShieldAlert className="h-3 w-3 text-rose-500 group-hover:scale-110 transition-transform" />
+              </div>
+              <div className="text-sm font-mono font-bold text-[var(--color-danger)] mt-0.5">
+                {metrics?.avgScore ?? 0}
+                <span className="text-[10px] text-[var(--color-fg-muted)] font-normal">/100</span>
+              </div>
+            </button>
+          </div>
         </div>
       </div>
     </aside>

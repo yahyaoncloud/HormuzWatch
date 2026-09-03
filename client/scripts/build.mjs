@@ -1,9 +1,8 @@
-import { build } from "vite";
+import { execSync } from "node:child_process";
 
 try {
-  await build();
+  execSync("npx react-router build", { stdio: "inherit" });
   process.exit(0);
 } catch (error) {
-  console.error(error);
   process.exit(1);
 }

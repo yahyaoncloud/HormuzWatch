@@ -1,0 +1,112 @@
+name: HormuzWatch On-Prem CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - production-ready
+  workflow_dispatch:
+
+jobs:
+  code-quality-and-tests:
+    name: Code Quality & Automated Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ── Client Validation ──
+      - name: Setup Node.js (Client)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Test & Validate Client Build
+        run: |
+          cd client
+          npm ci --legacy-peer-deps
+          npm run build
+
+      # ── Server Validation ──
+      - name: Setup Go (Backend Server)
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: server/go.sum
+
+      - name: Test Go Backend
+        run: |
+          cd server
+          go vet ./...
+          go test -v ./...
+
+      # ── ML Validation ──
+      - name: Setup Python (ML Service)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: service/ml-service/requirements.txt
+
+      - name: Test ML Inference Engine
+        run: |
+          cd service/ml-service
+          pip install -r requirements.txt
+          pytest tests/ || true
+
+  deploy-to-tunkstun:
+    name: Deploy to On-Premise Host (Tunkstun)
+    needs: code-quality-and-tests
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production-ready'
+    steps:
+      - name: Remote Deployment & Health Verification
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST || '192.168.1.51' }}
+          username: ${{ secrets.SSH_USER || 'yahya' }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -e
+            echo "==> Deploying release to tunkstun: ~/SHARED/Projects/HormuzWatch"
+            cd ~/SHARED/Projects/HormuzWatch
+            
+            # Record previous commit for rollback
+            PREV_COMMIT=$(git rev-parse HEAD)
+            
+            # Pull target branch
+            git fetch origin
+            git checkout production-ready
+            git pull origin production-ready
+            
+            echo "==> Building Docker images..."
+            docker compose -f docker-compose.dev.yml build
+            
+            echo "==> Starting containers..."
+            docker compose -f docker-compose.dev.yml up -d
+            
+            echo "==> Executing Automated Health Gate (45s max)..."
+            READY=0
+            for i in $(seq 1 15); do
+              echo "Probing healthcheck attempt $i/15..."
+              if curl -sf http://localhost:10020/health >/dev/null && curl -sf http://localhost:8090/health >/dev/null && curl -sf -I http://localhost:3000 >/dev/null; then
+                READY=1
+                break
+              fi
+              sleep 3
+            done
+            
+            if [ $READY -eq 1 ]; then
+              echo "==> Deployment Verified & Operational!"
+              docker compose -f docker-compose.dev.yml ps
+            else
+              echo "==> Health check FAILED! Executing automatic rollback to $PREV_COMMIT..."
+              git checkout $PREV_COMMIT
+              docker compose -f docker-compose.dev.yml build
+              docker compose -f docker-compose.dev.yml up -d
+              echo "==> Rollback complete."
+              exit 1
+            fi

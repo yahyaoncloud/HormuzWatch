@@ -1,0 +1,53 @@
+\section{Kinematic Feature Engineering on the Circular Manifold}
+\label{sec:feature_engineering}
+
+High-frequency maritime telemetry consists of position coordinates (latitude $\phi$, longitude $\lambda$), Speed Over Ground (SOG, $v$), Course Over Ground (COG, $\theta_{\text{cog}}$), True Heading (THDG, $\theta_{\text{hdg}}$), and broadcast timestamps $t$. Raw telemetry cannot be ingested directly into Euclidean distance models without domain-specific geometric transformations.
+
+\subsection{The 9 Canonical Feature Vectors}
+The HormuzWatch feature pipeline strictly enforces a 9-dimensional canonical contract (\texttt{DOMAIN\_FEATURE\_COLS["vessel"]}) across feature extraction, model training, and runtime scoring:
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lllp{6.8cm}}
+\toprule
+\textbf{Index} & \textbf{Feature Name} & \textbf{Unit} & \textbf{Operational \& Physical Significance} \\
+\midrule
+$f_1$ & \texttt{course\_delta} & deg ($[-180, 180]$) & Shortest-arc change in Course Over Ground between consecutive pings. \\
+$f_2$ & \texttt{heading\_delta} & deg ($[-180, 180]$) & Angular offset between COG and True Heading (quantifies hydrodynamic drift/crabbing). \\
+$f_3$ & \texttt{speed\_delta} & kts & Rate of velocity change: $v_t - v_{t-1}$. \\
+$f_4$ & \texttt{average\_speed} & kts & Exponentially Weighted Moving Average (EWMA) speed ($\alpha=0.15$). \\
+$f_5$ & \texttt{speed\_variance} & $\text{kts}^2$ & Running speed variance computed via Welford's algorithm (throttling instability). \\
+$f_6$ & \texttt{ais\_gap\_minutes} & minutes & Time elapsed since previous transmission (transponder blackout detection). \\
+$f_7$ & \texttt{dist\_restricted\_zone} & nautical miles & Great-circle distance to nearest restricted military boundary or TSS lane edge. \\
+$f_8$ & \texttt{dist\_historical\_site} & nautical miles & Proximity to historical maritime attack, boarding, or seizure coordinates. \\
+$f_9$ & \texttt{ewma\_deviation} & dimensionless & Z-score deviation of current motion relative to historical baseline moments. \\
+\bottomrule
+\end{tabular}
+\caption{The 9 Canonical Kinematic Features in the HormuzWatch Maritime Pipeline.}
+\label{tab:canonical_features}
+\end{table}
+
+\subsection{Circular Directional Statistics on the \texorpdfstring{$S^1$}{S1} Manifold}
+Planar subtraction of angular degrees produces catastrophic boundary discontinuities: a ship adjusting course from $1^\circ$ to $359^\circ$ executes a modest $2^\circ$ port turn, yet linear subtraction yields:
+\begin{equation}
+359^\circ - 1^\circ = +358^\circ \quad (\text{Artificially massive outlier})
+\end{equation}
+To eliminate branch-cut discontinuities at $359^\circ \leftrightarrow 0^\circ$, HormuzWatch maps all angular features onto the 1-sphere manifold \texorpdfstring{$S^1$}{S1} using the shortest-arc circular delta:
+\begin{equation}
+\Delta \theta = \left( (\theta_t - \theta_{t-1} + 180^\circ) \pmod{360^\circ} \right) - 180^\circ
+\end{equation}
+Furthermore, the Go Time-Series Manager tracks directional moments by maintaining unit vectors in $\mathbb{R}^2$:
+\begin{equation}
+\bar{\mathbf{u}}_t = (1 - \alpha) \bar{\mathbf{u}}_{t-1} + \alpha \begin{pmatrix} \cos \theta_t \\ \sin \theta_t \end{pmatrix}, \quad \bar{\theta} = \operatorname{atan2}(\bar{u}_{y}, \bar{u}_{x})
+\end{equation}
+This formulation preserves rotational symmetry and ensures numerical stability across continuous 24-hour tracking windows.
+
+\subsection{Numerically Stable Running Moments (Welford's Algorithm)}
+To compute real-time variance $\sigma^2$ without retaining unbounded historical vectors in memory or suffering catastrophic numerical cancellation, the Go backend implements Welford's single-pass algorithm within \texttt{server/internal/intelligence/state.go}:
+\begin{align}
+M_{1, k} &= M_{1, k-1} + \frac{x_k - M_{1, k-1}}{k} \\
+M_{2, k} &= M_{2, k-1} + (x_k - M_{1, k-1})(x_k - M_{1, k}) \\
+\sigma_k^2 &= \frac{M_{2, k}}{k - 1} \quad (k \ge 2)
+\end{align}
+This enables the system to compute running speed and course variance over streaming telemetry with $O(1)$ memory complexity and zero database round-trips.

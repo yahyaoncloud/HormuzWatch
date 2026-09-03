@@ -60,7 +60,12 @@ func (o Observation) HasValidCOG() bool {
 
 // Domain returns the curation domain derived from the stable object type.
 func (o Observation) Domain() string {
-	if strings.EqualFold(strings.TrimSpace(o.ObjectType), DomainAircraft) {
+	if strings.EqualFold(strings.TrimSpace(o.ObjectType), DomainAircraft) ||
+		strings.HasPrefix(o.TrackID, "FLIGHT-") ||
+		strings.HasPrefix(o.TrackID, "ADS-") ||
+		strings.HasPrefix(o.TrackID, "ICAO-") ||
+		o.Altitude > 0 ||
+		o.Speed > 80.0 {
 		return DomainAircraft
 	}
 	return DomainVessel

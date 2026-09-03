@@ -1,44 +1,57 @@
-# 🏛️ HormuzWatch Architecture Specification
+# HormuzWatch — System Architecture & Topology
 
-## 1. Overview
-HormuzWatch is an open-source, defense-grade maritime & geospatial intelligence platform engineered for real-time tracking, risk modeling, and threat classification across the Strait of Hormuz.
+## Overview
+HormuzWatch is a hybrid intelligence platform integrating real-time telemetry (AIS, ADS-B, VIIRS thermal FIRMS, ArcGIS maritime chokepoints), machine learning anomaly detection, and LLM-assisted analyst reporting for the Strait of Hormuz.
 
-```mermaid
-graph TD
-    A[AISStream / AIS Hub] -->|WebSocket / UDP| S[Go Server Core :10020]
-    B[OpenSky Network] -->|REST API| S
-    C[GDELT 2.0 / RSS] -->|HTTP Poll| S
-    
-    S -->|PostgreSQL / pgx| DB[(Supabase Postgres)]
-    S -->|gRPC :8091 / HTTP :8090| ML[Python ML Ensemble Service]
-    
-    ML -->|Anomalies & Predictions| S
-    
-    S -->|WebSocket / SSE / REST| NGINX[Client Nginx Container :3000]
-    NGINX -->|Cloudflare Tunnel| CF[hormuzwatch.aburcloud.com]
-    
-    S -->|Scrape /metrics| PROM[Prometheus :9090]
-    PROM -->|Datasource| GRAF[Grafana SRE Dashboards :3001]
+---
+
+## Component Topology
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│ Cloudflare Edge Network                                                │
+│ Public Ingress: https://hormuzwatch.aburcloud.com                      │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ Encrypted Tunnel
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ Host: tunkstun (Linux Mint 22.2 / Ubuntu 24.04)                        │
+│ systemd: cloudflared.service                                           │
+│ Docker Bridge: hormuzwatch-dev-network                                 │
+│                                                                        │
+│   ┌──────────────────────────────────────────────────────────────┐     │
+│   │ hormuzwatch-client (:3000)                                   │     │
+│   │ • Alpine Nginx Webserver + Static SPA                        │     │
+│   │ • Reverse Proxy Rules (/api/, /ws/, /health, /ml/)           │     │
+│   └─────────────────┬──────────────────────────┬─────────────────┘     │
+│                     │ /api/, /ws/              │ /ml/                  │
+│                     ▼                          ▼                       │
+│   ┌──────────────────────────────┐   ┌───────────────────────────┐     │
+│   │ hormuzwatch-server (:10020)  │   │ hormuzwatch-ml (:8090/:8091)│   │
+│   │ • Go 1.24 Gin REST / WS API  │──►│ • FastAPI Health/REST     │     │
+│   │ • Telemetry Workers (ArcGIS) │   │ • gRPC Inference Engine   │     │
+│   │ • Non-root 'hormuz' user     │   │ • IsolationForest / LOF   │     │
+│   └───────────────┬──────────────┘   └───────────────────────────┘     │
+│                   │                                                    │
+└───────────────────┼────────────────────────────────────────────────────┘
+                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ External Cloud Data Layer                                              │
+│ • Supabase PostgreSQL (Port 6543 pooled connection)                    │
+│ • OpenSky ADS-B API                                                    │
+│ • AISStream Live WebSocket                                             │
+│ • NASA FIRMS Satellite Thermal Map                                     │
+│ • ArcGIS Daily Chokepoints REST FeatureServer                          │
+│ • OpenRouter LLM Gateway                                               │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Core Subsystems
+## Service Contracts & Port Mapping
 
-### 2.1 Backend Ingestion & State Manager (Go)
-- **Track State Manager (TSM)**: Thread-safe in-memory cache tracking vessel trajectories, velocities, course deviations, and ETA estimates.
-- **Circuit Breaker**: Automatic failover protecting backend latency if the ML inference cluster experiences load spikes.
-- **LaTeX Reporting Engine**: Dynamically compiles comprehensive PDF dossiers containing MapLibre map captures, anomaly plots, and threat summaries.
-
-### 2.2 Machine Learning Anomaly Ensemble (Python)
-- Asynchronous FastAPI & gRPC worker loaded with 6 specialized machine learning models (Vessel Kinematics, Airspace Corridors, Traffic Density, News Sentiment, Transit Bottlenecks, Blockade Classifiers).
-
-### 2.3 Single-Page Application (React & Vite)
-- Built with React 19 and React Router v7 in SPA mode (`ssr: false`).
-- Rendered via GPU-accelerated MapLibre GL and Leaflet layers.
-- Deployed concurrently via Docker Nginx (`hormuzwatch.aburcloud.com`) and edge-replicated Vercel (`hormuzwatch.vercel.app`).
-
-### 2.4 Reliability & Observability Layer
-- **Prometheus**: Automated scraping of native `/metrics` endpoints.
-- **Grafana**: Provisioned SRE dashboards for real-time system vital signs.
-- **SRE Tool**: Built-in Go CLI for multi-tier healthchecks, fault-tolerance load testing, and colorized log streaming.
+| Service | Container Name | Internal Port | Host Port | Ingress Path |
+|---|---|---|---|---|
+| **Client** | `hormuzwatch-client-dev` | `3000` | `3000` | `/`, `/status`, `/assets/` |
+| **Server** | `hormuzwatch-server-dev` | `10020` | `10020` | `/api/`, `/ws/`, `/health` |
+| **ML** | `hormuzwatch-ml-dev` | `8090`, `8091` | `8090`, `8091` | `/ml/` (proxy), gRPC internal |

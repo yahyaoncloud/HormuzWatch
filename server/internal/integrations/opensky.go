@@ -29,12 +29,9 @@ func StartOpenSky(ctx context.Context, p *intelligence.Pipeline) {
 		username = ""
 	}
 
-	// Split into 2 bounding boxes — OpenSky handles smaller areas more reliably.
-	// Box 1: Gulf / Middle East / Red Sea (22N-33N, 32E-60E)
-	// Box 2: Arabian Sea / India / Bay of Bengal (5N-33N, 60E-95E)
+	// Targeted Gulf Airspace bounding box: Persian Gulf, Strait of Hormuz, UAE, Qatar, Bahrain, Kuwait, Oman (21N-32.5N, 47E-62E)
 	urls := []string{
-		"https://opensky-network.org/api/states/all?lamin=22&lomin=32&lamax=33&lomax=60",
-		"https://opensky-network.org/api/states/all?lamin=5&lomin=60&lamax=33&lomax=95",
+		"https://opensky-network.org/api/states/all?lamin=21&lomin=47&lamax=32.5&lomax=62",
 	}
 
 	// Rate limit: anonymous users get 400 requests/day (~1 call per 3.6 min)
@@ -140,7 +137,7 @@ func StartOpenSky(ctx context.Context, p *intelligence.Pipeline) {
 				}
 
 				payload := api.TelemetryPayload{
-					TrackID:           icao24,
+					TrackID:           fmt.Sprintf("FLIGHT-%s", icao24),
 					AssetName:         callsign,
 					Timestamp:         time.Now().UTC().Format(time.RFC3339),
 					Lat:               lat,

@@ -1,0 +1,62 @@
+\section{Continuous Training, Grouped Entity Partitioning, and Drift Monitoring}
+\label{sec:mlops_ct}
+
+Modern operational machine learning systems degrade over time due to seasonal weather shifts (e.g., the Shamal winds altering baseline speed and drift angles), geopolitical conflict escalation, and changes in commercial shipping lane usage. HormuzWatch incorporates an autonomous Continuous Training (CT) loop with strict partition discipline and statistical drift monitoring.
+
+\subsection{The Data Leakage Vulnerability in Maritime Anomaly Detection}
+A major finding of our technical audit was that standard ML evaluation practices introduce fatal data leakage when applied to tracking data.
+
+\subsubsection{The Random Shuffle Flaw}
+In standard train/test splits, $N$ observations are randomly shuffled. Because a single vessel with Maritime Mobile Service Identity (MMSI) $G_k$ broadcasts hundreds of position reports along its voyage:
+\begin{equation}
+P(G_k \in \text{Test} \mid G_k \in \text{Train}) > 0.99
+\end{equation}
+The tree ensemble memorizes the vessel's idiosyncratic engine characteristics, deadweight tonnage, and GPS transponder noise. When evaluated on the test set, the model recognizes the ship rather than genuine out-of-distribution anomaly dynamics, producing deceptively high test scores that collapse in production on novel vessels.
+
+\subsubsection{Authoritative Grouped Entity Partitioning}
+HormuzWatch solves this by enforcing **MMSI-level grouped partitioning** across four distinct, mutually exclusive subsets:
+\begin{align}
+\text{Train Set} \quad (60\% \text{ of vessels}) &: \quad \text{Fits StandardScaler, IsolationForest, and LOF} \\
+\text{Validation Set} \quad (15\% \text{ of vessels}) &: \quad \text{Guides Optuna Bayesian Hyperparameter Optimization} \\
+\text{Calibration Set} \quad (15\% \text{ of vessels}) &: \quad \text{Fits the Monotonic Isotonic Regression Calibrator} \\
+\text{Test Set} \quad (10\% \text{ of vessels}) &: \quad \text{Held-out, untouched partition for final verification}
+\end{align}
+
+\begin{equation}
+\text{MMSI}(\text{Train}) \cap \text{MMSI}(\text{Val}) \cap \text{MMSI}(\text{Calib}) \cap \text{MMSI}(\text{Test}) = \emptyset
+\end{equation}
+This mathematical invariant is enforced by automated unit tests (\texttt{test\_mlops\_leakage\_and\_benchmark.py}), guaranteeing that the deployed model generalizes to genuine unobserved vessels.
+
+\subsection{Bayesian Hyperparameter Optimization (Optuna)}
+Model tuning is fully automated via Bayesian Optimization using the Tree-structured Parzen Estimator (TPE) algorithm implemented in Optuna. The search space is bounded to preserve sub-millisecond inference:
+\begin{align}
+n_{\text{estimators}} &\in [100, 200], \quad \text{step} = 25 \\
+\text{max\_samples} &\in [0.70, 1.00] \\
+\text{contamination} &\in [0.02, 0.08]
+\end{align}
+The optimization objective maximizes the Area Under the Receiver Operating Characteristic Curve (ROC-AUC) evaluated on the isolated Validation split:
+\begin{equation}
+\theta^* = \arg\max_\theta \text{ROC-AUC}(\mathcal{M}_\theta(X_{\text{train}}), X_{\text{val}}, y_{\text{val}})
+\end{equation}
+
+\subsection{Statistical Drift Monitoring Engine}
+To prevent silent model degradation, \texttt{pipeline/drift\_monitor.py} continuously tracks feature distributions over sliding temporal windows ($N_{\text{current}} = 1,000$ vs. $N_{\text{baseline}} = 3,000$).
+
+\subsubsection{Population Stability Index (PSI)}
+For each canonical feature $f_j$, observations are bucketed into 10 decile bins defined by the baseline distribution:
+\begin{equation}
+\text{PSI}(f_j) = \sum_{b=1}^{10} \left( P_{\text{curr}, b} - P_{\text{base}, b} \right) \cdot \ln\left( \frac{P_{\text{curr}, b}}{P_{\text{base}, b}} \right)
+\end{equation}
+where $P_{\text{curr}, b}$ and $P_{\text{base}, b}$ represent the fraction of observations falling within bin $b$. The system implements the following tri-tier governance:
+\begin{itemize}[leftmargin=*]
+    \item $\text{PSI} < 0.10$: **Nominal Stability** (No distribution shift detected).
+    \item $0.10 \le \text{PSI} < 0.20$: **Moderate Shift Warning** (Logged in telemetry dashboard).
+    \item $\text{PSI} \ge 0.20$: **Critical Distribution Drift** (Automatically triggers retraining cycle).
+\end{itemize}
+
+\subsubsection{Two-Sample Kolmogorov-Smirnov (KS) Test}
+Complementing PSI, the non-parametric two-sample Kolmogorov-Smirnov test evaluates whether the empirical cumulative distribution functions (eCDFs) differ significantly:
+\begin{equation}
+D_{n, m} = \sup_x \left| F_{1, n}(x) - F_{2, m}(x) \right|
+\end{equation}
+A drift alert is triggered if the null hypothesis is rejected at significance level $\alpha = 0.01$.

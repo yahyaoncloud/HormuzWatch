@@ -235,6 +235,7 @@ func (p *Pipeline) process(payload *telemetry.Observation) ThreatAssessment {
 
 	// ── 6. Composite assessment ───────────────────────────────
 	assessment := ComputeComposite(features, ruleScore, mlScore, geoScore, explanation)
+	p.TSM.SetAssessment(payload.TrackID, assessment.FinalScore, assessment.Severity, assessment.Reasons)
 
 	// ── 7. Publish live telemetry (non-blocking) ──────────────
 	p.Hub.Publish(hub.Message{

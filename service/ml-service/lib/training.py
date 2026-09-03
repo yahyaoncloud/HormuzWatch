@@ -1,22 +1,25 @@
 """
 lib/training.py
----------------
+===============
 Disciplined Ensemble Training & Calibration Pipeline for HormuzWatch.
 
-Architecture:
+================================================================================
+ARCHITECTURE & WORKFLOW COLOR-CODED TAG LEGEND:
+  [STAGE]               - Computational pipeline phase in the end-to-end lifecycle
+  [OBJECTIVE]           - Concrete mathematical or operational goal of the code block
+  [MATHEMATICAL BASIS]  - Algorithmic formulation, probability theory, or geometry
+  [SYSTEM OUTCOME]      - State change, persisted artifact, or downstream impact
+  [SAFETY INVARIANT]    - Non-negotiable constraint to prevent data leakage/corruption
+================================================================================
+
+Architecture Pipeline:
     1. Dataset Partitioning (Train 60%, Validation 15%, Calibration 15%, Test 10%)
-       with support for Vessel Grouping (GroupKFold / MMSI-level isolation)
-       to prevent data leakage across splits.
+       with support for Entity Grouping (MMSI-level isolation) to prevent data leakage.
     2. Base Estimators (StandardScaler, IsolationForest, LocalOutlierFactor)
        fit exclusively on the Train partition.
     3. Monotonic Isotonic Calibrator fit exclusively on out-of-training
        predictions from the separate Calibration partition.
-    4. Comprehensive Statistical Evaluation executed on the untouched Test partition:
-       - Precision, Recall, F1-Score
-       - Specificity, Balanced Accuracy
-       - ROC-AUC, PR-AUC (Average Precision)
-       - Brier Score & Expected Calibration Error (ECE)
-       - Confusion Matrix (TP, FP, TN, FN)
+    4. Comprehensive Statistical Evaluation executed on the untouched Test partition.
 """
 
 from __future__ import annotations
@@ -54,6 +57,16 @@ from lib.logger import get_logger
 logger = get_logger("hormuzwatch.training")
 
 
+# ==============================================================================
+# [STAGE 1: EXPECTED CALIBRATION ERROR (ECE) FORMULATION]
+# [OBJECTIVE]: Measure the discrepancy between predicted confidence probabilities
+#              and true empirical event frequency across M uniform bins.
+# [MATHEMATICAL BASIS]:
+#   ECE = ∑_{m=1}^M (|B_m| / N) * |acc(B_m) - conf(B_m)|
+#   where acc(B_m) = (1/|B_m|) ∑_{i ∈ B_m} y_i,
+#   and conf(B_m) = (1/|B_m|) ∑_{i ∈ B_m} p_i.
+# [SYSTEM OUTCOME]: Scalar value in [0, 1] quantifying probabilistic reliability.
+# ==============================================================================
 def compute_ece(y_true: np.ndarray, y_prob: np.ndarray, n_bins: int = 10) -> float:
     """
     Compute Expected Calibration Error (ECE) across uniform confidence bins.
@@ -82,6 +95,19 @@ def compute_ece(y_true: np.ndarray, y_prob: np.ndarray, n_bins: int = 10) -> flo
     return float(ece)
 
 
+# ==============================================================================
+# [STAGE 2: DISCIPLINED ENSEMBLE TRAINING & PROBABILITY CALIBRATION]
+# [OBJECTIVE]: Fit multi-domain anomaly estimators (IF + LOF) and non-parametric
+#              Isotonic calibrator with strict partition segregation.
+# [MATHEMATICAL BASIS]:
+#   Standardization: z = (x - μ) / σ
+#   Isolation Path Length: E(h(x)) in ensemble of 200 random iTrees
+#   Local Outlier Factor: Density relative to k-nearest neighbors (k=20)
+#   Linear Blending: s_ens = 0.55 * norm(s_IF) + 0.45 * norm(s_LOF)
+#   Pool Adjacent Violators (PAVA): Non-decreasing step function for calibration
+# [SYSTEM OUTCOME]: Persists canonical production artifact to {domain}_ensemble.joblib.
+# [SAFETY INVARIANT]: Preprocessing fit on Train; Calibrator fit on Calib; Test untouched.
+# ==============================================================================
 def train_ensemble(
     *,
     domain: str,
@@ -91,31 +117,11 @@ def train_ensemble(
     contamination: float = 0.05,
     models_dir: str | Path = "",
     random_state: int = 42,
+    custom_splits: Optional[dict[str, list[int]]] = None,
 ) -> tuple[str, dict]:
     """
     Train IsolationForest + LocalOutlierFactor + IsotonicRegression ensemble
     with strict train / val / calibration / test partition discipline.
-
-    Parameters
-    ----------
-    domain:
-        One of ``"vessel"``, ``"aviation"``, ``"heatmap"``, ``"news"``, ``"transit"``, ``"blockade"``.
-    data:
-        List of feature dicts containing at least the domain's feature columns.
-    labels:
-        Binary labels (1 = anomaly, 0 = normal).
-    groups:
-        Optional vessel MMSI / track identifiers for group-based splitting to prevent leakage.
-    contamination:
-        Expected anomaly proportion.
-    models_dir:
-        Directory for saving artifact.
-    random_state:
-        Deterministic seed for reproducibility.
-
-    Returns
-    -------
-    (version, metrics_dict)
     """
     if not models_dir:
         models_dir = Path(__file__).resolve().parent.parent / "models"
@@ -135,14 +141,21 @@ def train_ensemble(
     if labels is not None:
         y_all = np.array(labels, dtype=np.float64)
     else:
-        # Default pseudo-labels if none provided
         y_all = np.zeros(n_samples, dtype=np.float64)
 
     rng = np.random.default_rng(random_state)
 
-    # ── 1. Partition Splitting (Train 60%, Val 15%, Calib 15%, Test 10%) ──
-    if groups is not None and len(groups) == n_samples:
-        # Group-based split by unique vessel/entity ID
+    # --------------------------------------------------------------------------
+    # [SUBSTAGE 2.1: PARTITION ASSIGNMENT & LEAKAGE PREVENTION]
+    # [OBJECTIVE]: Segregate data into Train (60%), Val (15%), Calib (15%), Test (10%).
+    # --------------------------------------------------------------------------
+    if custom_splits is not None:
+        idx_train = custom_splits["train"]
+        idx_val = custom_splits.get("val", [])
+        idx_calib = custom_splits["calib"]
+        idx_test = custom_splits["test"]
+        split_method = "custom_authoritative_split"
+    elif groups is not None and len(groups) == n_samples:
         unique_groups = np.array(list(dict.fromkeys(groups)))
         rng.shuffle(unique_groups)
         n_g = len(unique_groups)
@@ -157,7 +170,6 @@ def train_ensemble(
         idx_test = [i for i, g in enumerate(groups) if g in g_test]
         split_method = "group_mmsi_split"
     else:
-        # Stratified / uniform random permutation split
         indices = rng.permutation(n_samples)
         n_tr = int(0.60 * n_samples)
         n_v = int(0.15 * n_samples)
@@ -179,14 +191,20 @@ def train_ensemble(
         domain, len(X_train), len(X_val), len(X_calib), len(X_test), split_method,
     )
 
-    # ── 2. Scaler (Fit exclusively on Train) ──────────────────────────────
+    # --------------------------------------------------------------------------
+    # [SUBSTAGE 2.2: FEATURE SCALING - FIT STRICTLY ON TRAIN]
+    # [SAFETY INVARIANT]: StandardScaler parameters μ, σ derived ONLY from X_train.
+    # --------------------------------------------------------------------------
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_val_scaled = scaler.transform(X_val)
     X_calib_scaled = scaler.transform(X_calib)
     X_test_scaled = scaler.transform(X_test)
 
-    # ── 3. Base Models: IsolationForest & LOF (Fit exclusively on Train) ───
+    # --------------------------------------------------------------------------
+    # [SUBSTAGE 2.3: BASE ESTIMATOR TRAINING]
+    # [OBJECTIVE]: Fit 200-tree Isolation Forest and novelty LOF on X_train_scaled.
+    # --------------------------------------------------------------------------
     iforest = IsolationForest(
         n_estimators=200,
         contamination=contamination,
@@ -204,7 +222,10 @@ def train_ensemble(
     )
     lof.fit(X_train_scaled)
 
-    # ── 4. Score Bounds from Training Data ────────────────────────────────
+    # --------------------------------------------------------------------------
+    # [SUBSTAGE 2.4: SCORE BOUNDS DETERMINATION]
+    # [OBJECTIVE]: Establish min/max bounds from training distribution for 0-1 scaling.
+    # --------------------------------------------------------------------------
     if_train_raw = iforest.score_samples(X_train_scaled)
     lof_train_raw = lof.score_samples(X_train_scaled)
     score_bounds = {
@@ -212,7 +233,11 @@ def train_ensemble(
         "lof": fitted_score_bounds(lof_train_raw),
     }
 
-    # ── 5. Score Calibration Partition (Out-of-Training) ───────────────────
+    # --------------------------------------------------------------------------
+    # [SUBSTAGE 2.5: CALIBRATION SPLIT PREDICTION & ISOTONIC REGRESSION]
+    # [OBJECTIVE]: Fit Isotonic calibrator on independent out-of-training partition.
+    # [MATHEMATICAL BASIS]: Monotonic transformation minimizing squared error.
+    # --------------------------------------------------------------------------
     if_calib_raw = iforest.score_samples(X_calib_scaled)
     lof_calib_raw = lof.score_samples(X_calib_scaled)
 
@@ -220,19 +245,20 @@ def train_ensemble(
     norm_lof_calib = np.array([_normalize_raw_score(v, *score_bounds["lof"]) for v in lof_calib_raw])
     ensemble_calib = 0.55 * norm_if_calib + 0.45 * norm_lof_calib
 
-    # ── 6. Fit Isotonic Calibrator (Strictly on Calibration Split) ─────────
     calibrator = IsotonicRegression(out_of_bounds="clip", increasing=True)
     if labels is not None and len(labels) == n_samples and (y_calib.max() > y_calib.min()):
         calibrator.fit(ensemble_calib, y_calib)
         calibration_mode = "supervised_calibration_set"
     else:
-        # Fallback pseudo-calibration if labels are absent or single-class
         threshold = np.quantile(ensemble_calib, 1.0 - contamination)
         pseudo_y_calib = (ensemble_calib >= threshold).astype(np.float64)
         calibrator.fit(ensemble_calib, pseudo_y_calib)
         calibration_mode = "pseudo_supervised_quantile"
 
-    # ── 7. Evaluate Full Pipeline on Held-out Test Partition ──────────────
+    # --------------------------------------------------------------------------
+    # [SUBSTAGE 2.6: HELD-OUT TEST EVALUATION & METRIC SUITE]
+    # [OBJECTIVE]: Compute comprehensive metrics over held-out test split.
+    # --------------------------------------------------------------------------
     if_test_raw = iforest.score_samples(X_test_scaled)
     lof_test_raw = lof.score_samples(X_test_scaled)
 
@@ -244,13 +270,11 @@ def train_ensemble(
     pred_test = (prob_test >= 0.5).astype(int)
     y_test_binary = (y_test >= 0.5).astype(int)
 
-    # ── 8. Calculate Complete Metrics Suite on Test Set ───────────────────
     prec = float(precision_score(y_test_binary, pred_test, zero_division=0))
     rec = float(recall_score(y_test_binary, pred_test, zero_division=0))
     f1 = float(f1_score(y_test_binary, pred_test, zero_division=0))
     bal_acc = float(balanced_accuracy_score(y_test_binary, pred_test))
 
-    # Confusion matrix
     if len(np.unique(y_test_binary)) > 1:
         tn, fp, fn, tp = confusion_matrix(y_test_binary, pred_test, labels=[0, 1]).ravel()
         specificity = float(tn / (tn + fp)) if (tn + fp) > 0 else 0.0
@@ -311,7 +335,10 @@ def train_ensemble(
         "hardware_device": device_info,
     }
 
-    # ── 9. Persist Artifact ───────────────────────────────────────────────
+    # --------------------------------------------------------------------------
+    # [SUBSTAGE 2.7: PRODUCTION ARTIFACT SERIALIZATION]
+    # [OBJECTIVE]: Persist complete ensemble bundle into models directory.
+    # --------------------------------------------------------------------------
     artifact_path = models_dir / f"{domain}_ensemble.joblib"
     joblib.dump(
         {
@@ -334,34 +361,3 @@ def train_ensemble(
     )
 
     return version, metrics
-
-
-def train_ensemble_from_csv(
-    domain: str,
-    csv_path: str | Path,
-    labels_csv: Optional[str | Path] = None,
-    contamination: float = 0.05,
-    models_dir: str | Path = "",
-) -> tuple[str, dict]:
-    """Load features from CSV and train ensemble."""
-    import csv
-
-    csv_path = Path(csv_path)
-    with open(csv_path, newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        data = [{k: v for k, v in row.items()} for row in reader]
-
-    labels = None
-    if labels_csv:
-        labels_path = Path(labels_csv)
-        with open(labels_path, newline="", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            labels = [int(row.get("label", 0)) for row in reader]
-
-    return train_ensemble(
-        domain=domain,
-        data=data,
-        labels=labels,
-        contamination=contamination,
-        models_dir=models_dir,
-    )

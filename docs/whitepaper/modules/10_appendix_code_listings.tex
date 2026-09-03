@@ -1,0 +1,105 @@
+\section{Appendix: Production Code Listings}
+\label{sec:appendix}
+
+This appendix provides annotated production code listings illustrating the core algorithms and safety invariants implemented across the HormuzWatch platform.
+
+\subsection{Ensemble Scoring and Calibration (\texttt{lib/scoring.py})}
+\begin{lstlisting}[language=Python, caption={Core Runtime Inference and Probability Calibration Pipeline.}, label={lst:scoring}]
+def score(
+    feature_array: np.ndarray,
+    feature_names: list[str],
+    *,
+    bundle: dict[str, Any],
+    explain: bool = False,
+) -> ScoringResult:
+    """Execute dual IF+LOF scoring, monotonic calibration, and TreeSHAP attribution."""
+    model_iforest = bundle["model_iforest"]
+    model_lof = bundle["model_lof"]
+    scaler = bundle["scaler"]
+    calibrator = bundle["calibrator"]
+    
+    # 1. Standardize kinematic features using train-fitted moments
+    X = scaler.transform(feature_array.reshape(1, -1))
+    
+    # 2. Compute raw anomaly scores
+    raw_if = float(model_iforest.score_samples(X)[0])
+    raw_lof = float(model_lof.score_samples(X)[0])
+    
+    # 3. Min-Max normalization using train-time empirical bounds
+    score_bounds = bundle.get("score_bounds", {})
+    norm_if = _normalize_raw_score(raw_if, *score_bounds.get("iforest"))
+    norm_lof = _normalize_raw_score(raw_lof, *score_bounds.get("lof"))
+    
+    # 4. Weighted score blending (0.55 IF + 0.45 LOF)
+    ensemble_score_01 = 0.55 * norm_if + 0.45 * norm_lof
+    
+    # 5. Non-parametric monotonic Isotonic probability calibration
+    calibrated_01 = float(calibrator.predict(np.array([ensemble_score_01]))[0])
+    probability = round(max(0.0, min(1.0, calibrated_01)) * 100.0, 2)
+    
+    return ScoringResult(
+        probability=probability,
+        raw_iforest_score=raw_if,
+        raw_lof_score=raw_lof,
+        is_anomaly=probability >= 50.0,
+        model_version=bundle.get("version", "unknown")
+    )
+\end{lstlisting}
+
+\subsection{Authoritative Entity Splitter (\texttt{pipeline/benchmark\_poc.py})}
+\begin{lstlisting}[language=Python, caption={Authoritative Stratified MMSI Partitioning Engine.}, label={lst:split}]
+def build_authoritative_split(groups: List[str], labels: List[int], seed: int = 42):
+    """Construct stratified entity split with strict zero-leakage guarantees."""
+    unique_groups = list(dict.fromkeys(groups))
+    anom_mmsis = [g for g in unique_groups if np.any((groups == g) & (labels == 1))]
+    norm_mmsis = [g for g in unique_groups if g not in set(anom_mmsis)]
+    
+    # Partition entities: 60% Train, 15% Val, 15% Calib, 10% Test
+    a_tr, a_val, a_cal, a_te = partition(anom_mmsis)
+    n_tr, n_val, n_cal, n_te = partition(norm_mmsis)
+    
+    mmsi_sets = {
+        "train": a_tr | n_tr, "val": a_val | n_val,
+        "calib": a_cal | n_cal, "test": a_te | n_te
+    }
+    
+    # SAFETY INVARIANT ENFORCEMENT: Zero intersection assertions
+    assert len(mmsi_sets["train"] & mmsi_sets["test"]) == 0
+    assert len(mmsi_sets["calib"] & mmsi_sets["test"]) == 0
+    assert len(mmsi_sets["val"]   & mmsi_sets["test"]) == 0
+    assert len(mmsi_sets["train"] & mmsi_sets["calib"]) == 0
+    
+    return mmsi_sets
+\end{lstlisting}
+
+\subsection{Composite Threat Intelligence Fusion (\texttt{server/internal/intelligence/composite.go})}
+\begin{lstlisting}[language=Go, caption={Go Tri-Partite Threat Scoring and Severity Mapping.}, label={lst:composite}]
+func ComputeComposite(
+    features FeatureVector, ruleScore int, mlScore float64, 
+    geoScore float64, expl *MLExplanation,
+) ThreatAssessment {
+    // Clamp inputs strictly to [0, 100]
+    rs := math.Min(100, math.Max(0, float64(ruleScore)))
+    ms := math.Min(100, math.Max(0, mlScore))
+    gs := math.Min(100, math.Max(0, geoScore))
+
+    // Weighted fusion: 40% Rule + 40% ML + 20% Geopolitical
+    final := rs*0.40 + ms*0.40 + gs*0.20
+    finalInt := int(math.Round(math.Min(100, final)))
+
+    var modelVersion string
+    if expl != nil {
+        modelVersion = expl.ModelVersion
+    }
+
+    return ThreatAssessment{
+        TrackID:           features.TrackID,
+        FinalScore:        finalInt,
+        RuleScore:         ruleScore,
+        MLScore:           mlScore,
+        GeopoliticalScore: geoScore,
+        Severity:          anomaly.SeverityLevel(finalInt),
+        ModelVersion:      modelVersion,
+    }
+}
+\end{lstlisting}

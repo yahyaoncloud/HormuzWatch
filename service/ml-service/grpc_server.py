@@ -48,23 +48,38 @@ _MODELS_DIR = os.environ.get(
 # handler re-reads the joblib from disk on EVERY Predict call, which is far
 # slower than the Go client's per-call deadline and forces the local fallback.
 _BUNDLE_CACHE: Dict[str, Dict[str, Any]] = {}
+_BUNDLE_MTIMES: Dict[str, float] = {}
+
+
+def reload_bundle(domain: str | None = None) -> None:
+    """Evict cached model bundles so the next inference loads the new champion artifact."""
+    if domain:
+        _BUNDLE_CACHE.pop(domain, None)
+        _BUNDLE_MTIMES.pop(domain, None)
+        logger.info("Evicted gRPC model cache for domain '%s'", domain)
+    else:
+        _BUNDLE_CACHE.clear()
+        _BUNDLE_MTIMES.clear()
+        logger.info("Evicted entire gRPC model cache for all domains")
 
 
 def _load_bundle(domain: str) -> Dict[str, Any]:
-    """Load and cache an ensemble model bundle for the given domain with integrity check."""
-    cached = _BUNDLE_CACHE.get(domain)
-    if cached is not None:
-        return cached
-    import joblib  # local import keeps cold-start light
-    import hashlib
-    import json
-
+    """Load and cache an ensemble model bundle for the given domain with integrity check and mtime detection."""
     artifact_path = os.path.join(_MODELS_DIR, f"{domain}_ensemble.joblib")
     if not os.path.exists(artifact_path):
         raise FileNotFoundError(
             f"Model artifact not found: {artifact_path}. "
             f"Run: python api/train.py --domain {domain} --input <data.csv>"
         )
+
+    current_mtime = os.path.getmtime(artifact_path)
+    cached = _BUNDLE_CACHE.get(domain)
+    if cached is not None and _BUNDLE_MTIMES.get(domain) == current_mtime:
+        return cached
+
+    import joblib  # local import keeps cold-start light
+    import hashlib
+    import json
 
     # Verify SHA-256 integrity against manifest.json
     manifest_path = os.path.join(_MODELS_DIR, "manifest.json")
@@ -88,7 +103,7 @@ def _load_bundle(domain: str) -> Dict[str, Any]:
         except Exception as err:
             logger.warning("Manifest verification notice: %s", err)
 
-    logger.info("Loading model bundle: %s", artifact_path)
+    logger.info("Loading model bundle: %s (mtime=%.2f)", artifact_path, current_mtime)
     bundle = joblib.load(artifact_path)
     required_keys = {
         "model_iforest", "model_lof", "scaler", "calibrator",
@@ -106,6 +121,7 @@ def _load_bundle(domain: str) -> Dict[str, Any]:
             "Re-run api/train.py with the current service version."
         )
     _BUNDLE_CACHE[domain] = bundle
+    _BUNDLE_MTIMES[domain] = current_mtime
     return bundle
 
 

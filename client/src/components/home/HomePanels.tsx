@@ -2,6 +2,7 @@ import { lazy, Suspense, type MutableRefObject } from 'react';
 import { AlertTriangle, Loader2, Newspaper, ShieldAlert, Ship } from 'lucide-react';
 import { IntelligenceConsole } from '@/components/intelligence/IntelligenceConsole';
 import { ThreatsPanel, type ThreatItem } from '@/components/intelligence/ThreatsPanel';
+import type { MetricKey } from '@/components/data/LiveStatStrip';
 import type { BlockadeIndicators, TransitSummary } from '@/lib/api';
 import { cn } from '@/utils/cn';
 
@@ -23,6 +24,11 @@ export interface HomeMapLayoutProps {
   selectedThreat: ThreatItem | null;
   onSelectThreat: (threat: ThreatItem | null) => void;
   onHoverThreat: (threat: ThreatItem | null) => void;
+
+  // Metrics
+  metrics?: any;
+  isMetricsLoading?: boolean;
+  onMetricClick?: (key: MetricKey) => void;
 
   // Map state
   showHeatmap: boolean;
@@ -56,6 +62,9 @@ export function HomeMapLayout({
   selectedThreat,
   onSelectThreat,
   onHoverThreat,
+  metrics,
+  isMetricsLoading = false,
+  onMetricClick,
   showHeatmap,
   onHeatmapChange,
   showVessels,
@@ -81,6 +90,9 @@ export function HomeMapLayout({
           newsItems={newsItems}
           selectedRegion={regionFilter}
           onSelectRegion={onRegionFilterChange}
+          metrics={metrics}
+          isMetricsLoading={isMetricsLoading}
+          onMetricClick={onMetricClick}
         />
       </div>
 
@@ -91,8 +103,8 @@ export function HomeMapLayout({
       />
 
       {/* Center — Map */}
-      <main className="flex-1 min-w-0 flex flex-col h-full">
-        <div className="flex-1 px-1.5 py-1 h-full">
+      <main className="flex-1 min-w-0 flex flex-col h-full relative">
+        <div className="flex-1 px-1.5 py-1 h-full relative">
           <div className="relative h-full w-full overflow-hidden border border-[var(--color-border)]">
             <Suspense
               fallback={

@@ -1,0 +1,27 @@
+\section{Introduction and Problem Statement}
+\label{sec:introduction}
+
+\subsection{Operational Context: The Strait of Hormuz}
+The Strait of Hormuz connects the Persian Gulf with the Gulf of Oman and the Arabian Sea. Geographically, the chokepoint measures only 21 nautical miles across at its narrowest corridor, with international maritime traffic restricted to two 2-mile-wide navigation lanes (one inbound, one outbound) separated by a 2-mile-wide demilitarized Traffic Separation Scheme (TSS) buffer zone. 
+
+Through this narrow marine artery flows approximately 21 million barrels of crude oil and petroleum liquids daily, alongside substantial liquefied natural gas (LNG) shipments originating from Qatar and the United Arab Emirates. Disruption to vessel transits through the strait generates immediate systemic shocks to global energy prices, international insurance underwriting (Lloyd's Joint War Committee classifications), and international maritime supply chains.
+
+\subsection{The Surveillance Challenge in Contested Maritime Littorals}
+Maritime Domain Awareness (MDA) within the Strait of Hormuz is complicated by asymmetrical, multi-layered threat vectors that render traditional commercial tracking inadequate:
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Sensor Spoofing and Electronic Warfare:} Global Navigation Satellite System (GNSS) spoofing is pervasive in the eastern Persian Gulf. Vessels routinely report false positions (e.g., circling airports inland or jumping dozens of nautical miles instantaneously), obfuscating genuine locations.
+    \item \textbf{Intentional Transponder Manipulation (``Dark Fleets''):} Vessels engaging in illicit ship-to-ship (STS) crude transfers or sanctions evasion frequently deactivate Class-A Automatic Identification System (AIS) transponders when entering sensitive corridors, creating significant telemetry gaps.
+    \item \textbf{Asymmetric Fast-Attack Interceptions:} Non-state actors and state-aligned naval forces (such as the IRGCN) deploy fast-attack craft (FAC) and fast in-shore patrol craft (FIPC) that exhibit erratic, high-speed interception vectors contrasting sharply with commercial merchant traffic.
+    \item \textbf{Severe Alert Fatigue:} Legacy maritime command systems rely on brittle threshold alerts (e.g., \textit{``Speed $< 5$ kts''} or \textit{``Course change $> 30^\circ$''}). Commercial tankers regularly make such maneuvers for legitimate safety reasons—such as anchoring, pilot boarding off Fujairah, or executing Convention on the International Regulations for Preventing Collisions at Sea (COLREGs) collision avoidance maneuvers. This produces thousands of daily false alarms, causing operators to ignore critical alerts.
+\end{enumerate}
+
+\subsection{Why Uncalibrated Machine Learning Fails in Tactical Centers}
+To combat rule-based brittleness, modern systems increasingly apply unsupervised anomaly detection models, such as standard Isolation Forests. However, off-the-shelf implementations present major operational hazards:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Uninterpretable Raw Outputs:} An Isolation Forest generates average path lengths $E(h(x))$ or shifted decision function scores $s(x) \in [-0.5, 0.5]$. Tactical operators in a joint operations center cannot interpret whether a score of $-0.18$ represents an imminent boarding or normal sea-state drift.
+    \item \textbf{Miscalibrated Confidence:} Linearly projecting raw scores to $[0, 100]$ produces severe probability distortions. In empirical testing, standard Isolation Forest models exhibited an Expected Calibration Error (ECE) of $14.86\%$, meaning that observations assigned an $80\%$ anomaly likelihood only corresponded to genuine anomalies $65\%$ of the time.
+    \item \textbf{Data Leakage in Research vs. Reality:} Academic benchmarks often evaluate anomaly detection on randomly shuffled train/test splits. When applied to multi-observation vessel trajectories, random shuffling leaks the kinematic profile of a ship into both train and test partitions, inflating reported performance while failing completely in production on unseen vessels.
+\end{itemize}
+
+\subsection{The HormuzWatch Mission}
+HormuzWatch was engineered from the ground up to solve these deficiencies. By combining a high-throughput, low-latency Go telemetry engine with an isolated, leakage-free Python MLOps ensemble and an interactive tactical dashboard, the platform delivers calibrated, explainable, and multi-factor threat intelligence in real time.

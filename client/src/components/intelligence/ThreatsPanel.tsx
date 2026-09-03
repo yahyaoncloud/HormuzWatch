@@ -155,9 +155,11 @@ export function ThreatsPanel({
 export function ThreatDetailModal({
   selectedThreat,
   onClose,
+  onOpenIntelligence,
 }: {
   selectedThreat: ThreatItem | null;
   onClose: () => void;
+  onOpenIntelligence?: () => void;
 }) {
   if (!selectedThreat) return null;
 
@@ -243,12 +245,24 @@ export function ThreatDetailModal({
           )}
 
           <div className="pt-2 border-t border-[var(--color-border)] flex gap-2">
-            <button onClick={onClose} className="flex-1 border border-[var(--color-border)] px-3 py-2 text-xs font-medium text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-elevated)] transition-colors">
+            <button onClick={onClose} className="flex-1 border border-[var(--color-border)] px-3 py-2 text-xs font-medium text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer">
               Close
             </button>
-            <Link to="/intelligence" onClick={onClose} className="flex-1 bg-[var(--color-primary-600)] px-3 py-2 text-xs font-medium text-white text-center hover:bg-[var(--color-primary-700)] transition-colors">
-              Open Intelligence →
-            </Link>
+            {onOpenIntelligence ? (
+              <button
+                onClick={() => {
+                  onOpenIntelligence();
+                  onClose();
+                }}
+                className="flex-1 bg-[var(--color-primary-600)] px-3 py-2 text-xs font-medium text-white text-center hover:bg-[var(--color-primary-700)] transition-colors cursor-pointer"
+              >
+                Open Intelligence →
+              </button>
+            ) : (
+              <Link to="/intelligence" onClick={onClose} className="flex-1 bg-[var(--color-primary-600)] px-3 py-2 text-xs font-medium text-white text-center hover:bg-[var(--color-primary-700)] transition-colors">
+                Open Intelligence →
+              </Link>
+            )}
           </div>
         </div>
       </div>

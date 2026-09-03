@@ -1,0 +1,77 @@
+\section{Model Governance, Evaluation Gates, and Zero-Downtime Deployment}
+\label{sec:model_governance}
+
+In an autonomous continuous training pipeline, deploying a newly trained model without deterministic validation creates severe operational risk. A malformed artifact or degraded candidate can crash inference microservices or flood operators with false alarms.
+
+HormuzWatch enforces a rigorous model gatekeeper and atomic deployment lifecycle within \texttt{pipeline/deploy\_candidate.py}.
+
+\subsection{The Fundamental Safety Invariant}
+The deployment pipeline is governed by a core safety invariant:
+\begin{quote}
+\textit{\textbf{Fundamental Safety Invariant:} A failed or degraded candidate model must never replace the currently active production champion.}
+\end{quote}
+Even if an automated Optuna retraining cycle completes successfully, the candidate is quarantined in \texttt{artifacts/} until passing multi-stage verification.
+
+\subsection{Multi-Stage Candidate Gatekeeper}
+The gatekeeper evaluates candidate artifacts through four sequential verification stages:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Deserialization and Key Integrity Verification:}
+    The candidate joblib bundle is unpickled and inspected to verify the presence of all required production dictionary keys:
+    \begin{equation}
+    \mathcal{K}_{\text{req}} = \{\texttt{"model\_iforest"}, \texttt{"model\_lof"}, \texttt{"scaler"}, \texttt{"calibrator"}, \texttt{"feature\_cols"}, \texttt{"domain"}\}
+    \end{equation}
+    Any missing key raises an unrecoverable \texttt{ValueError}, aborting promotion.
+    
+    \item \textbf{Feature Contract Alignment:}
+    The serialized \texttt{feature\_cols} must match the exact sequence defined in \texttt{DOMAIN\_FEATURE\_COLS[domain]}. Any dimensionality or ordering discrepancy rejects the artifact.
+    
+    \item \textbf{Runtime Smoke Test Inference:}
+    Before touching production disk locations, the candidate bundle is loaded into the active \texttt{score()} inference path with a synthetic test vector:
+    \begin{equation}
+    \mathbf{x}_{\text{smoke}} = \mathbf{0}_{1 \times 9} \implies \text{assert } 0.0 \le \text{Score}(\mathbf{x}_{\text{smoke}}) \le 100.0
+    \end{equation}
+    
+    \item \textbf{Champion Degradation Comparison Gate:}
+    The candidate's test metrics are compared against the active champion's metrics stored on disk:
+    \begin{align}
+    \text{Static Gate} &: \quad \text{PR-AUC} \ge 0.85, \quad \text{ECE} \le 0.08, \quad \text{Latency} \le 12.0\text{ ms} \\
+    \text{Relative ECE Guard} &: \quad \text{ECE}_{\text{cand}} \le 1.25 \times \text{ECE}_{\text{champ}} \quad (\text{if } \text{ECE}_{\text{cand}} > 0.08) \\
+    \text{Relative F1 Guard} &: \quad \text{F1}_{\text{cand}} \ge 0.85 \times \text{F1}_{\text{champ}} \quad (\text{if } \text{F1}_{\text{cand}} < 0.75)
+    \end{align}
+    If the candidate degrades calibration or detection accuracy beyond these boundaries, promotion is rejected.
+\end{enumerate}
+
+\subsection{Atomic File Replacement and Cryptographic Manifests}
+Standard file copying (\texttt{shutil.copyfile}) is inherently non-atomic; if the deployment process terminates mid-write, the production model file becomes corrupted, causing immediate runtime crashes when read by the inference service.
+
+HormuzWatch guarantees atomicity at the operating system kernel level using POSIX \texttt{os.replace}:
+\begin{enumerate}[leftmargin=*]
+    \item The candidate is written to a temporary staging path: \texttt{\{domain\}\_ensemble.joblib.tmp}.
+    \item The operating system atomically renames the staging path to the production target:
+    \begin{equation}
+    \texttt{os.replace(temp\_target, production\_path)}
+    \end{equation}
+    \item The SHA-256 digest of the new binary is computed and registered into \texttt{manifest.json} via an atomic swap (\texttt{manifest.json.tmp} $\to$ \texttt{manifest.json}).
+\end{enumerate}
+
+\subsection{Automated Champion Backup and Rollback}
+Prior to executing \texttt{os.replace}, the deployer copies the current champion to:
+\begin{equation}
+\texttt{\{domain\}\_ensemble.joblib.bak}
+\end{equation}
+Following file promotion, the deployer triggers an HTTP post to the reload endpoint (\texttt{POST /models/reload?domain=\{domain\}}). If the ML microservice reports an unhealthy status or fails to deserialize the model, the deployer immediately rolls back the backup:
+\begin{equation}
+\texttt{os.replace(backup\_path, production\_path)}
+\end{equation}
+
+\subsection{Zero-Downtime Hot-Reloading via File Modification Tracking}
+To prevent stream drops or socket reconnections, \texttt{service/ml-service/grpc\_server.py} monitors file modification timestamps (\texttt{mtime}) on each prediction request:
+\begin{lstlisting}[language=Python, basicstyle=\small\ttfamily]
+current_mtime = os.path.getmtime(artifact_path)
+cached = _BUNDLE_CACHE.get(domain)
+if cached is not None and _BUNDLE_MTIMES.get(domain) == current_mtime:
+    return cached
+# Reload atomically on timestamp change
+\end{lstlisting}
+This allows models to update instantaneously in memory without restarting the gRPC server or dropping active streaming telemetry connections.

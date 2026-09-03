@@ -31,8 +31,8 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   if (isLoading) {
     return (
       <div className={cn('animate-pulse bg-[var(--color-bg-card)] p-4 flex flex-col', className)}>
-        <div className="h-3 w-1/2 rounded bg-[var(--color-bg-elevated)]" />
-        <div className="mt-2 h-7 w-3/4 rounded bg-[var(--color-bg-elevated)]" />
+        <div className="h-3 w-1/2 rounded-none bg-[var(--color-bg-elevated)]" />
+        <div className="mt-2 h-7 w-3/4 rounded-none bg-[var(--color-bg-elevated)]" />
       </div>
     );
   }
@@ -47,37 +47,37 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       type={onClick ? 'button' : undefined}
       onClick={onClick}
       className={cn(
-        'group flex flex-col items-start bg-[var(--color-bg-card)] p-4 text-left transition-colors',
-        onClick && 'cursor-pointer hover:bg-[var(--color-bg-elevated)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-600)]',
+        'group flex flex-col items-start bg-[var(--color-bg-card)] p-2.5 sm:p-3 text-left transition-colors border border-[var(--color-border)] tactical-beveled',
+        onClick && 'cursor-pointer hover:bg-[var(--color-bg-hover)] hover:border-[var(--color-primary-600)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-primary-600)]',
         className
       )}
     >
-      <dt className="font-ui text-xs text-[var(--color-fg-muted)] tracking-wide flex items-center gap-1">
+      <dt className="font-mono text-[10px] uppercase font-bold text-[var(--color-fg-muted)] tracking-wider flex items-center gap-1.5 w-full">
         {accentColor && (
-          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentColor }} />
+          <span className="w-1.5 h-1.5 rounded-none border border-black/50" style={{ backgroundColor: accentColor }} />
         )}
-        <span>{label}</span>
+        <span className="truncate">{label}</span>
       </dt>
 
-      <dd className="mt-1 font-data text-2xl font-semibold text-[var(--color-fg)] transition-colors group-hover:text-[var(--color-primary-600)]">
+      <dd className="mt-1 font-mono text-xl sm:text-2xl font-bold text-[var(--color-fg)] transition-colors group-hover:text-[var(--color-primary-600)] dark:group-hover:text-[#38bdf8] tracking-tight">
         {prefix}
         {formattedValue}
-        {suffix && <span className="text-sm font-normal text-[var(--color-fg-muted)] ml-0.5">{suffix}</span>}
+        {suffix && <span className="text-xs font-normal text-[var(--color-fg-muted)] ml-1">{suffix}</span>}
       </dd>
 
       {change !== undefined && (
         <span
           className={cn(
-            'mt-1 font-data text-xs',
-            change >= 0 ? 'text-emerald-500' : 'text-rose-500'
+            'mt-0.5 font-mono text-[10px] font-bold',
+            change >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
           )}
         >
-          {change >= 0 ? '+' : ''}{change}% {changePeriod && <span className="text-[var(--color-fg-muted)]">vs {changePeriod}</span>}
+          {change >= 0 ? '▲ +' : '▼ '}{change}% {changePeriod && <span className="text-[var(--color-fg-subtle)] font-normal">vs {changePeriod}</span>}
         </span>
       )}
 
       {description && (
-        <p className="mt-1 text-[11px] font-ui text-[var(--color-fg-muted)] line-clamp-1">
+        <p className="mt-1 text-[10px] font-mono text-[var(--color-fg-muted)] line-clamp-1 border-t border-[var(--color-border)] pt-1 w-full">
           {description}
         </p>
       )}

@@ -1,0 +1,87 @@
+\section{Machine Learning Domain and Methodological Foundations}
+\label{sec:ml_methodology}
+
+The core analytical capability of HormuzWatch is driven by a specialized unsupervised anomaly detection and probability calibration engine. This section outlines the theoretical, mathematical, and operational justifications for our methodological choices.
+
+\subsection{The Unsupervised Learning Paradigm in Non-Cooperative Littorals}
+A primary design question in military and maritime AI systems is whether to implement supervised classification (e.g., training a deep neural network or gradient-boosted decision tree on labeled attack incidents) or unsupervised anomaly detection.
+
+HormuzWatch deliberately adopts an **unsupervised paradigm** based on three operational realities:
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Extreme Peacetime Class Imbalance:} Genuine maritime security incidents (e.g., vessel boardings, mine laying, naval interceptions, weapon smuggling) constitute less than $0.001\%$ of all broadcast AIS pings. Supervised models trained on such severely imbalanced data suffer from severe overfitting and collapse into majority-class classifiers.
+    \item \textbf{Non-Stationary Adversarial Tactics:} Hostile actors dynamically modify their tactical profiles to evade static detection signatures. A supervised classifier trained on 2019 Gulf of Oman tanker limpet mine attacks will fail to generalize to novel uncrewed surface vessel (USV) harassment or GPS spoofing tactics deployed in 2026.
+    \item \textbf{High-Volume Normative Baselines:} Conversely, normative commercial navigation is abundant. Tens of thousands of routine transits through the Strait of Hormuz define a dense, predictable manifold of physical kinematic trajectories. Deviations from this normative manifold can be robustly quantified without requiring historical attack labels.
+\end{enumerate}
+
+\subsection{Dual-Algorithm Ensembling: Isolation Forest and Local Outlier Factor}
+Rather than relying on a single anomaly detection algorithm, HormuzWatch implements a complementary ensemble combining **Isolation Forest (iForest)** with **Local Outlier Factor (LOF)**.
+
+\subsubsection{Isolation Forest: Global Hyperplane Isolation}
+Isolation Forest isolates anomalies by recursively generating random axis-aligned partitioning hyperplanes in the $d$-dimensional feature space. Because anomalous observations are few and physically distant from normative clusters, they are isolated close to the root of the tree:
+\begin{equation}
+s_{\text{IF}}(x, n) = 2^{-\frac{E(h(x))}{c(n)}}
+\end{equation}
+where $h(x)$ is the path length of observation $x$ in a tree of $n$ instances, $E(h(x))$ is the expectation across an ensemble of 200 random isolation trees, and $c(n)$ is the average path length of an unsuccessful search in a Binary Search Tree:
+\begin{equation}
+c(n) = 2 \ln(n - 1) + 0.5772156649 \text{ (Euler-Mascheroni constant)} - \frac{2(n - 1)}{n}
+\end{equation}
+\textit{Algorithmic Advantage:} Global search efficiency with $O(n \log n)$ fitting complexity and rapid sub-millisecond inference.
+
+\textit{Algorithm Blind Spot:} Vulnerable to axis-aligned masking effects and incapable of detecting localized density variations within non-convex clusters.
+
+\subsubsection{Local Outlier Factor: Neighborhood Density Estimation}
+Local Outlier Factor measures the local density of an observation with respect to its $k$-nearest neighbors ($k=20$). For a given point $p$:
+\begin{enumerate}[leftmargin=*]
+    \item The $k$-distance of $p$, denoted $d_k(p)$, is the Euclidean distance $d(p, o)$ to its $k$-th nearest neighbor.
+    \item The reachability distance of point $p$ with respect to neighbor $o$ is defined as:
+    \begin{equation}
+    \text{reach-dist}_k(p, o) = \max\{d_k(o), d(p, o)\}
+    \end{equation}
+    \item The local reachability density ($\text{lrd}$) of $p$ is the inverse of the average reachability distance over its $k$-nearest neighbors $N_k(p)$:
+    \begin{equation}
+    \text{lrd}_k(p) = \left[ \frac{\sum_{o \in N_k(p)} \text{reach-dist}_k(p, o)}{|N_k(p)|} \right]^{-1}
+    \end{equation}
+    \item The Local Outlier Factor ($\text{LOF}$) compares the $\text{lrd}$ of $p$ against the $\text{lrd}$ of its neighbors:
+    \begin{equation}
+    \text{LOF}_k(p) = \frac{\sum_{o \in N_k(p)} \frac{\text{lrd}_k(o)}{\text{lrd}_k(p)}}{|N_k(p)|}
+    \end{equation}
+\end{enumerate}
+\textit{Algorithmic Advantage:} Accurately detects local structural outliers—such as a cargo vessel moving at nominal speed but heading in reverse within an active Traffic Separation Scheme corridor.
+
+\subsubsection{Ensemble Blending Formulation}
+Raw scores from both algorithms are projected onto $[0, 1]$ using empirical bounds derived exclusively from the training set, followed by linear blending:
+\begin{equation}
+s_{\text{ens}}(x) = 0.55 \cdot \text{norm}(s_{\text{IF}}(x)) + 0.45 \cdot \text{norm}(s_{\text{LOF}}(x))
+\end{equation}
+The $0.55 / 0.45$ weighting provides a balance: Isolation Forest anchors global kinematic boundaries (e.g., impossible speeds or wild course jumps), while LOF sensitizes the system to micro-spatial deviations within dense maritime corridors.
+
+\subsection{Probability Calibration: Isotonic Regression vs. Platt Scaling}
+Raw anomaly scores $s_{\text{ens}} \in [0, 1]$ represent relative rank-order outlierness rather than true probabilities. Deploying raw scores directly into an operations center produces extreme miscalibration.
+
+\subsubsection{Why Platt Scaling (Logistic Sigmoid) Was Rejected}
+Platt scaling fits a parametric logistic regression to score outputs:
+\begin{equation}
+P(Y = 1 \mid s) = \frac{1}{1 + \exp(A \cdot s + B)}
+\end{equation}
+This formulation enforces a strict, symmetric sigmoidal curve. In maritime anomaly detection, the boundary between normative vessel clusters and outlying behavior is sharp, asymmetric, and multi-modal. Forcing a rigid sigmoid curve onto complex multi-density distributions compresses tail probabilities and distorts intermediate risks.
+
+\subsubsection{The Isotonic Regression Advantage}
+HormuzWatch employs non-parametric **Isotonic Regression**, which fits a free-form, non-decreasing step function using the Pool Adjacent Violators Algorithm (PAVA):
+\begin{equation}
+\min_{\hat{m}} \sum_{i=1}^{N_{\text{calib}}} \left( y_i - \hat{m}(s_{\text{ens}, i}) \right)^2 \quad \text{subject to } \hat{m}(u) \le \hat{m}(v) \text{ whenever } u \le v
+\end{equation}
+\textit{Operational Benefits:}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Distribution-Agnostic:} Adapts directly to the empirical error distribution without parametric distortion.
+    \item \textbf{Guaranteed Monotonicity:} A vessel with a higher combined outlier score $s_A > s_B$ is mathematically guaranteed to receive a calibrated probability $P_A \ge P_B$.
+    \item \textbf{Empirical Superiority:} Reduced Expected Calibration Error (ECE) from $14.86\%$ down to $4.57\%$, representing a \textbf{69.2\% improvement} in probability reliability.
+\end{itemize}
+
+\subsection{Operational Distinction: Anomaly Probability vs. Rogue Behavior}
+A foundational principle enforced across the HormuzWatch codebase is the technical and legal separation between kinematic outlier probability and hostile intent:
+\begin{equation}
+P(\text{Kinematic Outlier} \mid \text{Telemetry}) \neq P(\text{Hostile / Rogue Intent} \mid \text{Kinematic Outlier})
+\end{equation}
+A merchant tanker executing an abrupt $90^\circ$ heading change at $20\text{ kts}$ is genuinely a statistical outlier ($P(\text{Anomaly}) \approx 98\%$). However, under maritime law (COLREGs Rules 8 and 17), such an action may represent a legal emergency maneuver to avoid collision with a submerged reef or unlit fishing skiff. Labeling such an event as ``$98\%$ Rogue Behavior'' would corrupt operational reporting.
+
+HormuzWatch strictly labels this signal as **Calibrated Anomaly Probability**, which is subsequently synthesized within the multi-factor Intelligence Fusion Engine alongside geopolitical threat intelligence and deterministic rule checks.

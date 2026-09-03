@@ -18,7 +18,7 @@ import { HudMetricBadge, type HudMetricConfig } from './HudMetricBadge';
 import { LayerToggleGroup } from './LayerToggleGroup';
 import type { SystemMetricLogs } from '@/types/health';
 
-export type HomeTabId = 'map' | 'intelligence' | 'feed' | 'about';
+export type HomeTabId = 'map' | 'intelligence' | 'feed' | 'docs' | 'about';
 
 export interface HomeTopBarProps {
   // Tab state
@@ -221,31 +221,33 @@ export const HomeTopBar: React.FC<HomeTopBarProps> = ({
 
   return (
     <>
-      {/* Top Tab Bar */}
-      <div className="sticky top-0 z-20 border-b border-[var(--color-border)] bg-[var(--color-bg)]/95 backdrop-blur-md">
-        <div className="flex px-4 py-2">
-          {tabs.map((tab, idx) => (
-            <button
-              key={tab.id}
-              onClick={() => onTabChange(tab.id)}
-              className={cn(
-                'flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold transition-all border border-[var(--color-border)]',
-                idx > 0 && '-ml-px',
-                activeTab === tab.id
-                  ? 'bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)] z-10'
-                  : 'text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:bg-[var(--color-bg-elevated)]'
-              )}
-            >
-              <tab.icon className="h-3.5 w-3.5" />
-              {tab.label}
-            </button>
-          ))}
+      {/* Top Tab Bar - Tactical Segmented Tabs */}
+      <div className="sticky top-0 z-20 border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 select-none">
+        <div className="flex gap-1 overflow-x-auto">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => onTabChange(tab.id)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3.5 py-1 text-xs font-mono font-bold uppercase tracking-wider transition-all border',
+                  isActive
+                    ? 'bg-[var(--color-bg-card)] text-[var(--color-primary-600)] dark:text-[#38bdf8] border-[var(--color-border-strong)] dark:border-[#38bdf8]/60 shadow-[inset_0_2px_0_var(--color-primary-600)] dark:shadow-[inset_0_2px_0_#38bdf8]'
+                    : 'bg-[var(--color-bg-input)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:text-[var(--color-fg)] hover:bg-[var(--color-bg-hover)]'
+                )}
+              >
+                <tab.icon className={cn('h-3.5 w-3.5', isActive ? 'text-[var(--color-primary-600)] dark:text-[#38bdf8]' : 'text-[var(--color-fg-subtle)]')} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Control Bar (shown for map tab) */}
+      {/* Control Bar (shown for map tab) - Beveled Command Toolbar */}
       {activeTab === 'map' && (
-        <div className="shrink-0 mx-3 my-2 px-4 py-2 flex items-center gap-3 flex-wrap border border-[var(--color-border)] bg-[var(--color-bg-card)]/80 backdrop-blur-md">
+        <div className="shrink-0 mx-2 sm:mx-3 my-1.5 px-3 py-1.5 flex items-center gap-2 flex-wrap border border-[var(--color-border)] bg-[var(--color-bg-card)] tactical-beveled">
           {/* Timeline Segmented Buttons */}
           <div className="flex" role="group" aria-label="Time range filter">
             {timelineOptions.map((opt, idx) => (
@@ -253,10 +255,10 @@ export const HomeTopBar: React.FC<HomeTopBarProps> = ({
                 key={opt}
                 onClick={() => onTimelineChange(opt)}
                 className={cn(
-                  'px-3 py-1.5 font-data text-xs font-medium transition-all border border-[var(--color-border)]',
+                  'px-2.5 py-1 font-mono text-[11px] font-bold uppercase transition-all border border-[var(--color-border)]',
                   timeline === opt
-                    ? 'bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)] z-10'
-                    : 'bg-transparent text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-fg)]',
+                    ? 'bg-[var(--color-primary-600)] dark:bg-[#0284c7] text-white border-[var(--color-primary-600)] z-10 shadow-inner'
+                    : 'bg-[var(--color-bg-input)] text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-fg)]',
                   idx > 0 && '-ml-px'
                 )}
               >
@@ -289,55 +291,41 @@ export const HomeTopBar: React.FC<HomeTopBarProps> = ({
           <select
             value={severityFilter}
             onChange={(e) => onSeverityFilterChange(e.target.value)}
-            className="px-3 py-1.5 border border-[var(--color-border)] bg-[var(--color-bg)] font-ui text-xs text-[var(--color-fg)] cursor-pointer hover:border-[var(--color-primary-400)] transition-colors"
+            className="px-2.5 py-1 border border-[var(--color-border)] bg-[var(--color-bg-input)] font-mono text-[11px] font-semibold text-[var(--color-fg)] cursor-pointer hover:border-[var(--color-primary-600)] transition-colors uppercase"
             aria-label="Severity filter"
           >
-            <option value="all">All Severities</option>
-            <option value="critical">Critical</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
+            <option value="all">SEVERITY: ALL</option>
+            <option value="critical">CRITICAL THREAT</option>
+            <option value="high">HIGH RISK</option>
+            <option value="medium">MEDIUM</option>
+            <option value="low">LOW / NOMINAL</option>
           </select>
 
           {/* Region & Area Filter */}
           <select
             value={regionFilter}
             onChange={(e) => onRegionFilterChange(e.target.value)}
-            className="px-3 py-1.5 border border-[var(--color-border)] bg-[var(--color-bg)] font-ui text-xs text-[var(--color-fg)] cursor-pointer hover:border-[var(--color-primary-400)] transition-colors"
+            className="px-2.5 py-1 border border-[var(--color-border)] bg-[var(--color-bg-input)] font-mono text-[11px] font-semibold text-[var(--color-fg)] cursor-pointer hover:border-[var(--color-primary-600)] transition-colors uppercase"
             aria-label="Region and Zone filter"
           >
-            <option value="all">All Sectors & Zones</option>
-            <optgroup label="Strategic Chokepoints">
-              <option value="AREA-HORMUZ">Strait of Hormuz</option>
-              <option value="AREA-RS-SOUTH">Bab-el-Mandeb</option>
-              <option value="AREA-RS-NORTH">Red Sea & Suez</option>
-              <option value="AREA-ADEN-IRTC">Gulf of Aden IRTC</option>
-            </optgroup>
-            <optgroup label="Persian Gulf & Terminals">
-              <option value="AREA-PGULF">Persian Gulf Basin</option>
-              <option value="AREA-RASTANURA">Ras Tanura Terminal</option>
-              <option value="AREA-QATAR-LNG">Ras Laffan LNG</option>
-              <option value="AREA-KHARG">Kharg Island Terminal</option>
-              <option value="AREA-BANDARABBAS">Bandar Abbas / Qeshm</option>
-            </optgroup>
-            <optgroup label="Gulf of Oman & Anchorage Hubs">
-              <option value="AREA-GOMAN">Gulf of Oman</option>
-              <option value="AREA-FUJAIRAH">Fujairah Anchorage</option>
-              <option value="AREA-JEBELALI">Jebel Ali Corridor</option>
-            </optgroup>
+            <option value="all">SECTOR: ALL GULF ZONES</option>
+            <option value="AREA-HORMUZ">HORMUZ STRAIT (TSS)</option>
+            <option value="AREA-PGULF">PERSIAN GULF BASIN</option>
+            <option value="AREA-GOMAN">GULF OF OMAN APPROACH</option>
+            <option value="AREA-FUJAIRAH">FUJAIRAH ANCHORAGE (FOA)</option>
           </select>
 
           {/* Recenter Map Button */}
           <button
             type="button"
             onClick={onRecenter}
-            className="px-3 py-1.5 font-ui text-xs font-semibold transition-all border bg-[var(--color-bg)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:border-[var(--color-primary-400)] hover:text-[var(--color-fg)] flex items-center gap-1.5"
+            className="px-2.5 py-1 font-mono text-[11px] font-bold uppercase transition-all border bg-[var(--color-bg-input)] text-[var(--color-fg)] border-[var(--color-border)] hover:border-[var(--color-primary-600)] flex items-center gap-1.5 shadow-sm active:translate-y-px"
           >
-            <LocateFixed className="h-3.5 w-3.5" />
-            Recenter
+            <LocateFixed className="h-3.5 w-3.5 text-[var(--color-primary-600)] dark:text-[#38bdf8]" />
+            RECENTER
           </button>
 
-          <div className="w-px h-5 bg-[var(--color-border)] hidden sm:block mx-1" />
+          <div className="w-px h-5 bg-[var(--color-border)] hidden sm:block mx-0.5" />
 
           {/* Generate Report Button */}
           <button
@@ -345,22 +333,22 @@ export const HomeTopBar: React.FC<HomeTopBarProps> = ({
             onClick={onGenerateReport}
             disabled={reportGenerating}
             className={cn(
-              'px-4 py-1.5 font-ui text-xs font-semibold transition-all border flex items-center gap-2',
+              'px-3 py-1 font-mono text-[11px] font-bold uppercase transition-all border flex items-center gap-1.5 active:translate-y-px',
               reportGenerating
-                ? 'bg-[var(--color-primary-600)]/10 text-[var(--color-primary-600)] border-[var(--color-primary-600)]/30 cursor-wait'
-                : 'bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] hover:border-[var(--color-primary-700)]'
+                ? 'bg-[var(--color-bg-hover)] text-[var(--color-primary-600)] dark:text-[#38bdf8] border-[var(--color-border)] cursor-wait'
+                : 'bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)] hover:bg-[var(--color-brand-hover)] shadow-sm'
             )}
             aria-label="Generate Intelligence Report"
           >
             {reportGenerating ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Generating...
+                GENERATING...
               </>
             ) : (
               <>
                 <FileText className="h-3.5 w-3.5" />
-                Generate Report
+                INTEL REPORT
               </>
             )}
           </button>
@@ -375,7 +363,7 @@ export const HomeTopBar: React.FC<HomeTopBarProps> = ({
 
             <div className="flex items-center gap-1.5 text-[10px] text-[var(--color-fg-muted)] pl-2 border-l border-[var(--color-border)] shrink-0">
               <Globe className="h-3 w-3 text-[var(--color-primary-400)] animate-spin-slow" />
-              <span>MIDDLE EAST SECTOR (8.0°N–32.0°N, 32.0°E–76.0°E)</span>
+              <span>PERSIAN GULF & HORMUZ WATERS (21.5°N–31.5°N, 47.0°E–61.5°E)</span>
             </div>
           </div>
 

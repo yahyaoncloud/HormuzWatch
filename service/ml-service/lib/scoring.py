@@ -1,7 +1,24 @@
 """
 lib/scoring.py
---------------
-Ensemble anomaly scoring pipeline for HormuzWatch.
+==============
+Multi-Domain Ensemble Anomaly Scoring & Probabilistic Calibration Pipeline.
+
+================================================================================
+ARCHITECTURE & WORKFLOW COLOR-CODED TAG LEGEND:
+  [STAGE]               - Computational pipeline phase in the end-to-end lifecycle
+  [OBJECTIVE]           - Concrete mathematical or operational goal of the code block
+  [MATHEMATICAL BASIS]  - Algorithmic formulation, probability theory, or geometry
+  [SYSTEM OUTCOME]      - State change, persisted artifact, or downstream impact
+  [SAFETY INVARIANT]    - Non-negotiable constraint to prevent data leakage/corruption
+================================================================================
+
+Inference Execution Pipeline:
+    1. Feature Standardization: z = scaler.transform(X) using train-fitted moments
+    2. Dual Model Inference: Raw path length (IF) and local density (LOF) scoring
+    3. Min-Max Normalization: Bounds derived strictly from training distribution
+    4. Heuristic Linear Blending: s_ens = 0.55 * norm(IF) + 0.45 * norm(LOF)
+    5. Monotonic Isotonic Calibration: p = calibrator.predict([s_ens]) * 100.0
+    6. Local Feature Attribution: TreeSHAP on IsolationForest estimators
 
 Each domain has three persisted artifacts stored in /models/:
     {domain}_ensemble.joblib → {
@@ -13,16 +30,6 @@ Each domain has three persisted artifacts stored in /models/:
         "domain":        str,
         "version":       str,              # ISO-8601 timestamp of last train run
     }
-
-Inference pipeline (per prediction):
-    1. StandardScaler.transform(X)
-    2. IsolationForest.score_samples(X)   → raw_iforest  (more negative = more anomalous)
-    3. LocalOutlierFactor.score_samples(X) → raw_lof      (same convention)
-    4. Normalise both raw scores to [0, 1] via min-max over [-1, 0] range
-    5. Average the two normalised scores → ensemble_score_01
-    6. IsotonicRegression.predict([ensemble_score_01]) → calibrated probability ∈ [0, 1]
-    7. Multiply by 100 for the final 0-100 scale
-    8. SHAP: TreeExplainer on IsolationForest only; returns ranked feature contributions
 
 Design notes:
     - The normalisation in step 4 uses the theoretical range of
@@ -235,13 +242,23 @@ def score(
     calibrator = bundle["calibrator"]
     version = bundle.get("version", "unknown")
 
-    # ── 1. Scale features ──────────────────────────────────────────────────
+    # --------------------------------------------------------------------------
+    # [SUBSTAGE 1: KINEMATIC FEATURE STANDARDIZATION]
+    # [OBJECTIVE]: Transform raw kinematic measurements using train-time moments.
+    # [MATHEMATICAL BASIS]: z_j = (x_j - μ_j) / σ_j
+    # --------------------------------------------------------------------------
     t_stage = time.perf_counter()
     X_raw = feature_array.reshape(1, -1)
     X = scaler.transform(X_raw)
     timings["scaling_ms"] = round((time.perf_counter() - t_stage) * 1000.0, 3)
 
-    # ── 2. Raw scores ──────────────────────────────────────────────────────
+    # --------------------------------------------------------------------------
+    # [SUBSTAGE 2: DUAL-MODEL RAW ANOMALY SCORING]
+    # [OBJECTIVE]: Compute independent global isolation depth and local density score.
+    # [MATHEMATICAL BASIS]:
+    #   IF: s_if(X) = -score_samples(X) ∝ E(h(X))
+    #   LOF: s_lof(X) = -score_samples(X) ∝ local_reachability_density
+    # --------------------------------------------------------------------------
     t_stage = time.perf_counter()
     raw_if = float(model_iforest.score_samples(X)[0])
     timings["iforest_ms"] = round((time.perf_counter() - t_stage) * 1000.0, 3)
@@ -250,18 +267,29 @@ def score(
     raw_lof = float(model_lof.score_samples(X)[0])
     timings["lof_ms"] = round((time.perf_counter() - t_stage) * 1000.0, 3)
 
-    # ── 3 & 4. Normalise to [0, 1] (higher = more anomalous) ──────────────
+    # --------------------------------------------------------------------------
+    # [SUBSTAGE 3: BOUNDED MIN-MAX SCORE NORMALIZATION]
+    # [OBJECTIVE]: Linearly project unbounded raw scores onto uniform [0, 1] interval.
+    # [SAFETY INVARIANT]: Bounds s_min, s_max retrieved strictly from persisted bundle.
+    # --------------------------------------------------------------------------
     score_bounds = bundle.get("score_bounds", {})
     if_bounds = score_bounds.get("iforest", (_IF_MIN, _IF_MAX))
     lof_bounds = score_bounds.get("lof", (_IF_MIN, _IF_MAX))
     norm_if = _normalize_raw_score(raw_if, *if_bounds)
     norm_lof = _normalize_raw_score(raw_lof, *lof_bounds)
 
-    # ── 5. Weighted Score Blending (0.55 IF + 0.45 LOF) ───────────────────
-    # Note: Heuristic weighted blending, not meta-estimator stacking.
+    # --------------------------------------------------------------------------
+    # [SUBSTAGE 4: HEURISTIC LINEAR SCORE BLENDING]
+    # [OBJECTIVE]: Combine global isolation (55%) and local density estimation (45%).
+    # [MATHEMATICAL BASIS]: s_ens = 0.55 * norm_if + 0.45 * norm_lof ∈ [0, 1].
+    # --------------------------------------------------------------------------
     ensemble_score_01 = 0.55 * norm_if + 0.45 * norm_lof
 
-    # ── 6. Isotonic calibration → calibrated probability [0, 1] ───────────
+    # --------------------------------------------------------------------------
+    # [SUBSTAGE 5: MONOTONIC PROBABILITY CALIBRATION]
+    # [OBJECTIVE]: Map ensemble score to empirical probability of anomaly label.
+    # [MATHEMATICAL BASIS]: P(Y = 1 | s_ens) evaluated via IsotonicRegression knot interpolator.
+    # --------------------------------------------------------------------------
     t_stage = time.perf_counter()
     try:
         calibrated_01 = float(
@@ -273,10 +301,17 @@ def score(
         calibrated_01 = ensemble_score_01
     timings["calibration_ms"] = round((time.perf_counter() - t_stage) * 1000.0, 3)
 
-    # ── 7. Scale to 0-100 ─────────────────────────────────────────────────
+    # --------------------------------------------------------------------------
+    # [SUBSTAGE 6: PROBABILITY PERCENTAGE SCALING]
+    # [SYSTEM OUTCOME]: Maps calibrated probability to operational [0, 100] scale.
+    # --------------------------------------------------------------------------
     probability = round(calibrated_01 * 100.0, 2)
 
-    # ── 8. SHAP (IsolationForest only; tree-based attribution) ─────────────
+    # --------------------------------------------------------------------------
+    # [SUBSTAGE 7: LOCAL FEATURE EXPLAINABILITY (TreeSHAP)]
+    # [OBJECTIVE]: Decompose IsolationForest score into individual feature attributions.
+    # [MATHEMATICAL BASIS]: Shapley values satisfying efficiency and symmetry axioms.
+    # --------------------------------------------------------------------------
     shap_contributions: list[SHAPContribution] = []
     if explain:
         t_stage = time.perf_counter()

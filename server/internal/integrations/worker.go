@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"Geospatial-harmuz-watch/server/internal/integrations/ais"
 	"Geospatial-harmuz-watch/server/internal/intelligence"
 	"Geospatial-harmuz-watch/server/internal/websocket/hub"
 )
@@ -16,8 +17,9 @@ func StartWorkers(ctx context.Context, h *hub.Hub, tsm *intelligence.TrackStateM
 
 	pipeline := intelligence.NewPipeline(h, tsm, mlClient)
 
-	// 1. Start AISStream for live vessel telemetry
-	go StartAISStream(ctx, pipeline)
+	// 1. Start production AISStream engine (live WebSocket & mock fallback)
+	aisClient := ais.NewAISClient(pipeline, ais.GlobalVesselCache)
+	aisClient.Start(ctx)
 
 	// 2. Start OpenSky for live aircraft telemetry
 	go StartOpenSky(ctx, pipeline)

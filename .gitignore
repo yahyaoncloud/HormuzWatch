@@ -37,6 +37,7 @@ bin/
 *.test
 *.prof
 server/cmd/main
+server/dataset-generator
 
 # OS & IDE
 .DS_Store
@@ -46,3 +47,17 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# LaTeX build artifacts
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.out
+*.toc
+*.fmt
+*.fot
+*.cb
+*.cb2
+._*
