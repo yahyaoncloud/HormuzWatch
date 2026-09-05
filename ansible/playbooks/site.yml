@@ -1,0 +1,8 @@
+---
+- name: Provision and Deploy HormuzWatch Workstation
+  hosts: all
+  become: true
+  roles:
+    - role: system_prep
+    - role: docker_runtime
+    - role: hormuzwatch_stack

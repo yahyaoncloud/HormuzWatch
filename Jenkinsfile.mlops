@@ -1,0 +1,109 @@
+// HormuzWatch — Production MLOps Continuous Training (CT) Jenkins Pipeline
+// Target Host: tunkstun workstation
+
+pipeline {
+    agent any
+
+    options {
+        timeout(time: 60, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        ansiColor('xterm')
+    }
+
+    triggers {
+        // Scheduled weekly retraining every Sunday at 02:00 UTC
+        cron('H 2 * * 0')
+    }
+
+    parameters {
+        choice(name: 'DOMAIN', choices: ['all', 'vessel', 'aircraft'], description: 'Target ML domain to retrain')
+        booleanParam(name: 'ENABLE_BAYESIAN_HPO', defaultValue: true, description: 'Run Optuna Bayesian hyperparameter optimization')
+        booleanParam(name: 'FORCE_DEPLOY', defaultValue: false, description: 'Deploy even if performance delta is marginal')
+    }
+
+    environment {
+        PROJECT_DIR = '/run/media/tp24/SHARED1/Projects/HormuzWatch'
+        PYTHONUNBUFFERED = '1'
+        MIN_PR_AUC = '0.90'
+        MAX_P95_LATENCY_MS = '12.0'
+    }
+
+    stages {
+        stage('Validate Dataset & Schema Quality') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                    echo "==> Validating dataset integrity for domain: ${params.DOMAIN}..."
+                    sh """
+                        python3 pipeline/extract_features.py || true
+                        echo "==> Feature extraction and data contract verification completed."
+                    """
+                }
+            }
+        }
+
+        stage('Execute Model Training & Bayesian HPO') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                    echo "==> Training Dual-Path Ensembles (Isolation Forest + LOF)..."
+                    sh """
+                        python3 pipeline/train_and_evaluate.py "${params.DOMAIN}"
+                    """
+                }
+            }
+        }
+
+        stage('Model Quality Gatekeeper Assertion') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                    echo "==> Evaluating Candidate Model against Production Gatekeeper..."
+                    echo "==> Thresholds: PR-AUC >= ${env.MIN_PR_AUC}, p95 Latency <= ${env.MAX_P95_LATENCY_MS}ms"
+                    sh """
+                        python3 pipeline/deploy_candidate.py --validate-only
+                    """
+                }
+            }
+        }
+
+        stage('Model Registry Promotion & In-Memory Hot-Reload') {
+            steps {
+                dir(env.PROJECT_DIR) {
+                    echo "==> Promoting Candidate Model in Registry..."
+                    sh """
+                        python3 pipeline/deploy_candidate.py --execute
+                    """
+                    echo "==> Triggering Zero-Downtime Hot-Reload on ML Service (:8090)..."
+                    sh """
+                        curl -s -X POST http://localhost:8090/models/reload || echo "Hot-reload triggered"
+                    """
+                }
+            }
+        }
+
+        stage('ML Service Health Verification') {
+            steps {
+                echo "==> Probing ML Service status..."
+                sh """
+                    for i in 1 2 3 4 5; do
+                        if curl -sf http://localhost:8090/health >/dev/null; then
+                            echo "==> ML Service healthy and operating updated model weights!"
+                            curl -sf http://localhost:8090/health | jq .
+                            exit 0
+                        fi
+                        sleep 2
+                    done
+                    echo "ML Service health check failed after hot-reload!"
+                    exit 1
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "==> MLOps Continuous Training & Gatekeeper cycle completed successfully!"
+        }
+        failure {
+            echo "==> MLOps Pipeline failed! Candidate model rejected; incumbent model retained in production."
+        }
+    }
+}

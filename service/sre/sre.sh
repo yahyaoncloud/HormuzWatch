@@ -5,6 +5,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
+# Ensure Go binary path is available in all environments
+if ! command -v go >/dev/null 2>&1; then
+  export PATH="/usr/local/go/bin:$HOME/go/bin:$PATH"
+fi
+
 # Colors
 C_RESET="\033[0m"
 C_BOLD="\033[1m"

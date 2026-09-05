@@ -1,0 +1,33 @@
+---
+# ==============================================================================
+# HormuzWatch: Complete Fresh Node Portability & Bootstrap Playbook
+# Provisions any clean machine (Ubuntu/Debian) from zero to fully running stack.
+# ==============================================================================
+- name: Bootstrap and Deploy HormuzWatch on Fresh Server
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    compose_file: "{{ compose_file | default('docker-compose.dev.yml') }}"
+
+  roles:
+    - role: system_prep
+    - role: docker_runtime
+    - role: private_registry
+    - role: hormuzwatch_stack
+
+- name: Post-Bootstrap Verification
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Run SRE Health Check Script
+      ansible.builtin.command:
+        cmd: "./service/sre/sre.sh health"
+        chdir: "{{ target_project_dir }}"
+      register: sre_health
+      changed_when: false
+
+    - name: Display SRE Health Output
+      ansible.builtin.debug:
+        var: sre_health.stdout_lines

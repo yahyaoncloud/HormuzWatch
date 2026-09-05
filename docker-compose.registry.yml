@@ -1,0 +1,81 @@
+version: "3.8"
+
+networks:
+  hormuzwatch-registry-net:
+    driver: bridge
+
+volumes:
+  docker_registry_data:
+    driver: local
+  minio_data:
+    driver: local
+
+services:
+  # ============================================================================
+  # 1. Private Docker Registry v2 (Port 5000)
+  # ============================================================================
+  docker-registry:
+    image: registry:2.8.3
+    container_name: hormuzwatch-docker-registry
+    restart: unless-stopped
+    ports:
+      - "${REGISTRY_PORT:-5000}:5000"
+    environment:
+      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /var/lib/registry
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+      REGISTRY_HTTP_ADDR: "0.0.0.0:5000"
+    volumes:
+      - docker_registry_data:/var/lib/registry
+    networks:
+      - hormuzwatch-registry-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5000/v2/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # 2. ML Model & Dataset Object Registry (MinIO S3 - Ports 9000, 9001)
+  # ============================================================================
+  model-registry:
+    image: minio/minio:RELEASE.2024-08-03T04-33-23Z
+    container_name: hormuzwatch-model-registry
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: "${MINIO_USER:-hormuzadmin}"
+      MINIO_ROOT_PASSWORD: "${MINIO_PASSWORD:-HormuzSecret2026!}"
+    volumes:
+      - minio_data:/data
+    networks:
+      - hormuzwatch-registry-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # 3. Model & Dataset Bucket Provisioner
+  # ============================================================================
+  registry-provisioner:
+    image: minio/mc:RELEASE.2024-08-08T16-57-19Z
+    container_name: hormuzwatch-registry-provisioner
+    depends_on:
+      model-registry:
+        condition: service_healthy
+    networks:
+      - hormuzwatch-registry-net
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set local http://model-registry:9000 ${MINIO_USER:-hormuzadmin} ${MINIO_PASSWORD:-HormuzSecret2026!};
+      /usr/bin/mc mb --ignore-existing local/hormuzwatch-models;
+      /usr/bin/mc mb --ignore-existing local/hormuzwatch-datasets;
+      /usr/bin/mc anonymous set download local/hormuzwatch-models;
+      /usr/bin/mc anonymous set download local/hormuzwatch-datasets;
+      echo 'Registry buckets provisioned: hormuzwatch-models, hormuzwatch-datasets';
+      exit 0;
+      "

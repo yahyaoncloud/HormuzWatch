@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -394,13 +395,42 @@ func colorizeLogLine(rawLine string, minLevelRank int, filterService string) (st
 
 	// Text line formatting
 	lineLevel := "info"
+	upperBody := strings.ToUpper(logBody)
 	lowerBody := strings.ToLower(logBody)
-	if strings.Contains(lowerBody, "error") || strings.Contains(lowerBody, "panic") || strings.Contains(lowerBody, "fatal") {
+
+	// 1. Check for explicit bracketed log levels first
+	if strings.Contains(upperBody, "[FATAL]") {
+		lineLevel = "fatal"
+	} else if strings.Contains(upperBody, "[ERROR]") {
 		lineLevel = "error"
-	} else if strings.Contains(lowerBody, "warn") {
+	} else if strings.Contains(upperBody, "[WARN]") || strings.Contains(upperBody, "[WARN ]") || strings.Contains(upperBody, "LEVEL=WARN") {
 		lineLevel = "warn"
-	} else if strings.Contains(lowerBody, "debug") {
+	} else if strings.Contains(upperBody, "[INFO]") || strings.Contains(upperBody, "[INFO ]") || strings.Contains(upperBody, "LEVEL=INFO") {
+		lineLevel = "info"
+	} else if strings.Contains(upperBody, "[DEBUG]") || strings.Contains(upperBody, "[DEBUG ]") || strings.Contains(upperBody, "LEVEL=DEBUG") {
 		lineLevel = "debug"
+	} else {
+		// 2. Heuristic fallback for unstructured logs
+		cleaned := lowerBody
+		// Strip benign occurrences so they don't trigger false positive error badges
+		cleaned = strings.ReplaceAll(cleaned, "errors=0", "")
+		cleaned = strings.ReplaceAll(cleaned, "errors: 0", "")
+		cleaned = strings.ReplaceAll(cleaned, "errors:0", "")
+		cleaned = strings.ReplaceAll(cleaned, "errors = 0", "")
+		cleaned = strings.ReplaceAll(cleaned, "err=nil", "")
+		cleaned = strings.ReplaceAll(cleaned, "err: nil", "")
+		cleaned = strings.ReplaceAll(cleaned, "error: none", "")
+		cleaned = strings.ReplaceAll(cleaned, "0 errors", "")
+
+		if strings.Contains(cleaned, "fatal") {
+			lineLevel = "fatal"
+		} else if strings.Contains(cleaned, "error") || strings.Contains(cleaned, "panic") {
+			lineLevel = "error"
+		} else if strings.Contains(cleaned, "warn") {
+			lineLevel = "warn"
+		} else if strings.Contains(cleaned, "debug") {
+			lineLevel = "debug"
+		}
 	}
 
 	levelBadge, rank := getLevelBadge(lineLevel)
@@ -421,8 +451,34 @@ func colorizeLogLine(rawLine string, minLevelRank int, filterService string) (st
 	return fmt.Sprintf("%s %s %s", badge, levelBadge, formattedBody), true
 }
 
+func findComposeFile() (composeFile string, projectDir string) {
+	// Look for project root and compose files
+	candidates := []string{
+		".",
+		"..",
+		"../..",
+	}
+	for _, c := range candidates {
+		devPath := filepath.Join(c, "docker-compose.dev.yml")
+		prodPath := filepath.Join(c, "docker-compose.yml")
+
+		// If dev compose exists, prefer it when present
+		if _, err := os.Stat(devPath); err == nil {
+			absDev, _ := filepath.Abs(devPath)
+			absRoot, _ := filepath.Abs(c)
+			return absDev, absRoot
+		}
+		if _, err := os.Stat(prodPath); err == nil {
+			absProd, _ := filepath.Abs(prodPath)
+			absRoot, _ := filepath.Abs(c)
+			return absProd, absRoot
+		}
+	}
+	return "", ""
+}
+
 func tailColorLogs(tailCount int, minLevel string, serviceFilter string) {
-	fmt.Println(ColorBold + "\n[3] Streaming Multi-Container Colorized Logs (server, ml, client)..." + ColorReset)
+	fmt.Println(ColorBold + "\n[3] Streaming Multi-Container Colorized Logs (server, ml, client, postgres)..." + ColorReset)
 	if minLevel != "" && minLevel != "all" {
 		fmt.Printf("    • Min Level Filter: %s%s%s\n", ColorYellow, strings.ToUpper(minLevel), ColorReset)
 	}
@@ -431,8 +487,22 @@ func tailColorLogs(tailCount int, minLevel string, serviceFilter string) {
 	}
 	fmt.Println(ColorDim + "Press Ctrl+C to stop log stream.\n" + ColorReset)
 
-	args := []string{"compose", "logs", "-f", fmt.Sprintf("--tail=%d", tailCount), "server", "ml", "client"}
+	composeFile, projectDir := findComposeFile()
+	var args []string
+	if composeFile != "" && projectDir != "" {
+		args = []string{"compose", "--project-directory", projectDir}
+		envFile := filepath.Join(projectDir, ".env")
+		if _, err := os.Stat(envFile); err == nil {
+			args = append(args, "--env-file", envFile)
+		}
+		args = append(args, "-f", composeFile, "logs", "-f", fmt.Sprintf("--tail=%d", tailCount), "server", "ml", "client", "postgres")
+	} else {
+		args = []string{"compose", "logs", "-f", fmt.Sprintf("--tail=%d", tailCount), "server", "ml", "client", "postgres"}
+	}
 	cmd := exec.Command("docker", args...)
+	if projectDir != "" {
+		cmd.Dir = projectDir
+	}
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

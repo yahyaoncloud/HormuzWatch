@@ -1,0 +1,39 @@
+{
+  "project": "HormuzWatch",
+  "version": "2.4.0",
+  "build_date": "2026-09-05T20:30:00Z",
+  "branch": "production-ready",
+  "architecture": ["x86_64", "arm64"],
+  "components": {
+    "server": {
+      "language": "Go 1.24",
+      "framework": "Fiber v2",
+      "version": "2.4.0",
+      "port": 10020
+    },
+    "ml_service": {
+      "language": "Python 3.11+",
+      "frameworks": ["FastAPI", "gRPC", "scikit-learn 1.5"],
+      "version": "2.4.0",
+      "ports": [8090, 8091]
+    },
+    "client": {
+      "framework": "React 19 + Vite + TailwindCSS",
+      "version": "2.4.0",
+      "port": 3000
+    },
+    "database": {
+      "engine": "PostgreSQL 16 Alpine",
+      "port": 5433
+    },
+    "observability": {
+      "services": ["Prometheus", "Grafana", "Node-Exporter", "cAdvisor"],
+      "ports": [9091, 3001, 9100, 8080]
+    },
+    "registries": {
+      "docker_registry_port": 5000,
+      "model_minio_port": 9000,
+      "model_minio_console": 9001
+    }
+  }
+}

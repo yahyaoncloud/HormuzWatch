@@ -44,11 +44,34 @@ services:
       # Observability
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     depends_on:
+      postgres:
+        condition: service_healthy
       ml:
         condition: service_healthy
     networks:
       - hormuzwatch
     restart: unless-stopped
+
+  # ── PostgreSQL Database (Production) ───────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: hormuzwatch-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-Yahya@123}
+      - POSTGRES_DB=hormuzwatch
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - hormuzwatch
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hormuzwatch"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
 
   # ── Python ML Service (Production) ─────────────────────────
   ml:
@@ -100,6 +123,25 @@ services:
       - hormuzwatch
     restart: unless-stopped
 
+  # ── Dedicated Dataset Worker (Decoupled Background ETL) ───
+  dataset-worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.dataset-worker
+    image: hormuzwatch-dataset-worker:1.0.0
+    container_name: hormuzwatch-dataset-worker
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - DATASET_OUTPUT_DIR=/server/datasets
+      - DATASET_DOMAINS=vessel,aircraft
+      - DATASET_LOOKBACK_HOURS=2.0
+      - DATASET_RETENTION=14
+    volumes:
+      - /server/datasets:/server/datasets
+    networks:
+      - hormuzwatch
+    restart: unless-stopped
+
 networks:
   hormuzwatch:
     driver: bridge
@@ -108,3 +150,5 @@ networks:
 volumes:
   ml-models:
     name: hormuzwatch-ml-models
+  pgdata:
+    name: hormuzwatch-pgdata

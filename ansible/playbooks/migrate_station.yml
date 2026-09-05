@@ -1,0 +1,65 @@
+---
+- name: Workstation Portability & Migration Playbook
+  hosts: localhost
+  gather_facts: false
+  vars:
+    src_host: "tunkstun"
+    dest_host: "new_station"
+    src_user: "yahya"
+    dest_user: "yahya"
+    project_root: "/home/yahya/SHARED/Projects/HormuzWatch"
+    datasets_dir: "/server/datasets"
+
+  tasks:
+    - name: 1. Ensure destination project and dataset directories exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ dest_user }}"
+        group: "{{ dest_user }}"
+        mode: '0755'
+      loop:
+        - "{{ project_root }}"
+        - "{{ datasets_dir }}"
+      delegate_to: "{{ dest_host }}"
+      become: true
+
+    - name: 2. Stop running containers on source to prevent data divergence
+      ansible.builtin.command:
+        cmd: "docker compose -f docker-compose.dev.yml down"
+        chdir: "{{ project_root }}"
+      delegate_to: "{{ src_host }}"
+      ignore_errors: true
+
+    - name: 3. Rsync codebase from source to destination
+      ansible.builtin.command:
+        cmd: >
+          rsync -avz --exclude='client/node_modules'
+          {{ src_user }}@{{ hostvars[src_host]['ansible_host'] }}:{{ project_root }}/
+          {{ dest_user }}@{{ hostvars[dest_host]['ansible_host'] }}:{{ project_root }}/
+
+    - name: 4. Rsync /server/datasets archive from source to destination
+      ansible.builtin.command:
+        cmd: >
+          rsync -avz -P
+          {{ src_user }}@{{ hostvars[src_host]['ansible_host'] }}:{{ datasets_dir }}/
+          {{ dest_user }}@{{ hostvars[dest_host]['ansible_host'] }}:{{ datasets_dir }}/
+
+    - name: 5. Build and start containers on destination workstation
+      ansible.builtin.command:
+        cmd: "docker compose -f docker-compose.dev.yml up -d --build"
+        chdir: "{{ project_root }}"
+      delegate_to: "{{ dest_host }}"
+
+    - name: 6. Run Health Verification Gate on Destination
+      ansible.builtin.uri:
+        url: "http://{{ hostvars[dest_host]['ansible_host'] }}:{{ item }}/health"
+        status_code: 200
+        timeout: 10
+      register: health_check
+      until: health_check.status == 200
+      retries: 10
+      delay: 5
+      loop:
+        - 10020
+        - 8090

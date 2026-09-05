@@ -32,6 +32,10 @@ analysis_output/
 *.pkl
 datasets/
 server/datasets/
+!server/datasets/registry_manifest.json
+data/docker-registry/
+data/minio-data/
+dist/
 
 # Go
 bin/

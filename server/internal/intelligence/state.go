@@ -187,24 +187,20 @@ func (m *TrackStateManager) computeDeltas(state *TrackState, current Observation
 	// ── 3. AIS Gap ───────────────────────────────────────────────────────
 	d.AISGapMinutes = current.Timestamp.Sub(prev.Timestamp).Minutes()
 
-	// ── 4. Sliding Window Speed Mean & Variance ──────────────────────────
-	allSpeeds := make([]float64, 0, len(state.History)+1)
+	// ── 4. Sliding Window Speed Mean & Variance (Zero-Allocation) ───────
+	nSpeeds := float64(len(state.History) + 1)
+	sum := current.Speed
 	for _, obs := range state.History {
-		allSpeeds = append(allSpeeds, obs.Speed)
+		sum += obs.Speed
 	}
-	allSpeeds = append(allSpeeds, current.Speed)
+	d.AverageSpeed = sum / nSpeeds
 
-	sum := 0.0
-	for _, s := range allSpeeds {
-		sum += s
+	varSum := (current.Speed - d.AverageSpeed) * (current.Speed - d.AverageSpeed)
+	for _, obs := range state.History {
+		diff := obs.Speed - d.AverageSpeed
+		varSum += diff * diff
 	}
-	d.AverageSpeed = sum / float64(len(allSpeeds))
-
-	varSum := 0.0
-	for _, s := range allSpeeds {
-		varSum += (s - d.AverageSpeed) * (s - d.AverageSpeed)
-	}
-	d.SpeedVariance = varSum / float64(len(allSpeeds))
+	d.SpeedVariance = varSum / nSpeeds
 
 	// ── 5. Circular Directional Statistics (Absolute Heading on S¹) ───────
 	alpha := EWMAAlpha

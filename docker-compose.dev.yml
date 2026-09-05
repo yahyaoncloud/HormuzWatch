@@ -19,7 +19,7 @@ services:
       - PORT=10020
       - GIN_MODE=debug
       - AUTH_DISABLED=true
-      - DATABASE_URL=${DATABASE_URL:-}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:Yahya%40123@postgres:5432/hormuzwatch?sslmode=disable}
       - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret-at-least-32-chars-long!}
       - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET:-}
       - SUPABASE_URL=${SUPABASE_URL:-}
@@ -40,11 +40,34 @@ services:
       - ./server/data:/app/data
       - ./server/templates:/app/templates
     depends_on:
+      postgres:
+        condition: service_healthy
       ml:
         condition: service_healthy
     networks:
       - hormuzwatch-dev
     restart: unless-stopped
+
+  # ── Local PostgreSQL Database (Dev Mode) ───────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: hormuzwatch-postgres-dev
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=Yahya@123
+      - POSTGRES_DB=hormuzwatch
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata-dev:/var/lib/postgresql/data
+    networks:
+      - hormuzwatch-dev
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hormuzwatch"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
 
   # ── Python ML Service (Dev Mode) ───────────────────────────
   ml:
@@ -110,6 +133,28 @@ services:
       - hormuzwatch-dev
     restart: unless-stopped
 
+  # ── Dedicated Dataset Worker (Dev Profile) ─────────────────
+  dataset-worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.dataset-worker
+    image: hormuzwatch-dataset-worker:dev
+    container_name: hormuzwatch-dataset-worker-dev
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:Yahya%40123@postgres:5432/hormuzwatch?sslmode=disable}
+      - DATASET_OUTPUT_DIR=/server/datasets
+      - DATASET_DOMAINS=vessel,aircraft
+      - DATASET_LOOKBACK_HOURS=2.0
+      - DATASET_RETENTION=7
+    volumes:
+      - ./server/datasets:/server/datasets
+    networks:
+      - hormuzwatch-dev
+    profiles:
+      - worker
+      - all
+    restart: unless-stopped
+
 networks:
   hormuzwatch-dev:
     driver: bridge
@@ -118,3 +163,5 @@ networks:
 volumes:
   ml-models-dev:
     name: hormuzwatch-ml-models-dev
+  pgdata-dev:
+    name: hormuzwatch-pgdata-dev

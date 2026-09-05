@@ -1,0 +1,65 @@
+name: Pipeline - MLOps Continuous Training (CT)
+
+on:
+  schedule:
+    # Retrain every Sunday at 02:00 UTC
+    - cron: '0 2 * * 0'
+  repository_dispatch:
+    types: [data-drift-detected]
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: 'Target ML domain to retrain'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - vessel
+          - aircraft
+
+jobs:
+  continuous-training:
+    name: Autonomous Retraining, HPO & Evaluation Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: pipeline/requirements.txt
+
+      - name: Install MLOps Dependencies
+        run: |
+          pip install -r pipeline/requirements.txt
+          pip install -r service/ml-service/requirements.txt
+
+      - name: Execute Bayesian HPO & Model Retraining
+        run: |
+          DOMAIN="${{ inputs.domain || 'all' }}"
+          echo "==> Running Continuous Training for domain: $DOMAIN"
+          python pipeline/train_and_evaluate.py "$DOMAIN"
+
+      - name: Run Model Quality Gatekeeper
+        run: |
+          echo "==> Validating Candidate Models Against Production Gate (PR-AUC >= 0.90, Latency <= 12ms)..."
+          python pipeline/deploy_candidate.py --validate-only
+
+      - name: Deploy Candidate & Hot-Reload on Tunkstun
+        if: success()
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST || '192.168.1.51' }}
+          username: ${{ secrets.SSH_USER || 'tp24' }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            TARGET_DIR="$([ -d /run/media/tp24/SHARED1/Projects/HormuzWatch ] && echo /run/media/tp24/SHARED1/Projects/HormuzWatch || echo ~/SHARED/Projects/HormuzWatch)"
+            cd "$TARGET_DIR"
+            echo "==> Triggering zero-downtime model hot reload on tunkstun..."
+            curl -s -X POST http://localhost:8090/models/reload || echo "Reload endpoint called"
+            echo "==> Verifying updated ML engine health..."
+            curl -sf http://localhost:8090/health | jq .

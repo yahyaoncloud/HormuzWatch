@@ -10,6 +10,10 @@ on:
       - '.github/workflows/client-pipeline.yml'
   workflow_dispatch:
 
+concurrency:
+  group: client-pipeline-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-and-deploy-client:
     name: Build Client and Deploy to Vercel

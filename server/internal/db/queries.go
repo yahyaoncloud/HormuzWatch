@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -22,13 +23,22 @@ func Rebind(query string) string {
 }
 
 func Exec(query string, args ...any) (sql.Result, error) {
+	if DB == nil {
+		return nil, errors.New("database connection not available")
+	}
 	return DB.Exec(Rebind(query), args...)
 }
 
 func Query(query string, args ...any) (*sql.Rows, error) {
+	if DB == nil {
+		return nil, errors.New("database connection not available")
+	}
 	return DB.Query(Rebind(query), args...)
 }
 
 func QueryRow(query string, args ...any) *sql.Row {
+	if DB == nil {
+		return nil
+	}
 	return DB.QueryRow(Rebind(query), args...)
 }

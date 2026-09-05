@@ -12,6 +12,10 @@ on:
       - '.github/workflows/server-pipeline.yml'
   workflow_dispatch:
 
+concurrency:
+  group: server-pipeline-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   test-and-build-server:
     name: Test and Build Go Server
@@ -23,7 +27,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version-file: 'server/go.mod'
           cache-dependency-path: server/go.sum
 
       - name: Test Go Backend
@@ -42,10 +46,11 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST || '192.168.1.51' }}
-          username: ${{ secrets.SSH_USER || 'yahya' }}
+          username: ${{ secrets.SSH_USER || 'tp24' }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ~/SHARED/Projects/HormuzWatch
+            TARGET_DIR="$([ -d /run/media/tp24/SHARED1/Projects/HormuzWatch ] && echo /run/media/tp24/SHARED1/Projects/HormuzWatch || echo ~/SHARED/Projects/HormuzWatch)"
+            cd "$TARGET_DIR"
             echo "==> Rebuilding and restarting Server container..."
             docker compose -f docker-compose.dev.yml up -d --build server
             echo "==> Waiting for Go backend to become healthy..."

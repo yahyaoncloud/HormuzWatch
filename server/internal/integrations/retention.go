@@ -20,6 +20,9 @@ func StartRetentionWorker() {
 }
 
 func runCleanup() {
+	if db.DB == nil {
+		return
+	}
 	var retentionDays string
 	err := db.QueryRow("SELECT value FROM settings WHERE key = 'retention_days'").Scan(&retentionDays)
 	if err != nil {

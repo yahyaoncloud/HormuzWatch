@@ -1,0 +1,93 @@
+{
+  "registry_version": "1.0.0",
+  "last_updated": "2026-09-05T15:03:25.941770+00:00",
+  "total_datasets": 2,
+  "datasets": {
+    "dataset_aircraft_20260902_2200_20260903_2200": {
+      "dataset_id": "dataset_aircraft_20260902_2200_20260903_2200",
+      "domain": "aircraft",
+      "version": "1.0.0",
+      "created_at": "2026-09-03T23:08:46Z",
+      "total_rows": 9996,
+      "train_rows": 6997,
+      "val_rows": 1499,
+      "test_rows": 1500,
+      "schema_version": "2.0.0",
+      "feature_version": "v2.0.0",
+      "total_size_bytes": 6412426,
+      "files": {
+        "data.csv": {
+          "sha256": "5d4135a07dba8af9b8fda471163aa9b5badd73c7b8ed549e9c71548c9a3de8f4",
+          "size_bytes": 3204054
+        },
+        "metadata.json": {
+          "sha256": "1d9c59f55cdb405a6be5075f8a267976cc487d56473ae352ac414dd9b27057e1",
+          "size_bytes": 1021
+        },
+        "quality_report.json": {
+          "sha256": "51671c70b12c4fd0fdd7f90a708ea2df7756dddf42e4497787b3d86a0f05e654",
+          "size_bytes": 1694
+        },
+        "quality_report.md": {
+          "sha256": "5b8809bad184d0be4acfc0b7597aedc840da860b2002148aa5a1713ff0e2c719",
+          "size_bytes": 861
+        },
+        "test.csv": {
+          "sha256": "44eedf930e5ef615c3d7238205b312225f68d623656810835d9a834924d3107a",
+          "size_bytes": 498939
+        },
+        "train.csv": {
+          "sha256": "840341b5c9fd1cbb5b2d13e4c5007758b7dee2386374a793f28fd326c9fca229",
+          "size_bytes": 2225148
+        },
+        "val.csv": {
+          "sha256": "b4835b942a06bf2a822f1cdfc74bdae013d7687d93d4650772211c0c00844315",
+          "size_bytes": 480709
+        }
+      }
+    },
+    "dataset_vessel_20260902_2200_20260903_2200": {
+      "dataset_id": "dataset_vessel_20260902_2200_20260903_2200",
+      "domain": "vessel",
+      "version": "1.0.0",
+      "created_at": "2026-09-03T23:08:04Z",
+      "total_rows": 153052,
+      "train_rows": 107136,
+      "val_rows": 22958,
+      "test_rows": 22958,
+      "schema_version": "2.0.0",
+      "feature_version": "v2.0.0",
+      "total_size_bytes": 80360689,
+      "files": {
+        "data.csv": {
+          "sha256": "f0c01957cd70e76e84f7030aa045cf8c2e40efd56f0cf0a3e47e2928006580c1",
+          "size_bytes": 40178204
+        },
+        "metadata.json": {
+          "sha256": "bfbba456661f7d3af6baf3bdfcbc2014c599d2e963b05cd617a0ee0936e57360",
+          "size_bytes": 1028
+        },
+        "quality_report.json": {
+          "sha256": "dadc2e56caf320b2a68b8ec75b2bf0ccac8fd9b65092daa5c2eda553c27e4a78",
+          "size_bytes": 1661
+        },
+        "quality_report.md": {
+          "sha256": "7b48694e2ceafd6c25fd06579bd68295c5ae91f97803ce0d11114beab5483ae2",
+          "size_bytes": 850
+        },
+        "test.csv": {
+          "sha256": "aebbe6f0085bb8de561416db68c45eaffdc74867234b215e8d6765335fd9d254",
+          "size_bytes": 5990500
+        },
+        "train.csv": {
+          "sha256": "40861bcc9bdc22e56ffbba155832a7faefd1f7b2b7d4988a02be2a23930780d3",
+          "size_bytes": 28222945
+        },
+        "val.csv": {
+          "sha256": "681f99e4c9fca9c821acf98924b0f9ae659096e73f76505d5026755963a7b4ed",
+          "size_bytes": 5965501
+        }
+      }
+    }
+  }
+}

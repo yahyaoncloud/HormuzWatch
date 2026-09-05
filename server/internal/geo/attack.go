@@ -2,7 +2,6 @@ package geo
 
 import (
 	"encoding/json"
-	"math"
 	"os"
 )
 
@@ -36,9 +35,19 @@ func GetHistoricalAttacks() []HistoricalAttack {
 // IsNearHistoricalAttack returns true if the coordinate is within 0.1°
 // (~6 nm) of a known historical attack site.
 func IsNearHistoricalAttack(lat, lon float64) bool {
+	const maxDist = 0.1
+	const maxDistSq = maxDist * maxDist
+
 	for _, attack := range historicalAttacks {
-		dist := math.Sqrt(math.Pow(lat-attack.Latitude, 2) + math.Pow(lon-attack.Longitude, 2))
-		if dist <= 0.1 {
+		dLat := lat - attack.Latitude
+		if dLat > maxDist || dLat < -maxDist {
+			continue
+		}
+		dLon := lon - attack.Longitude
+		if dLon > maxDist || dLon < -maxDist {
+			continue
+		}
+		if dLat*dLat+dLon*dLon <= maxDistSq {
 			return true
 		}
 	}

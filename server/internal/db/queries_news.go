@@ -295,6 +295,9 @@ func StoreArticleMetadata(articleID, key string, value string) error {
 
 // SeedCountries populates the countries table with Gulf-region defaults.
 func SeedCountries() {
+	if DB == nil {
+		return
+	}
 	gulfCountries := []struct {
 		code, name, region string
 		risk               float64

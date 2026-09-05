@@ -1,0 +1,44 @@
+---
+- name: Ensure registry storage directories exist
+  ansible.builtin.file:
+    path: "{{ target_project_dir }}/{{ item }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+  loop:
+    - data/docker-registry
+    - data/minio-data
+
+- name: Launch Private Docker Registry & MinIO Object Registry
+  ansible.builtin.command:
+    cmd: "docker compose -f docker-compose.registry.yml up -d"
+    chdir: "{{ target_project_dir }}"
+  become: false
+
+- name: Wait for Docker Registry v2 API to be ready
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:5000/v2/"
+    status_code: 200
+    timeout: 5
+  register: reg_check
+  until: reg_check.status == 200
+  retries: 15
+  delay: 3
+
+- name: Wait for MinIO API to be ready
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:9000/minio/health/live"
+    status_code: 200
+    timeout: 5
+  register: minio_check
+  until: minio_check.status == 200
+  retries: 15
+  delay: 3
+
+- name: Report Registry Status
+  ansible.builtin.debug:
+    msg:
+      - "[✓] Private Docker Registry running at http://127.0.0.1:5000"
+      - "[✓] MinIO Model & Dataset Registry running at http://127.0.0.1:9000"
+      - "[✓] MinIO Web Console accessible at http://127.0.0.1:9001"

@@ -3,6 +3,7 @@ package news
 import (
 	"context"
 	"log/slog"
+	"strings"
 )
 
 // Translator is the interface for translating text. Implementations may use
@@ -46,8 +47,10 @@ func (t *OpenRouterTranslator) Translate(ctx context.Context, text, sourceLang, 
 
 	result, err := t.client.Translate(ctx, text, sourceLang)
 	if err != nil {
-		slog.Warn("openrouter translation failed, falling back to original",
-			"source_lang", sourceLang, "error", err)
+		if !strings.Contains(err.Error(), "circuit breaker") {
+			slog.Warn("openrouter translation failed, falling back to original",
+				"source_lang", sourceLang, "error", err)
+		}
 		return text, nil // Graceful degradation — use untranslated text
 	}
 	if result == "" {

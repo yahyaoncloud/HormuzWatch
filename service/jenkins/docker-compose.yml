@@ -1,0 +1,30 @@
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hormuzwatch-jenkins:lts
+    container_name: hormuzwatch-jenkins
+    restart: unless-stopped
+    user: "1000:983"
+    ports:
+      - "8085:8080"
+      - "50000:50000"
+    environment:
+      - JENKINS_OPTS=--httpPort=8080
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=true -Xmx2048m -Xms512m
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /run/media/tp24/SHARED1/Projects/HormuzWatch:/run/media/tp24/SHARED1/Projects/HormuzWatch:ro
+    networks:
+      - hormuzwatch-dev
+
+volumes:
+  jenkins_data:
+    driver: local
+
+networks:
+  hormuzwatch-dev:
+    external: true

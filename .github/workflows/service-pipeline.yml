@@ -29,10 +29,11 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST || '192.168.1.51' }}
-          username: ${{ secrets.SSH_USER || 'yahya' }}
+          username: ${{ secrets.SSH_USER || 'tp24' }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            TARGET_DIR="$([ -d /run/media/tp24/SHARED1/Projects/HormuzWatch ] && echo /run/media/tp24/SHARED1/Projects/HormuzWatch || echo ~/SHARED/Projects/HormuzWatch)"
             echo "==> Syncing service configuration to /etc/cloudflared/..."
-            sudo cp ~/SHARED/Projects/HormuzWatch/service/cloudflared/config.yml /etc/cloudflared/config.yml
+            sudo cp "$TARGET_DIR/service/cloudflared/config.yml" /etc/cloudflared/config.yml
             sudo systemctl restart cloudflared
             sudo systemctl is-active cloudflared

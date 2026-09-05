@@ -36,13 +36,15 @@ func InitDB() error {
 		databaseURL += sep + "sslmode=require"
 	}
 
-	// Disable prepared statements for PgBouncer transaction mode compatibility
-	if !strings.Contains(databaseURL, "prefer_simple_protocol=") {
-		sep := "?"
-		if strings.Contains(databaseURL, "?") {
-			sep = "&"
+	// Disable prepared statements only for PgBouncer transaction mode compatibility
+	if strings.Contains(databaseURL, "supabase.com") || strings.Contains(databaseURL, "pgbouncer") {
+		if !strings.Contains(databaseURL, "prefer_simple_protocol=") {
+			sep := "?"
+			if strings.Contains(databaseURL, "?") {
+				sep = "&"
+			}
+			databaseURL += sep + "prefer_simple_protocol=true"
 		}
-		databaseURL += sep + "prefer_simple_protocol=true"
 	}
 
 	var err error
@@ -55,6 +57,8 @@ func InitDB() error {
 	DB.SetMaxIdleConns(5)
 
 	if err := DB.Ping(); err != nil {
+		_ = DB.Close()
+		DB = nil
 		return fmt.Errorf("ping database: %w", err)
 	}
 
@@ -77,6 +81,7 @@ func InitDB() error {
 	}
 	if err := PGX.Ping(context.Background()); err != nil {
 		PGX.Close()
+		PGX = nil
 		return fmt.Errorf("ping pgx pool: %w", err)
 	}
 
@@ -399,16 +404,16 @@ func seedInitialEventsIfEmpty() {
 		id, title, desc, eventType, severity, country string
 		lat, lon                                       float64
 	}{
-		{"evt-001", "Houthi Anti-Ship Missile Strike near Al Hudaydah", "Anti-ship ballistic missile reported impacting 500m off container ship beam.", "naval", "critical", "Red Sea", 14.2, 42.5},
-		{"evt-002", "IRGC-N Fast Attack Craft Transit Shadowing", "Three IRGC fast boats shadowed commercial tanker in Strait TSS.", "naval", "high", "Strait of Hormuz", 26.5, 56.3},
-		{"evt-003", "Shahed Reconnaissance UAV Swarm Sighting", "Flight pattern of 15+ UAVs detected near Qeshm Island airspace.", "air", "high", "Strait of Hormuz", 26.9, 56.1},
+		{"evt-001", "Houthi Anti-Ship Missile Strike near Al Hudaydah", "Anti-ship ballistic missile reported impacting 500m off container ship beam.", "maritime", "critical", "Red Sea", 14.2, 42.5},
+		{"evt-002", "IRGC-N Fast Attack Craft Transit Shadowing", "Three IRGC fast boats shadowed commercial tanker in Strait TSS.", "maritime", "high", "Strait of Hormuz", 26.5, 56.3},
+		{"evt-003", "Shahed Reconnaissance UAV Swarm Sighting", "Flight pattern of 15+ UAVs detected near Qeshm Island airspace.", "aviation", "high", "Strait of Hormuz", 26.9, 56.1},
 		{"evt-004", "FALCON Subsea Cable Tension Anomaly", "Seismic telemetry registered cable tension variation off Muscat landing.", "cyber", "medium", "Gulf of Oman", 23.6, 58.5},
-		{"evt-005", "EU NAVFOR Pirate Skiff Interdiction", "Naval frigate intercepted armed skiff 80nm off Socotra Island.", "piracy", "medium", "Arabian Sea", 13.8, 53.2},
+		{"evt-005", "EU NAVFOR Pirate Skiff Interdiction", "Naval frigate intercepted armed skiff 80nm off Socotra Island.", "maritime", "medium", "Arabian Sea", 13.8, 53.2},
 		{"evt-006", "King Abdulaziz Port Cargo Management Outage", "Cyber incident caused temporary container tracking delay at Dammam.", "cyber", "high", "Persian Gulf", 26.5, 50.1},
-		{"evt-007", "IRGC Detention of Sanctioned Tanker", "Panama-flagged tanker detained near Abu Musa Island by IRGC-N.", "naval", "high", "Strait of Hormuz", 26.0, 55.3},
+		{"evt-007", "IRGC Detention of Sanctioned Tanker", "Panama-flagged tanker detained near Abu Musa Island by IRGC-N.", "maritime", "high", "Strait of Hormuz", 26.0, 55.3},
 		{"evt-008", "Northern Persian Gulf AIS Spoofing Cluster", "12 tankers broadcasting duplicate MMSI tags during STS crude transfer.", "cyber", "medium", "Persian Gulf", 28.3, 50.8},
 		{"evt-009", "US Navy & IRGC Radio Demarche in Strait", "USS Carney shadowed during northbound transit through Hormuz TSS.", "diplomacy", "medium", "Strait of Hormuz", 26.2, 56.8},
-		{"evt-010", "Red Sea USV Explosive Detonation", "Explosive USV engaged by bulk carrier security team in Red Sea TSS.", "naval", "critical", "Red Sea", 15.5, 41.8},
+		{"evt-010", "Red Sea USV Explosive Detonation", "Explosive USV engaged by bulk carrier security team in Red Sea TSS.", "maritime", "critical", "Red Sea", 15.5, 41.8},
 	}
 
 	for _, e := range initialEvents {

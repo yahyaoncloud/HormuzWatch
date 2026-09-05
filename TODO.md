@@ -1,4 +1,25 @@
 # HormuzWatch — Production-Grade Roadmap & Master Engineering Backlog
+ 
+## 0. Master Strategic Initiative: Dual-Track DevOps & MLOps Program
+
+Reference Specification: [`docs/plan/DEVOPS_AND_MLOPS_SRE_PLANNING_MINDMAP.md`](file:///run/media/tp24/SHARED1/Projects/HormuzWatch/docs/plan/DEVOPS_AND_MLOPS_SRE_PLANNING_MINDMAP.md)  
+Theoretical Basis: *The DevOps Handbook (2nd Ed.)* & *Designing Machine Learning Systems* in [`books/`](file:///run/media/tp24/SHARED1/Projects/HormuzWatch/books/)
+
+### Track A: DevOps, Continuous Delivery (CI/CD) & SRE
+- [x] **Assessment & Hotfix:** Audit existing GitHub Actions workflows (`deploy.yml`, `server-pipeline.yml`, etc.) and align host paths / user (`tp24@tunkstun`).
+- [ ] **Open-Source Telemetry Overlay:** Deploy `docker-compose.monitoring.yml` on `tunkstun` with Prometheus (`:9090`), Node Exporter (`:9100`), and cAdvisor (`:8080`).
+- [ ] **Grafana SRE Dashboard:** Configure Grafana (`:3001`) with host hardware panels, container memory/CPU throttling, and Go API request duration histograms.
+- [ ] **DevSecOps in CI:** Integrate Aqua Security `trivy` container scanning and `govulncheck` into `.github/workflows/deploy.yml` and `server-pipeline.yml`.
+- [ ] **SRE Error Budget & Alerting:** Define SLIs/SLOs (99.9% uptime, p95 <= 50ms) and configure Discord/Slack/email alerts on error budget burn.
+
+### Track B: MLOps, Continuous Training (CT) & Drift Feedback Loop
+- [x] **Pipeline Foundation:** Establish weekly CT schedule and drift-triggered `repository_dispatch` in `.github/workflows/ml-continuous-training.yml`.
+- [ ] **Open-Source Experiment Tracking:** Deploy self-hosted `mlflow` tracking server on `tunkstun` for experiment logging, artifact storage, and model versioning.
+- [ ] **Data Contracts & Leakage Prevention:** Codify schema enforcement and chronological splits (70/15/15) in historical dataset generation (`docs/DATASET_RUNBOOK.md`).
+- [ ] **Automated Model Gatekeeper:** Enforce hard gating assertion (`PR-AUC >= 0.90`, `FPR <= 0.05`, `p95 <= 12ms`) before promoting candidate models.
+- [ ] **Drift Telemetry with Evidently AI:** Export feature distribution drift (PSI / Wasserstein distance) to Prometheus to automatically trigger retraining pipelines.
+
+---
 
 ## 1. Critical — Must Fix (P0)
 
@@ -231,4 +252,128 @@
     - Verified clean client build and deployed to VM container `hormuzwatch-client-dev`.
     - Live verified at `https://hormuzwatch.aburcloud.com` with `HTTP/2 200 OK`.
 
+---
 
+## 14. MLOps Continuous Training (CT), Core Systems Optimization & Workstation Portability (Updated: 2026-09-05)
+
+### 14.1. Domain: Concrete MLOps Pipeline & Automated CI/CD/CT
+- [x] **Architecture Specification & Tooling Stack Selection**  
+  Documented complete CI/CD/CT lifecycle in [`docs/plan/01_MLOPS_AND_CICD_CT_PIPELINE.md`](file:///home/tp24/SHARED/Projects/HormuzWatch/docs/plan/01_MLOPS_AND_CICD_CT_PIPELINE.md). Integrated DVC for versioned split tracking, MLflow for experiment tracking and registry, Optuna for Bayesian HPO, and Scipy/Evidently for distribution drift.
+- [x] **Continuous Training GitHub Actions Workflow**  
+  Created [`.github/workflows/ml-continuous-training.yml`](file:///home/tp24/SHARED/Projects/HormuzWatch/.github/workflows/ml-continuous-training.yml) supporting scheduled runs (`0 2 * * 0`), data-drift repository dispatch triggers (`PSI > 0.20`), and manual `workflow_dispatch`.
+- [ ] **Automated Evaluation Gatekeeper & Cryptographic Manifest Validation**  
+  Enforce strict threshold gates in pipeline runner: PR-AUC $\ge 0.90$, Expected Calibration Error $\le 0.10$, and P95 latency $\le 12.0\text{ms}$. Generate signed SHA-256 digests in `models/manifest.json`.
+- [ ] **Zero-Downtime Hot-Reload Hook**  
+  Automate atomic pointer swap on `POST /models/reload` across live gRPC worker processes on `tunkstun` without dropping in-flight telemetry packets.
+
+### 14.2. Domain: ML Anomaly Detection Model Experimentation (`/server/datasets` on Jupyter Notebook)
+- [x] **Experimentation Protocol & Comparative Metric Formulation**  
+  Formulated benchmarking protocol in [`docs/plan/02_ML_MODEL_EXPERIMENTATION_AND_BENCHMARKING.md`](file:///home/tp24/SHARED/Projects/HormuzWatch/docs/plan/02_ML_MODEL_EXPERIMENTATION_AND_BENCHMARKING.md) addressing $\approx 3.2\%$ class imbalance, PR-AUC, F1-scores, and single-sample latency.
+- [x] **Interactive Jupyter Benchmark Notebook**  
+  Authored [`notebooks/ml_anomaly_detection_experiments.ipynb`](file:///home/tp24/SHARED/Projects/HormuzWatch/notebooks/ml_anomaly_detection_experiments.ipynb) connecting to `/server/datasets/` and `server/datasets/`. Implemented comparative pipelines for:
+  - Isolation Forest (tree path length)
+  - Local Outlier Factor (density novelty)
+  - One-Class SVM (RBF kernel boundary)
+  - Elliptic Envelope (Mahalanobis distance)
+  - Reconstruction Autoencoder (SVD/PCA latent bottleneck)
+  - Supervised Random Forest baseline
+- [ ] **Execute Notebook & Record Pareto-Optimal Frontier**  
+  Run full evaluation across all 153,052 vessel rows and 22,000 aircraft rows; record Pareto-optimal tradeoffs between PR-AUC and CPU latency; export candidate weights.
+
+### 14.3. Domain: Pluggable & Extensible Python ML Service Base Architecture
+- [x] **Core Abstract Base Class (`BaseAnomalyModel`)**  
+  Created [`service/ml-service/core/base_model.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/service/ml-service/core/base_model.py) defining standard interfaces for `train()`, `predict()`, `explain()`, `save()`, `load()`, and `get_metadata()`.
+- [x] **Dynamic Model Registry & Auto-Discovery (`ModelRegistry`)**  
+  Created [`service/ml-service/core/registry.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/service/ml-service/core/registry.py) with `@ModelRegistry.register("name")` decorator and dynamic plugin discovery.
+- [x] **Pluggable Ensemble Engine (`PluggableEnsemble`)**  
+  Created [`service/ml-service/core/ensemble.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/service/ml-service/core/ensemble.py) providing weighted averaging, max gating, voting, and Isotonic calibration.
+- [x] **Plug-and-Play Model Adapters**  
+  Implemented modular adapters in `service/ml-service/core/models/`:
+  - [`isolation_forest.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/service/ml-service/core/models/isolation_forest.py)
+  - [`local_outlier_factor.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/service/ml-service/core/models/local_outlier_factor.py)
+  - [`autoencoder.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/service/ml-service/core/models/autoencoder.py)
+  Verified that new models register and instantiate with zero changes to existing dispatchers.
+
+### 14.4. Domain: High-Performance Go Server Refinement (Memory, Pooling & Caching)
+- [x] **Go Server Performance Architecture Specification**  
+  Documented optimization blueprint in [`docs/plan/04_HIGH_PERFORMANCE_GO_SERVER_AND_DEDICATED_DATASET_WORKER.md`](file:///home/tp24/SHARED/Projects/HormuzWatch/docs/plan/04_HIGH_PERFORMANCE_GO_SERVER_AND_DEDICATED_DATASET_WORKER.md).
+- [x] **Zero-Allocation In-Place Sliding Window Moments**  
+  Eliminated dynamic `allSpeeds` slice allocations in `server/internal/intelligence/state.go`'s `computeDeltas`. Benchmark verified: latency dropped by ~27% (1,214ns -> 881.5ns), memory allocations cut by >57% (301 B/op -> 127 B/op), and allocations per update reduced from 2 to 1.
+- [ ] **Fixed-Size Circular Ring Buffer Implementation**  
+  Replace dynamic slice `History = append(s.History[1:], obs)` with fixed `[20]Observation` ring buffer in `server/internal/intelligence/state.go` to achieve zero heap allocations per telemetry frame.
+- [ ] **Sharded Concurrency Map for TrackStateManager**  
+  Partition single `sync.RWMutex` into 32 independent shards indexed by `FNV-1a(TrackID)` to eliminate global lock contention between live sensor ingestion and WebSocket reads.
+- [ ] **Zero-Allocation Object Pooling with `sync.Pool`**  
+  Introduce `sync.Pool` for JSON buffers, telemetry packet structs, and gRPC payload builders to reduce garbage collector invocation frequency.
+- [x] **Axis-Aligned Bounding Box (AABB) Spatial Filter**  
+  Optimized `IsNearHistoricalAttack` in [`server/internal/geo/attack.go`](file:///home/tp24/SHARED/Projects/HormuzWatch/server/internal/geo/attack.go) with $O(1)$ coordinate min/max bounding box pre-filtering and squared Euclidean distance, completely eliminating expensive `math.Pow` and `math.Sqrt` calls on every telemetry check.
+
+### 14.5. Domain: Dedicated Dataset Creation Server & Decoupled ETL Engine
+- [x] **Decoupled Architecture Specification**  
+  Designed standalone dataset worker separation to eliminate CPU, memory, and database pool starvation on core operational server.
+- [x] **Standalone Dataset Worker Container (`Dockerfile.dataset-worker`)**  
+  Packaged `server/cmd/dataset_generator/main.go` into [`server/Dockerfile.dataset-worker`](file:///home/tp24/SHARED/Projects/HormuzWatch/server/Dockerfile.dataset-worker) and configured dedicated container service in [`docker-compose.yml`](file:///home/tp24/SHARED/Projects/HormuzWatch/docker-compose.yml) and [`docker-compose.dev.yml`](file:///home/tp24/SHARED/Projects/HormuzWatch/docker-compose.dev.yml) with isolated persistent mounts for `/server/datasets/`.
+- [ ] **Core Server Decoupling & Cleanup**  
+  Deprecate background dataset snapshot scheduling inside `server/internal/bootstrap/app.go`, leaving the Go API server purely dedicated to low-latency HTTP, WebSocket, and gRPC operations.
+
+### 14.6. Domain: Remote Host Automation (`ssh tunkstun`) & Ansible Portability Suite
+- [x] **Workstation Portability Specification**  
+  Documented full bare-metal to operational node procedure in [`docs/plan/05_INFRASTRUCTURE_AUTOMATION_AND_ANSIBLE_PORTABILITY.md`](file:///home/tp24/SHARED/Projects/HormuzWatch/docs/plan/05_INFRASTRUCTURE_AUTOMATION_AND_ANSIBLE_PORTABILITY.md).
+- [x] **Ansible Inventory & Master Playbook**  
+  Created [`ansible/inventory.ini`](file:///home/tp24/SHARED/Projects/HormuzWatch/ansible/inventory.ini) and [`ansible/playbooks/site.yml`](file:///home/tp24/SHARED/Projects/HormuzWatch/ansible/playbooks/site.yml).
+- [x] **Automated Migration & Portability Playbook**  
+  Created [`ansible/playbooks/migrate_station.yml`](file:///home/tp24/SHARED/Projects/HormuzWatch/ansible/playbooks/migrate_station.yml) automating source shutdown, rsync of codebase and `/server/datasets/`, target provisioning, container build, and health verification gates.
+- [x] **Modular Ansible Roles**  
+  Created:
+  - [`ansible/roles/system_prep/tasks/main.yml`](file:///home/tp24/SHARED/Projects/HormuzWatch/ansible/roles/system_prep/tasks/main.yml) (sysctl tuning, ulimits, packages)
+  - [`ansible/roles/docker_runtime/tasks/main.yml`](file:///home/tp24/SHARED/Projects/HormuzWatch/ansible/roles/docker_runtime/tasks/main.yml) (Docker CE, compose, log rotation)
+  - [`ansible/roles/hormuzwatch_stack/tasks/main.yml`](file:///home/tp24/SHARED/Projects/HormuzWatch/ansible/roles/hormuzwatch_stack/tasks/main.yml) (git sync, build, up -d, health checks)
+
+---
+
+## 15. Implementation Record & Verified Work Done (Updated: 2026-09-05)
+
+### 15.1. Concrete MLOps & CI/CD/CT Pipeline Infrastructure
+- [x] **Full MLOps Lifecycle Architecture:** Authored [`docs/plan/01_MLOPS_AND_CICD_CT_PIPELINE.md`](file:///home/tp24/SHARED/Projects/HormuzWatch/docs/plan/01_MLOPS_AND_CICD_CT_PIPELINE.md) documenting the continuous training lifecycle (DVC versioning, Optuna HPO, MLflow registry, PSI/KS drift monitoring, and zero-downtime hot-reload).
+- [x] **Autonomous Continuous Training Workflow:** Implemented [`.github/workflows/ml-continuous-training.yml`](file:///home/tp24/SHARED/Projects/HormuzWatch/.github/workflows/ml-continuous-training.yml) supporting weekly cron schedules (`0 2 * * 0`), drift repository dispatch events, and manual triggers.
+
+### 15.2. ML Anomaly Model Experimentation & Benchmark Notebook
+- [x] **Experimentation Protocol:** Documented methodology in [`docs/plan/02_ML_MODEL_EXPERIMENTATION_AND_BENCHMARKING.md`](file:///home/tp24/SHARED/Projects/HormuzWatch/docs/plan/02_ML_MODEL_EXPERIMENTATION_AND_BENCHMARKING.md) targeting the 3.2% maritime anomaly class imbalance.
+- [x] **Jupyter Benchmark Notebook:** Created [`notebooks/ml_anomaly_detection_experiments.ipynb`](file:///home/tp24/SHARED/Projects/HormuzWatch/notebooks/ml_anomaly_detection_experiments.ipynb) connecting to `/server/datasets/` and `server/datasets/`. Evaluates Isolation Forest, LOF, One-Class SVM, Elliptic Envelope, SVD Reconstruction Autoencoder, and Random Forest baselines with PR-AUC, F1, latency, and Top-50 alert precision.
+
+### 15.3. Pluggable Python ML Service Base Architecture
+- [x] **Abstract Base Contract:** Created [`service/ml-service/core/base_model.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/service/ml-service/core/base_model.py) defining `BaseAnomalyModel`, `ModelInferenceOutput`, `FeatureAttribution`, and `ModelMetadata`.
+- [x] **Thread-Safe Model Registry:** Created [`service/ml-service/core/registry.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/service/ml-service/core/registry.py) with dynamic `@ModelRegistry.register("name")` decorator and module auto-discovery.
+- [x] **Pluggable Ensemble Engine:** Created [`service/ml-service/core/ensemble.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/service/ml-service/core/ensemble.py) supporting weighted averaging, max gating, voting, and Isotonic calibration.
+- [x] **Pluggable Model Adapters:** Implemented:
+  - [`core/models/isolation_forest.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/service/ml-service/core/models/isolation_forest.py)
+  - [`core/models/local_outlier_factor.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/service/ml-service/core/models/local_outlier_factor.py)
+  - [`core/models/autoencoder.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/service/ml-service/core/models/autoencoder.py) (Deep SVD/PCA reconstruction bottleneck).
+  - Verified import and registration with virtualenv Python (`Registered models: ['isolation_forest', 'local_outlier_factor', 'reconstruction_autoencoder']`).
+
+### 15.4. High-Performance Go Server Memory Optimization (Benchmark Verified)
+- [x] **In-Place Zero-Allocation Sliding Window:** Eliminated dynamic slice heap allocations in `server/internal/intelligence/state.go` (`computeDeltas`).
+  - **Latency:** Reduced from `1,214 ns/op` to **`881.5 ns/op`** (~27.4% faster).
+  - **Memory Allocation:** Reduced from `301 B/op` to **`127 B/op`** (>57.8% memory reduction).
+  - **Allocations/Op:** Halved from `2 allocs/op` down to **`1 alloc/op`**.
+- [x] **AABB Spatial Pre-Filtering:** Upgraded `IsNearHistoricalAttack` in [`server/internal/geo/attack.go`](file:///home/tp24/SHARED/Projects/HormuzWatch/server/internal/geo/attack.go) with $O(1)$ bounding box pre-filtering and squared Euclidean distance, eliminating `math.Pow` and `math.Sqrt`.
+- [x] **Test Verification:** All Go unit and benchmark tests passing (`ok Geospatial-harmuz-watch/server/internal/intelligence`, `ok Geospatial-harmuz-watch/server/internal/geo`).
+
+### 15.5. Dedicated Dataset Creation Server (Decoupled ETL Engine)
+- [x] **Dedicated Container:** Created [`server/Dockerfile.dataset-worker`](file:///home/tp24/SHARED/Projects/HormuzWatch/server/Dockerfile.dataset-worker) packaging `server/cmd/dataset_generator/main.go` into a minimal Alpine container.
+- [x] **Orchestration Decoupling:** Added `dataset-worker` to [`docker-compose.yml`](file:///home/tp24/SHARED/Projects/HormuzWatch/docker-compose.yml) and [`docker-compose.dev.yml`](file:///home/tp24/SHARED/Projects/HormuzWatch/docker-compose.dev.yml) with isolated persistent mounts for `/server/datasets/`, protecting live API/WebSocket streaming from analytical query spikes.
+
+### 15.6. Remote Host Automation & Live Ansible Execution (`ssh tunkstun`)
+- [x] **Ansible Portability Suite:** Created:
+  - [`ansible/inventory.ini`](file:///home/tp24/SHARED/Projects/HormuzWatch/ansible/inventory.ini)
+  - [`ansible/playbooks/site.yml`](file:///home/tp24/SHARED/Projects/HormuzWatch/ansible/playbooks/site.yml)
+  - [`ansible/playbooks/migrate_station.yml`](file:///home/tp24/SHARED/Projects/HormuzWatch/ansible/playbooks/migrate_station.yml)
+  - Roles: `system_prep`, `docker_runtime`, `hormuzwatch_stack`.
+- [x] **SSH Access Configuration:** Configured passwordless ED25519 key authentication in `~/.ssh/config` and `authorized_keys` for `tunkstun`.
+- [x] **Automated Deployment Execution:** Created and executed [`ansible/playbooks/deploy_docker.yml`](file:///home/tp24/SHARED/Projects/HormuzWatch/ansible/playbooks/deploy_docker.yml) via `uv tool run --from ansible-core ansible-playbook`.
+- [x] **Live Operational Verification:**
+  - Buildx compiled all images (`server`, `ml`, `client`).
+  - Multi-container stack started in detached mode.
+  - Healthcheck probes verified on Go Backend (`:10020/health/live`), Python ML Engine (`:8090/health`), and Client Nginx (`:3000`).
+  - Active telemetry stream verified with **1,285 active tracks** and **0 drops**.
+  - Ansible recap: `tunkstun: ok=7 changed=2 unreachable=0 failed=0 skipped=0`.

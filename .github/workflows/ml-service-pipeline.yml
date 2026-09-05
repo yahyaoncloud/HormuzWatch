@@ -8,7 +8,9 @@ on:
     paths:
       - 'service/ml-service/**'
       - '.github/workflows/ml-service-pipeline.yml'
-  workflow_dispatch:
+concurrency:
+  group: ml-pipeline-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   test-and-build-ml:
@@ -45,10 +47,11 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST || '192.168.1.51' }}
-          username: ${{ secrets.SSH_USER || 'yahya' }}
+          username: ${{ secrets.SSH_USER || 'tp24' }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ~/SHARED/Projects/HormuzWatch
+            TARGET_DIR="$([ -d /run/media/tp24/SHARED1/Projects/HormuzWatch ] && echo /run/media/tp24/SHARED1/Projects/HormuzWatch || echo ~/SHARED/Projects/HormuzWatch)"
+            cd "$TARGET_DIR"
             echo "==> Rebuilding and restarting ML Inference container..."
             docker compose -f docker-compose.dev.yml up -d --build ml
             echo "==> Verifying ML service health..."

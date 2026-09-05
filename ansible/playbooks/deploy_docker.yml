@@ -1,0 +1,46 @@
+---
+- name: Fast HormuzWatch Docker Stack Deployment & Health Audit
+  hosts: all
+  gather_facts: false
+  vars:
+    compose_file: "{{ compose_file | default('docker-compose.dev.yml') }}"
+
+  tasks:
+    - name: 1. Verify Docker Daemon Connectivity
+      ansible.builtin.command:
+        cmd: docker info
+      register: docker_info
+      changed_when: false
+
+    - name: 2. Start or update container stack
+      ansible.builtin.command:
+        cmd: "docker compose -f {{ compose_file }} up -d"
+        chdir: "{{ target_project_dir }}"
+      register: compose_up
+
+    - name: 3. Health Verification Gate (Backend 10020, ML 8090, Client 3000)
+      ansible.builtin.command:
+        cmd: "curl -sf {{ item }}"
+      register: health_check
+      until: health_check.rc == 0
+      retries: 20
+      delay: 3
+      loop:
+        - "http://127.0.0.1:10020/health/live"
+        - "http://127.0.0.1:8090/health"
+        - "http://127.0.0.1:3000"
+
+    - name: 4. Check Container Process Table
+      ansible.builtin.command:
+        cmd: "docker compose -f {{ compose_file }} ps"
+        chdir: "{{ target_project_dir }}"
+      register: compose_ps
+      changed_when: false
+
+    - name: 5. Display Result
+      ansible.builtin.debug:
+        msg:
+          - "=========================================================="
+          - " HormuzWatch Container Stack Successfully Online!         "
+          - "=========================================================="
+          - "{{ compose_ps.stdout_lines }}"

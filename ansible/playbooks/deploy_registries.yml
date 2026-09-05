@@ -1,0 +1,6 @@
+---
+- name: Deploy HormuzWatch Private Docker & ML Model Registries
+  hosts: all
+  gather_facts: false
+  roles:
+    - role: private_registry

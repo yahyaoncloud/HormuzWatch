@@ -10,7 +10,13 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
+)
+
+var (
+	openRouterCooldownMu  sync.RWMutex
+	openRouterCooldownEnd time.Time
 )
 
 // OpenRouterClient provides LLM-based intelligence capabilities via the
@@ -74,6 +80,13 @@ func (c *OpenRouterClient) chat(ctx context.Context, systemPrompt, userMessage s
 		return "", nil
 	}
 
+	openRouterCooldownMu.RLock()
+	inCooldown := time.Now().Before(openRouterCooldownEnd)
+	openRouterCooldownMu.RUnlock()
+	if inCooldown {
+		return "", fmt.Errorf("openrouter circuit breaker active (cooldown)")
+	}
+
 	reqBody := chatRequest{
 		Model:     c.model,
 		MaxTokens: maxTokens,
@@ -109,6 +122,13 @@ func (c *OpenRouterClient) chat(ctx context.Context, systemPrompt, userMessage s
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusPaymentRequired || resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusTooManyRequests {
+			openRouterCooldownMu.Lock()
+			openRouterCooldownEnd = time.Now().Add(15 * time.Minute)
+			openRouterCooldownMu.Unlock()
+			slog.Warn("openrouter rate limit or credits exhausted; entering 15m cooldown, falling back to original text",
+				"status", resp.StatusCode)
+		}
 		return "", fmt.Errorf("openrouter HTTP %d: %s", resp.StatusCode, string(respBytes))
 	}
 

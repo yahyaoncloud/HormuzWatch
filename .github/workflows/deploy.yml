@@ -7,6 +7,10 @@ on:
       - production-ready
   workflow_dispatch:
 
+concurrency:
+  group: deploy-tunkstun-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   code-quality-and-tests:
     name: Code Quality & Automated Tests
@@ -33,7 +37,7 @@ jobs:
       - name: Setup Go (Backend Server)
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version-file: 'server/go.mod'
           cache-dependency-path: server/go.sum
 
       - name: Test Go Backend
@@ -66,21 +70,22 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST || '192.168.1.51' }}
-          username: ${{ secrets.SSH_USER || 'yahya' }}
+          username: ${{ secrets.SSH_USER || 'tp24' }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
             set -e
-            echo "==> Deploying release to tunkstun: ~/SHARED/Projects/HormuzWatch"
-            cd ~/SHARED/Projects/HormuzWatch
+            TARGET_DIR="$([ -d /run/media/tp24/SHARED1/Projects/HormuzWatch ] && echo /run/media/tp24/SHARED1/Projects/HormuzWatch || echo ~/SHARED/Projects/HormuzWatch)"
+            echo "==> Deploying release to tunkstun: $TARGET_DIR"
+            cd "$TARGET_DIR"
             
             # Record previous commit for rollback
             PREV_COMMIT=$(git rev-parse HEAD)
             
             # Pull target branch
             git fetch origin
-            git checkout production-ready
-            git pull origin production-ready
+            git checkout ${{ github.ref_name }}
+            git pull origin ${{ github.ref_name }}
             
             echo "==> Building Docker images..."
             docker compose -f docker-compose.dev.yml build

@@ -1,0 +1,47 @@
+# syntax=docker/dockerfile:1
+# HormuzWatch Dedicated Dataset Worker v1.0.0
+# Multi-stage build: Go 1.24 → minimal Alpine runtime
+# Build: docker build -f server/Dockerfile.dataset-worker -t hormuzwatch-dataset-worker:1.0.0 ./server
+
+ARG ALPINE_VERSION=3.21
+
+FROM golang:alpine AS builder
+
+RUN apk add --no-cache git ca-certificates
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
+
+COPY . ./
+
+ARG VERSION=1.0.0
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -trimpath \
+    -ldflags="-w -s" \
+    -o /out/dataset-generator ./cmd/dataset_generator/
+
+FROM alpine:${ALPINE_VERSION}
+
+RUN apk add --no-cache ca-certificates tzdata curl
+
+RUN addgroup -S hormuz && adduser -S hormuz -G hormuz
+USER hormuz
+
+WORKDIR /app
+
+COPY --from=builder /out/dataset-generator .
+
+ENV DATASET_OUTPUT_DIR=/server/datasets \
+    DATASET_DOMAINS=vessel,aircraft \
+    DATASET_LOOKBACK_HOURS=2.0 \
+    DATASET_RETENTION=14 \
+    DATASET_CRON_INTERVAL_HOURS=24
+
+# Mount persistent dataset storage directory
+VOLUME ["/server/datasets"]
+
+ENTRYPOINT ["./dataset-generator"]
+CMD ["--continuous", "--interval-hours=24", "--preset=daily", "--out-dir=/server/datasets"]

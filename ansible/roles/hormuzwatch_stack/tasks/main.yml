@@ -1,0 +1,68 @@
+---
+- name: Verify repository directory exists on target
+  ansible.builtin.stat:
+    path: "{{ target_project_dir }}"
+  register: repo_dir_stat
+
+- name: Fail if target project directory is missing
+  ansible.builtin.fail:
+    msg: "Target project directory {{ target_project_dir }} does not exist. Please clone or rsync the repository first."
+  when: not repo_dir_stat.stat.exists
+
+- name: Ensure .env file exists (copy from .env.example if missing)
+  ansible.builtin.copy:
+    src: "{{ target_project_dir }}/.env.example"
+    dest: "{{ target_project_dir }}/.env"
+    remote_src: true
+    force: false
+    mode: '0600'
+  become: false
+
+- name: Ensure local data directories exist with proper permissions
+  ansible.builtin.file:
+    path: "{{ target_project_dir }}/{{ item }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+  loop:
+    - server/data
+    - server/datasets
+    - service/ml-service/models
+
+- name: Start or update HormuzWatch container stack via Docker Compose
+  ansible.builtin.command:
+    cmd: "docker compose -f {{ compose_file }} up -d --build"
+    chdir: "{{ target_project_dir }}"
+  become: false
+  register: compose_up
+
+- name: Automated Health Verification Gate (Backend 10020, ML 8090, Client 3000)
+  ansible.builtin.uri:
+    url: "{{ item }}"
+    status_code: 200
+    timeout: 10
+  register: health_check
+  until: health_check.status == 200
+  retries: 20
+  delay: 4
+  loop:
+    - "http://127.0.0.1:10020/health/live"
+    - "http://127.0.0.1:8090/health"
+    - "http://127.0.0.1:3000"
+
+- name: Retrieve container status summary
+  ansible.builtin.command:
+    cmd: "docker compose -f {{ compose_file }} ps"
+    chdir: "{{ target_project_dir }}"
+  become: false
+  register: compose_ps
+  changed_when: false
+
+- name: Display deployment success banner
+  ansible.builtin.debug:
+    msg:
+      - "=========================================================="
+      - " HormuzWatch Stack Successfully Deployed and Healthy!      "
+      - "=========================================================="
+      - "{{ compose_ps.stdout_lines }}"
