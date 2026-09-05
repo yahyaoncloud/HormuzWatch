@@ -64,8 +64,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['maplibre-gl', 'uplot', 'framer-motion'],
-    exclude: ['@mdx-js/react'],
+    include: ['maplibre-gl', 'uplot'],
   },
   server: {
     port: 5173,
