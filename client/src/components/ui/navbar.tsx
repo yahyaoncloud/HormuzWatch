@@ -53,17 +53,17 @@ export function Navbar({ transparent = false, children }: NavbarProps) {
         </div>
       </div>
 
-      {/* Center Tactical Clock Readout */}
-      <div className="hidden lg:flex items-center gap-2 font-mono text-[11px] text-[var(--color-fg-muted)]">
-        <span className="inline-block w-1.5 h-1.5 rounded-none bg-emerald-500 shadow-[0_0_4px_#22c55e]"></span>
-        <span className="text-[var(--color-fg-subtle)]">SYS.TIME:</span>
-        <span className="text-[var(--color-primary-600)] dark:text-[#38bdf8] font-bold tracking-wider">{utcTime || '00:00:00Z'}</span>
-      </div>
-
-      {/* Right-aligned Actions & Controls */}
-      <div className="flex items-center gap-2 ml-auto">
+      {/* Right-aligned Actions & Controls with Far-Right SYS.TIME */}
+      <div className="flex items-center gap-2 sm:gap-2.5 ml-auto">
         <ThemeToggle className="ml-1" />
         {children}
+
+        {/* Far-Right Tactical UTC Clock Readout */}
+        <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 border border-[var(--color-border)] bg-[var(--color-bg-card)] font-mono text-[11px] text-[var(--color-fg-muted)] shrink-0 select-none shadow-xs">
+          <span className="inline-block w-1.5 h-1.5 rounded-none bg-emerald-500 shadow-[0_0_4px_#22c55e] animate-pulse"></span>
+          <span className="text-[var(--color-fg-subtle)] font-semibold text-[10px]">SYS.TIME:</span>
+          <span className="text-[var(--color-primary-600)] dark:text-[#38bdf8] font-bold tracking-wider font-mono">{utcTime || '00:00:00Z'}</span>
+        </div>
       </div>
 
       {isLoading && (

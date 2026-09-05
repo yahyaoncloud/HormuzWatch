@@ -138,19 +138,19 @@ export const env = {
 
   // ── Maps ──────────────────────────────────────────────────────────
   map: {
-    /** Primary dark tactical basemap tile URL template (XYZ format). Default: ESRI World Dark Gray Canvas. */
+    /** Primary dark tactical basemap tile URL template (XYZ format). Default: CartoDB Dark Matter. */
     tileUrlDark:
       import.meta.env.VITE_MAP_TILE_URL_DARK ||
       import.meta.env.VITE_MAP_TILE_URL ||
-      "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
     /** Satellite reconnaissance tile URL template (XYZ format). Default: ESRI World Imagery. */
     tileUrlSatellite:
       import.meta.env.VITE_MAP_TILE_URL_SATELLITE ||
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    /** Primary light basemap tile URL template (XYZ format). Default: ESRI World Light Gray Canvas. */
+    /** Primary light basemap tile URL template (XYZ format). Default: CartoDB Positron (Nautical Daylight). */
     tileUrlLight:
       import.meta.env.VITE_MAP_TILE_URL_LIGHT ||
-      "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+      "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
     /** Fallback basemap URL (OSM with custom tactical shader grading). */
     tileUrlFallback:
       import.meta.env.VITE_MAP_TILE_URL_FALLBACK ||

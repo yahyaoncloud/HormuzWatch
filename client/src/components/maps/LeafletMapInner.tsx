@@ -8,7 +8,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet.markercluster/dist/leaflet.markercluster.js';
 import 'leaflet.heat';
 import { useQuery } from '@tanstack/react-query';
-import { ZoomIn, ZoomOut } from 'lucide-react';
+import { Layers, ZoomIn, ZoomOut } from 'lucide-react';
 import { env } from '@/environments/environment';
 import * as apiMethods from '@/lib/api';
 import { getConflictFeed } from '@/lib/api';
@@ -21,12 +21,33 @@ const ZOOM = 7;
 const DEFAULT_MIN_ZOOM = 5.5;
 const DEFAULT_MAX_ZOOM = 16;
 
-function getTileLayerConfig(isDarkMode: boolean, useFallback = false) {
-  let rawUrl = useFallback
-    ? env.map.tileUrlFallback
-    : isDarkMode
-      ? env.map.tileUrlDark
-      : env.map.tileUrlLight;
+export type BasemapMode = 'auto' | 'dark' | 'satellite' | 'light';
+
+function getTileLayerConfig(mode: BasemapMode, isDarkMode: boolean, useFallback = false) {
+  const effectiveMode = mode === 'auto' ? (isDarkMode ? 'dark' : 'light') : mode;
+
+  let rawUrl = '';
+  let attribution = env.map.attribution;
+  let className = '';
+
+  if (useFallback) {
+    rawUrl = env.map.tileUrlFallback;
+    attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+    className = 'tactical-osm-fallback';
+  } else if (effectiveMode === 'satellite') {
+    rawUrl = env.map.tileUrlSatellite || 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+    attribution = '&copy; Esri &mdash; DigitalGlobe, Earthstar Geographics, CNES/Airbus DS, USDA, USGS';
+    className = 'tactical-esri-satellite';
+  } else if (effectiveMode === 'light') {
+    rawUrl = env.map.tileUrlLight || 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+    attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    className = 'tactical-esri-light';
+  } else {
+    // dark mode
+    rawUrl = env.map.tileUrlDark || 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+    attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    className = 'tactical-esri-dark';
+  }
 
   if (env.map.apiKey) {
     if (rawUrl.includes('{key}')) {
@@ -42,17 +63,12 @@ function getTileLayerConfig(isDarkMode: boolean, useFallback = false) {
     rawUrl = rawUrl.replace('{key}', '').replace('{apikey}', '').replace('{r}', '');
   }
 
-  const className = useFallback
-    ? 'tactical-osm-fallback'
-    : isDarkMode
-      ? 'tactical-esri-dark'
-      : 'tactical-esri-light';
-
   return {
     url: rawUrl,
-    attribution: env.map.attribution,
-    subdomains: env.map.subdomains,
+    attribution,
+    subdomains: env.map.subdomains || 'abcd',
     className,
+    effectiveMode,
   };
 }
 
@@ -139,116 +155,190 @@ import { createTacticalLeafletIcon } from '@/icons';
 function buildTrackPopupHTML(track: any): string {
   if (!track) return '';
   const isAircraft = classifyTrackObject(track) === 'aircraft';
+  const severity = String(track.severity || 'low').toLowerCase();
   const severityColor: Record<string, string> = {
-    critical: '#b91c1c',
-    high: '#b45309',
-    medium: '#d97706',
-    low: '#15803d',
+    critical: '#dc2626',
+    high: '#d97706',
+    medium: '#eab308',
+    low: '#16a34a',
   };
-  const color = severityColor[track.severity || 'low'] || 'var(--color-primary-600)';
+  const color = severityColor[severity] || 'var(--color-primary-600)';
 
-  const altVal = (track as any).altitude;
-  const squawkVal = (track as any).squawk;
-  const onGroundVal = (track as any).onGround;
+  const lat = Number(track.lat || (track as any).latitude || 0);
+  const lon = Number(track.lon || (track as any).longitude || 0);
+  const speed = Number(track.speed || 0);
+  const heading = Number(track.heading || 0);
+  const score = Number(track.score || track.anomalyScore || 0);
 
-  const altPill =
-    isAircraft && altVal !== undefined && altVal !== null
-      ? `<div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
-          <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">ALTITUDE</div>
-          <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${Number(altVal).toLocaleString()} ft</div>
-        </div>`
-      : '';
-  const squawkPill =
-    isAircraft && squawkVal
-      ? `<div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
-          <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">SQUAWK</div>
-          <div style="font-size:11px;font-weight:700;color:var(--color-primary-400, #38bdf8);font-family:var(--font-mono, monospace);margin-top:1px">${squawkVal}</div>
-        </div>`
-      : '';
-  const onGroundPill =
-    isAircraft && onGroundVal !== undefined
-      ? `<div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
-          <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">STATUS</div>
-          <div style="font-size:11px;font-weight:700;color:${onGroundVal ? 'var(--color-warning, #facc15)' : 'var(--color-success, #22c55e)'};font-family:var(--font-mono, monospace);margin-top:1px">${onGroundVal ? 'ON GROUND' : 'AIRBORNE'}</div>
-        </div>`
-      : '';
-  const aisAgePill =
-    !isAircraft && track.aisAgeMinutes !== undefined
-      ? `<div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
-          <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.05em">AIS AGE</div>
-          <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${track.aisAgeMinutes} min</div>
-        </div>`
-      : '';
+  // Asset Name & Identifiers
+  const title = String(track.assetName || track.name || (track as any).vessel_name || (track as any).callsign || track.id || (isAircraft ? 'UNKNOWN AIRCRAFT' : 'UNKNOWN VESSEL')).trim();
+  const trackId = String(track.id || track.trackId || (track as any).mmsi || 'N/A');
 
-  const lat = Number(track.lat || 0);
-  const lon = Number(track.lon || 0);
+  // Parse Reasons if available
+  let reasonsList = '';
+  try {
+    let rawReasons = track.reasons;
+    if (typeof rawReasons === 'string' && (rawReasons.startsWith('[') || rawReasons.startsWith('{'))) {
+      rawReasons = JSON.parse(rawReasons);
+    }
+    if (Array.isArray(rawReasons) && rawReasons.length > 0) {
+      reasonsList = rawReasons
+        .slice(0, 3)
+        .map((r: any) => `• ${typeof r === 'string' ? r : (r.description || r.type || JSON.stringify(r))}`)
+        .join('<br>');
+    } else if (typeof rawReasons === 'string' && rawReasons.trim().length > 0) {
+      reasonsList = rawReasons;
+    }
+  } catch {
+    // fallback
+  }
+
+  // Domain-specific fields
+  let domainSpecificGrid = '';
+  let alertBanner = '';
+
+  if (isAircraft) {
+    const squawkVal = String((track as any).squawk || '').trim();
+    const altVal = (track as any).altitude;
+    const verticalRate = (track as any).verticalRate;
+    const onGround = (track as any).onGround;
+
+    // Emergency squawk alerts
+    if (squawkVal === '7500') {
+      alertBanner = `<div style="background:#dc2626;color:#fff;padding:5px 8px;font-size:10px;font-weight:700;margin-bottom:8px;text-align:center;letter-spacing:0.04em">🚨 EMERGENCY 7500: UNLAWFUL INTERFERENCE / HIJACK</div>`;
+    } else if (squawkVal === '7600') {
+      alertBanner = `<div style="background:#dc2626;color:#fff;padding:5px 8px;font-size:10px;font-weight:700;margin-bottom:8px;text-align:center;letter-spacing:0.04em">⚠ SQUAWK 7600: NORDO / RADIO COMMUNICATION LOSS</div>`;
+    } else if (squawkVal === '7700') {
+      alertBanner = `<div style="background:#dc2626;color:#fff;padding:5px 8px;font-size:10px;font-weight:700;margin-bottom:8px;text-align:center;letter-spacing:0.04em">🚨 EMERGENCY 7700: GENERAL AIR INFLIGHT EMERGENCY</div>`;
+    }
+
+    domainSpecificGrid = `
+      <div style="background:var(--color-bg-elevated);border:1px solid var(--color-border);padding:5px 7px">
+        <div style="font-size:8px;font-weight:700;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.04em">ICAO / SQUAWK</div>
+        <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">
+          ${(track as any).icao || trackId.substring(0, 8)} <span style="color:${squawkVal && ['7500','7600','7700'].includes(squawkVal) ? '#ef4444' : 'var(--color-primary-600)'}">[${squawkVal || '2000'}]</span>
+        </div>
+      </div>
+      <div style="background:var(--color-bg-elevated);border:1px solid var(--color-border);padding:5px 7px">
+        <div style="font-size:8px;font-weight:700;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.04em">ALTITUDE / ROC</div>
+        <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">
+          ${altVal !== undefined && altVal !== null ? `${Number(altVal).toLocaleString()} ft` : 'FL320'}
+          ${verticalRate ? `<span style="font-size:9px;color:var(--color-fg-muted)"> (${verticalRate > 0 ? '+' : ''}${verticalRate} fpm)</span>` : ''}
+        </div>
+      </div>
+      <div style="background:var(--color-bg-elevated);border:1px solid var(--color-border);padding:5px 7px">
+        <div style="font-size:8px;font-weight:700;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.04em">GROUND SPEED</div>
+        <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${speed.toFixed(0)} kts</div>
+      </div>
+      <div style="background:var(--color-bg-elevated);border:1px solid var(--color-border);padding:5px 7px">
+        <div style="font-size:8px;font-weight:700;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.04em">FLIGHT STATUS</div>
+        <div style="font-size:11px;font-weight:700;color:${onGround ? 'var(--color-warning)' : 'var(--color-success)'};font-family:var(--font-mono, monospace);margin-top:1px">
+          ${onGround ? 'ON RUNWAY/GROUND' : 'AIRBORNE TRANSIT'}
+        </div>
+      </div>
+    `;
+  } else {
+    // Maritime Vessel
+    const imoVal = (track as any).imo || (track as any).imo_number;
+    const callsignVal = (track as any).callsign;
+    const draughtVal = (track as any).draft || (track as any).draught;
+    const destinationVal = (track as any).destination;
+    const vesselTypeVal = (track as any).vesselType || (track as any).type || (track as any).ship_type || 'Commercial Marine Vessel';
+    const navStatusVal = (track as any).navStatus || (speed > 0.5 ? 'UNDERWAY' : 'ANCHORED / MOORED');
+
+    domainSpecificGrid = `
+      <div style="background:var(--color-bg-elevated);border:1px solid var(--color-border);padding:5px 7px">
+        <div style="font-size:8px;font-weight:700;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.04em">MMSI / IMO</div>
+        <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">
+          ${trackId} ${imoVal ? `<span style="font-size:9px;color:var(--color-fg-muted)">[IMO ${imoVal}]</span>` : ''}
+        </div>
+      </div>
+      <div style="background:var(--color-bg-elevated);border:1px solid var(--color-border);padding:5px 7px">
+        <div style="font-size:8px;font-weight:700;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.04em">SOG / COG</div>
+        <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">
+          ${speed.toFixed(1)} kn <span style="font-size:9px;color:var(--color-fg-muted)">@ ${heading.toFixed(0)}°T</span>
+        </div>
+      </div>
+      <div style="background:var(--color-bg-elevated);border:1px solid var(--color-border);padding:5px 7px">
+        <div style="font-size:8px;font-weight:700;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.04em">VESSEL TYPE / CALLSIGN</div>
+        <div style="font-size:10px;font-weight:700;color:var(--color-fg);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+          ${vesselTypeVal} ${callsignVal ? `(${callsignVal})` : ''}
+        </div>
+      </div>
+      <div style="background:var(--color-bg-elevated);border:1px solid var(--color-border);padding:5px 7px">
+        <div style="font-size:8px;font-weight:700;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.04em">STATUS / DRAUGHT</div>
+        <div style="font-size:10px;font-weight:700;color:var(--color-fg);margin-top:1px">
+          ${navStatusVal} ${draughtVal ? `<span style="color:var(--color-fg-muted)">· ${draughtVal}m</span>` : ''}
+        </div>
+      </div>
+      ${destinationVal ? `
+        <div style="grid-column:1/-1;background:var(--color-bg-elevated);border:1px solid var(--color-border);padding:4px 7px">
+          <div style="font-size:8px;font-weight:700;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.04em">DESTINATION</div>
+          <div style="font-size:10px;font-weight:700;color:var(--color-primary-600);font-family:var(--font-mono, monospace);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            📍 ${destinationVal}
+          </div>
+        </div>
+      ` : ''}
+    `;
+  }
+
+  const regionName = getRegionNameByCoords(lat, lon);
+  const sourceName = ((track as any).provider || track.source || (isAircraft ? 'OPEN AIRSPACE ADS-B' : 'AIS LIVE STREAM')).toUpperCase();
+  const pingAge = track.aisAgeMinutes !== undefined ? `${track.aisAgeMinutes}m ago` : 'LIVE PING';
 
   return `
-    <div style="font-family:var(--font-mono, monospace);color:var(--color-fg);padding:10px;border-radius:0;background:#0d1422;border:1px solid #1f2c40;box-shadow:inset 1px 1px 0 rgba(255,255,255,0.08), inset -1px -1px 0 rgba(0,0,0,0.6)">
-      <!-- Tactical Dossier Header -->
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;border-bottom:1px solid #1f2c40;padding-bottom:6px">
+    <div style="font-family:var(--font-mono, monospace);color:var(--color-fg);padding:10px 12px;background:var(--color-bg-card);border:1px solid var(--color-border);box-shadow:inset 1px 1px 0 rgba(255,255,255,0.06), inset -1px -1px 0 rgba(0,0,0,0.25);min-width:280px;max-width:330px">
+      <!-- Tactical Header -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;border-bottom:1px solid var(--color-border);padding-bottom:6px">
         <div style="display:flex;align-items:center;gap:8px;min-width:0">
-          <div style="width:26px;height:26px;background:${color}20;border:1px solid ${color}80;display:flex;align-items:center;justify-content:center;font-size:13px;color:${color};flex-shrink:0">
+          <div style="width:28px;height:28px;background:${color}20;border:1px solid ${color}80;display:flex;align-items:center;justify-content:center;font-size:14px;color:${color};flex-shrink:0">
             ${isAircraft ? '✈' : '▲'}
           </div>
           <div style="min-width:0">
-            <h4 style="margin:0;font-size:12px;font-weight:700;color:#f8fafc;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase">${track.assetName || track.name || track.id}</h4>
+            <h4 style="margin:0;font-size:12px;font-weight:700;color:var(--color-fg);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase">${title}</h4>
             <div style="display:flex;align-items:center;gap:4px;margin-top:2px">
-              <span style="width:5px;height:5px;background:#22c55e;display:inline-block"></span>
-              <span style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em">${isAircraft ? 'ADS-B AIR CONTACT' : 'AIS MARITIME CONTACT'}</span>
+              <span style="width:5px;height:5px;background:var(--color-success);display:inline-block"></span>
+              <span style="font-size:9px;font-weight:700;color:var(--color-fg-muted);text-transform:uppercase;letter-spacing:0.04em">${isAircraft ? 'ADS-B AIR CONTACT' : 'AIS MARITIME CONTACT'}</span>
             </div>
           </div>
         </div>
         <span style="padding:2px 6px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#fff;background:${color};border:1px solid ${color}90;flex-shrink:0">
-          ${track.severity || 'NOMINAL'}
+          ${severity.toUpperCase()}
         </span>
       </div>
 
-      <!-- Telemetry Grid -->
+      ${alertBanner}
+
+      <!-- Coordinates & Sector Strip -->
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--color-bg-input);border:1px solid var(--color-border);padding:4px 7px;margin-bottom:6px;font-size:9px">
+        <span style="color:var(--color-fg-subtle);font-weight:700">SECTOR: <strong style="color:var(--color-fg)">${regionName}</strong></span>
+        <span style="color:var(--color-fg-muted);font-family:var(--font-mono, monospace)">${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E</span>
+      </div>
+
+      <!-- Domain-Specific Telemetry Grid -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px">
-        <div style="background:#080c14;border:1px solid #1a2536;padding:4px 6px">
-          <div style="font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase">TRACK ID</div>
-          <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-top:1px">${track.id}</div>
-        </div>
-        <div style="background:#080c14;border:1px solid #1a2536;padding:4px 6px">
-          <div style="font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase">SPEED</div>
-          <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-top:1px">${(track.speed || 0).toFixed(1)} kts</div>
-        </div>
-        <div style="background:#080c14;border:1px solid #1a2536;padding:4px 6px">
-          <div style="font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase">HEADING</div>
-          <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-top:1px">${(track.heading || 0).toFixed(0)}° TRUE</div>
-        </div>
-        <div style="background:#080c14;border:1px solid #1a2536;padding:4px 6px">
-          <div style="font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase">SECTOR</div>
-          <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${getRegionNameByCoords(lat, lon)}</div>
-        </div>
-        ${altPill}
-        ${squawkPill}
-        ${onGroundPill}
-        ${aisAgePill}
-        <div style="background:#080c14;border:1px solid #1a2536;padding:4px 6px">
-          <div style="font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase">POSITION N</div>
-          <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-top:1px">${lat.toFixed(4)}°N</div>
-        </div>
-        <div style="background:#080c14;border:1px solid #1a2536;padding:4px 6px">
-          <div style="font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase">POSITION E</div>
-          <div style="font-size:10px;font-weight:700;color:#e2e8f0;margin-top:1px">${lon.toFixed(4)}°E</div>
-        </div>
+        ${domainSpecificGrid}
       </div>
 
-      <!-- Provenance & Source Metadata -->
-      <div style="display:flex;align-items:center;justify-content:space-between;background:#080c14;border:1px solid #1a2536;padding:3px 6px;margin-bottom:6px;font-size:8px;color:#64748b">
-        <span>SRC: <strong style="color:#94a3b8">${((track as any).provider || track.source || 'AIS STREAM / OPEN WATERS').toUpperCase()}</strong></span>
-        ${(track as any).station ? `<span>STN: <strong style="color:#38bdf8">${(track as any).station}</strong></span>` : '<span>VERIFIED FEED</span>'}
+      <!-- Anomaly Score & Deviation Reasons -->
+      <div style="background:var(--color-bg-input);border:1px solid var(--color-border);padding:5px 7px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${reasonsList ? '4px' : '0'}">
+          <span style="font-size:8px;font-weight:700;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.04em">ML ANOMALY EVALUATION</span>
+          <span style="font-size:10px;font-weight:700;color:${score > 70 ? 'var(--color-danger)' : score > 40 ? 'var(--color-warning)' : 'var(--color-success)'}">
+            ${score > 0 ? `${score.toFixed(0)}/100` : 'NOMINAL (0/100)'}
+          </span>
+        </div>
+        ${reasonsList ? `
+          <div style="font-size:9px;color:var(--color-fg-muted);line-height:1.3;border-top:1px dashed var(--color-border);padding-top:4px">
+            ${reasonsList}
+          </div>
+        ` : ''}
       </div>
 
-      <!-- Footer -->
-      <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid #1f2c40;padding-top:6px;font-size:9px;color:#64748b">
-        <span style="display:flex;align-items:center;gap:3px">
-          <span style="width:4px;height:4px;background:#22c55e;display:inline-block"></span>
-          LIVE TELEMETRY
-        </span>
-        <span style="color:#94a3b8">${new Date(track.timestamp || Date.now()).toLocaleTimeString()} UTC</span>
+      <!-- Source & Freshness Footer -->
+      <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--color-border);padding-top:5px;font-size:9px;color:var(--color-fg-subtle)">
+        <span>SRC: <strong style="color:var(--color-fg-muted)">${sourceName}</strong></span>
+        <span style="color:var(--color-primary-600);font-weight:700">${pingAge}</span>
       </div>
     </div>`;
 }
@@ -503,7 +593,8 @@ export default function LeafletMapInner({
     return darkClass || storeTheme === 'dark' || (storeTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
 
-  const tileConfig = getTileLayerConfig(isDarkMode, tileFailed);
+  const [basemapMode, setBasemapMode] = useState<BasemapMode>('auto');
+  const tileConfig = getTileLayerConfig(basemapMode, isDarkMode, tileFailed);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1112,7 +1203,7 @@ export default function LeafletMapInner({
 
         marker.bindPopup(
           () => buildTrackPopupHTML(trackMarkersRef.current.get(trackId)?.track || track),
-          { maxWidth: 320, className: 'track-popup' }
+          { maxWidth: 340, className: 'track-popup' }
         );
 
         marker.on('click', () => {
@@ -1268,55 +1359,74 @@ export default function LeafletMapInner({
             ? nearbyVessels
                 .map(
                   (v) =>
-                    `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:10px">
+                    `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--color-border);font-size:10px">
                       <span style="font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace)">${v.name}</span>
-                      <span style="color:var(--color-primary-600);font-weight:600">${v.dist} NM (${v.speed} kn)</span>
+                      <span style="color:var(--color-primary-600);font-weight:700">${v.dist} NM (${v.speed} kn)</span>
                     </div>`
                 )
                 .join('')
             : '<div style="font-size:10px;color:var(--color-fg-muted);font-style:italic">No active AIS vessels within 15 NM</div>';
 
-        const verifiedIcon = c.verified ? '✓ Verified' : '⚠ Unverified';
-        const verifiedColor = c.verified ? '#15803d' : '#b45309';
+        const verifiedIcon = c.verified ? '✓ VERIFIED INTEL' : '⚠ UNVERIFIED OSINT';
+        const verifiedColor = c.verified ? 'var(--color-success)' : 'var(--color-warning)';
 
         marker.bindPopup(
-          `<div style="font-family:var(--font-ui, 'Inter', system-ui, sans-serif);color:var(--color-fg);padding:14px;border-radius:14px">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
+          `<div style="font-family:var(--font-mono, monospace);color:var(--color-fg);padding:12px;background:var(--color-bg-card);border:1px solid var(--color-border);box-shadow:inset 1px 1px 0 rgba(255,255,255,0.06), inset -1px -1px 0 rgba(0,0,0,0.25);min-width:300px;max-width:360px">
+            <!-- Conflict Header -->
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;border-bottom:1px solid var(--color-border);padding-bottom:6px">
               <div style="min-width:0">
-                <h4 style="margin:0;font-size:14px;font-weight:700;color:var(--color-fg);line-height:1.2">${c.title}</h4>
-                <div style="font-size:10px;font-weight:600;color:${verifiedColor};margin-top:2px;font-family:var(--font-mono, monospace)">${verifiedIcon}</div>
+                <h4 style="margin:0;font-size:13px;font-weight:700;color:var(--color-fg);line-height:1.2;text-transform:uppercase">${c.title}</h4>
+                <div style="font-size:9px;font-weight:700;color:${verifiedColor};margin-top:3px;letter-spacing:0.04em">${verifiedIcon}</div>
               </div>
-              <span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;color:#fff;background:${color};flex-shrink:0">
-                ${c.severity}
+              <span style="padding:2px 7px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#fff;background:${color};border:1px solid ${color}90;flex-shrink:0">
+                ${c.severity.toUpperCase()}
               </span>
             </div>
-            <p style="font-size:12px;color:var(--color-fg-muted);margin:0 0 10px 0;line-height:1.4">${c.description}</p>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
-              <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
-                <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase">REGION</div>
-                <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${c.region}</div>
+
+            <p style="font-size:11px;color:var(--color-fg-muted);margin:0 0 8px 0;line-height:1.4;font-family:var(--font-ui, sans-serif)">${c.description}</p>
+
+            <!-- Metadata Grid -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px">
+              <div style="background:var(--color-bg-elevated);border:1px solid var(--color-border);padding:5px 7px">
+                <div style="font-size:8px;font-weight:700;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.04em">REGION / THEATER</div>
+                <div style="font-size:10px;font-weight:700;color:var(--color-fg);margin-top:1px">${c.region}</div>
               </div>
-              <div style="background:var(--color-bg-elevated, rgba(255,255,255,0.04));border:1px solid var(--color-border);border-radius:6px;padding:5px 8px">
-                <div style="font-size:9px;font-weight:600;color:var(--color-fg-subtle);text-transform:uppercase">TYPE</div>
-                <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">${c.conflictType}</div>
+              <div style="background:var(--color-bg-elevated);border:1px solid var(--color-border);padding:5px 7px">
+                <div style="font-size:8px;font-weight:700;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.04em">CONFLICT DOMAIN</div>
+                <div style="font-size:10px;font-weight:700;color:var(--color-primary-600);margin-top:1px;text-transform:uppercase">${c.conflictType}</div>
               </div>
+              <div style="background:var(--color-bg-elevated);border:1px solid var(--color-border);padding:5px 7px">
+                <div style="font-size:8px;font-weight:700;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.04em">COORDINATES</div>
+                <div style="font-size:10px;font-weight:700;color:var(--color-fg);margin-top:1px">${c.lat.toFixed(4)}°N, ${c.lon.toFixed(4)}°E</div>
+              </div>
+              <div style="background:var(--color-bg-elevated);border:1px solid var(--color-border);padding:5px 7px">
+                <div style="font-size:8px;font-weight:700;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.04em">CASUALTIES / IMPACT</div>
+                <div style="font-size:10px;font-weight:700;color:${c.casualties && c.casualties !== 'None' ? 'var(--color-danger)' : 'var(--color-fg)'};margin-top:1px">${c.casualties || 'None reported'}</div>
+              </div>
+              ${c.affectedAssets ? `
+                <div style="grid-column:1/-1;background:var(--color-bg-elevated);border:1px solid var(--color-border);padding:4px 7px">
+                  <div style="font-size:8px;font-weight:700;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.04em">AFFECTED ASSETS / TARGETS</div>
+                  <div style="font-size:10px;font-weight:700;color:var(--color-fg);margin-top:1px">${c.affectedAssets}</div>
+                </div>
+              ` : ''}
             </div>
 
             <!-- Spatial-Temporal AIS Traffic Correlation -->
-            <div style="background:var(--color-bg-input, rgba(0,0,0,0.25));border:1px solid var(--color-border);padding:8px 10px;border-radius:8px;margin-bottom:10px">
-              <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:700;color:var(--color-primary-600);margin-bottom:6px">
-                <span>NEARBY AIS MARITIME TRAFFIC (15 NM)</span>
-                <span style="font-size:9px;background:var(--color-primary-600);color:#fff;padding:1px 6px;border-radius:4px">${nearbyVessels.length} VESSELS</span>
+            <div style="background:var(--color-bg-input);border:1px solid var(--color-border);padding:7px 9px;margin-bottom:8px">
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:9px;font-weight:700;color:var(--color-primary-600);margin-bottom:5px">
+                <span>NEARBY MARITIME AIS CORRELATION (15 NM)</span>
+                <span style="font-size:9px;background:var(--color-primary-600);color:#fff;padding:1px 6px;font-weight:700">${nearbyVessels.length} VESSELS</span>
               </div>
               ${nearbyListHtml}
-              <div style="font-size:9px;color:var(--color-fg-muted);margin-top:6px;line-height:1.3;font-style:italic">
+              <div style="font-size:8px;color:var(--color-fg-muted);margin-top:5px;line-height:1.3;font-style:italic">
                 Observed AIS proximity indicates spatial co-location in international waterways, not involvement or causality.
               </div>
             </div>
 
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--color-fg-subtle);border-top:1px solid var(--color-border);padding-top:8px">
-              <span>Source: ${c.source} (${c.sourceType})</span>
-              <span style="font-family:var(--font-mono, monospace)">${new Date(c.timestamp).toLocaleTimeString()}</span>
+            <!-- Footer -->
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:9px;color:var(--color-fg-subtle);border-top:1px solid var(--color-border);padding-top:6px">
+              <span>SRC: <strong style="color:var(--color-fg-muted)">${c.source} (${(c.sourceType || 'OSINT').toUpperCase()})</strong></span>
+              <span style="color:var(--color-fg-muted);font-weight:600">${new Date(c.timestamp).toLocaleTimeString()} UTC</span>
             </div>
           </div>`,
           { maxWidth: 360, className: 'conflict-popup' }
@@ -1426,7 +1536,7 @@ export default function LeafletMapInner({
         ))}
       </div>
 
-      {/* Map Zoom Controls */}
+      {/* Top-Right Control Bar: Basemap Selector + Zoom Controls */}
       <div
         style={{
           position: 'absolute',
@@ -1434,52 +1544,115 @@ export default function LeafletMapInner({
           right: '12px',
           zIndex: 500,
           display: 'flex',
-          gap: '2px',
-          background: 'var(--color-bg-elevated)',
-          border: '1px solid var(--color-border)',
-          borderRadius: '8px',
-          padding: '2px',
-          backdropFilter: 'blur(10px)',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+          alignItems: 'center',
+          gap: '6px',
         }}
       >
-        <button
-          type="button"
-          onClick={() => map?.zoomIn()}
-          title="Zoom In"
+        {/* Tactical Basemap Switcher */}
+        <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            padding: '6px 10px',
-            background: 'transparent',
-            border: 'none',
-            borderRadius: '5px',
-            color: 'var(--color-fg)',
-            cursor: 'pointer',
+            gap: '2px',
+            background: 'var(--color-bg-card)',
+            border: '1px solid var(--color-border)',
+            borderRadius: '8px',
+            padding: '2px',
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
           }}
         >
-          <ZoomIn size={14} />
-        </button>
-        <div style={{ width: '1px', background: 'var(--color-border)', margin: '4px 0' }} />
-        <button
-          type="button"
-          onClick={() => map?.zoomOut()}
-          title="Zoom Out"
+          <div style={{ display: 'flex', alignItems: 'center', padding: '0 5px 0 6px', fontSize: '9px', fontWeight: 'bold', color: 'var(--color-primary-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <Layers size={11} style={{ marginRight: '4px' }} />
+            <span className="hidden sm:inline">BASEMAP:</span>
+          </div>
+          {[
+            { id: 'dark' as const, label: 'DARK' },
+            { id: 'satellite' as const, label: 'SATELLITE' },
+            { id: 'light' as const, label: 'NAUTICAL' },
+          ].map((item) => {
+            const isActive =
+              (basemapMode === 'auto' && ((item.id === 'dark' && isDarkMode) || (item.id === 'light' && !isDarkMode))) ||
+              basemapMode === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setBasemapMode(item.id)}
+                title={`Switch basemap to ${item.label}`}
+                style={{
+                  padding: '4px 8px',
+                  background: isActive ? 'var(--color-primary-600)' : 'var(--color-bg-elevated)',
+                  border: '1px solid',
+                  borderColor: isActive ? 'var(--color-primary-600)' : 'var(--color-border)',
+                  borderRadius: '5px',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  fontFamily: 'var(--font-mono, monospace)',
+                  color: isActive ? '#ffffff' : 'var(--color-fg)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.03em',
+                }}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Map Zoom Controls */}
+        <div
           style={{
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '6px 10px',
-            background: 'transparent',
-            border: 'none',
-            borderRadius: '5px',
-            color: 'var(--color-fg)',
-            cursor: 'pointer',
+            gap: '2px',
+            background: 'var(--color-bg-elevated)',
+            border: '1px solid var(--color-border)',
+            borderRadius: '8px',
+            padding: '2px',
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
           }}
         >
-          <ZoomOut size={14} />
-        </button>
+          <button
+            type="button"
+            onClick={() => map?.zoomIn()}
+            title="Zoom In"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '6px 10px',
+              background: 'transparent',
+              border: 'none',
+              borderRadius: '5px',
+              color: 'var(--color-fg)',
+              cursor: 'pointer',
+            }}
+          >
+            <ZoomIn size={14} />
+          </button>
+          <div style={{ width: '1px', background: 'var(--color-border)', margin: '4px 0' }} />
+          <button
+            type="button"
+            onClick={() => map?.zoomOut()}
+            title="Zoom Out"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '6px 10px',
+              background: 'transparent',
+              border: 'none',
+              borderRadius: '5px',
+              color: 'var(--color-fg)',
+              cursor: 'pointer',
+            }}
+          >
+            <ZoomOut size={14} />
+          </button>
+        </div>
       </div>
 
       <MapContainer
@@ -1494,7 +1667,7 @@ export default function LeafletMapInner({
         ref={setMap as any}
       >
         <TileLayer
-          key={`${isDarkMode ? 'dark-tiles' : 'light-tiles'}-${tileFailed ? 'fallback' : 'primary'}`}
+          key={`${tileConfig.effectiveMode}-${tileFailed ? 'fallback' : 'primary'}`}
           attribution={tileConfig.attribution}
           url={tileConfig.url}
           subdomains={tileConfig.subdomains}

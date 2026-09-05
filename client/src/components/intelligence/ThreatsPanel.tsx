@@ -222,15 +222,30 @@ export function ThreatDetailModal({
               { label: 'Anomaly Score', value: `${selectedThreat.score.toFixed(0)}/100` },
               { label: 'Track ID', value: selectedThreat.trackId || 'N/A' },
               { label: 'Asset', value: selectedThreat.assetName },
+              { label: 'Domain', value: selectedThreat.domain ? selectedThreat.domain.toUpperCase() : 'TACTICAL TARGET' },
+              { label: 'Speed & Heading', value: selectedThreat.speed !== undefined ? `${selectedThreat.speed.toFixed(1)} kn @ ${selectedThreat.heading || 0}°` : 'N/A' },
+              { label: 'Coordinates', value: selectedThreat.lat && selectedThreat.lon ? `${selectedThreat.lat.toFixed(4)}°N, ${selectedThreat.lon.toFixed(4)}°E` : 'N/A' },
               { label: 'Detected', value: selectedThreat.time },
-              { label: 'Level', value: selectedThreat.severity },
             ].map((f) => (
               <div key={f.label} className="bg-[var(--color-bg)] border border-[var(--color-border)] p-2">
                 <div className="text-[10px] text-[var(--color-fg-muted)] uppercase">{f.label}</div>
-                <div className="text-[13px] font-semibold text-[var(--color-fg)] mt-0.5">{f.value}</div>
+                <div className="text-[12px] font-semibold text-[var(--color-fg)] font-mono mt-0.5 truncate">{f.value}</div>
               </div>
             ))}
           </div>
+
+          {selectedThreat.reasons && selectedThreat.reasons.length > 0 && (
+            <div className="bg-[var(--color-bg-input)] border border-[var(--color-border)] p-2.5">
+              <div className="text-[10px] font-semibold text-[var(--color-warning)] uppercase tracking-wide">
+                Detected Anomaly Factors
+              </div>
+              <ul className="mt-1 space-y-0.5 text-xs text-[var(--color-fg-muted)] list-disc list-inside">
+                {selectedThreat.reasons.map((r, idx) => (
+                  <li key={idx}>{r}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {selectedThreat.score > 80 && (
             <div className="bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/30 p-3 flex items-start gap-2">
