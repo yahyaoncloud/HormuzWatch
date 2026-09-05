@@ -39,19 +39,12 @@ export function Navbar({ transparent = false, children }: NavbarProps) {
           className="flex items-center gap-2.5 shrink-0 group text-[var(--color-fg)]"
           aria-label="HormuzWatch Home"
         >
-          {/* Main Tactical Logo Emblem */}
-          <div className="w-6 h-6 border border-[var(--color-border-strong)] bg-[var(--color-bg-card)] flex items-center justify-center overflow-hidden shadow-xs shrink-0">
+          {/* Main Tactical Logo Emblem (Site Favicon) */}
+          <div className="w-6 h-6 flex items-center justify-center shrink-0">
             <img
-              src="/logo.png"
-              alt="HW"
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                const parent = e.currentTarget.parentElement;
-                if (parent) {
-                  parent.innerHTML = '<span class="text-[var(--color-primary-600)] dark:text-[#38bdf8] text-[11px] font-mono font-bold">HW</span>';
-                }
-              }}
+              src="/favicon.svg"
+              alt="HormuzWatch Logo"
+              className="w-6 h-6 object-contain drop-shadow-[0_0_6px_rgba(0,212,170,0.35)]"
             />
           </div>
           {/* Capital Widefont Text Logo */}
