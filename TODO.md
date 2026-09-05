@@ -377,3 +377,72 @@ Theoretical Basis: *The DevOps Handbook (2nd Ed.)* & *Designing Machine Learning
   - Healthcheck probes verified on Go Backend (`:10020/health/live`), Python ML Engine (`:8090/health`), and Client Nginx (`:3000`).
   - Active telemetry stream verified with **1,285 active tracks** and **0 drops**.
   - Ansible recap: `tunkstun: ok=7 changed=2 unreachable=0 failed=0 skipped=0`.
+
+---
+
+## 16. MLOps Codebase Review & Production Hardening Backlog (*Designing Machine Learning Systems* by Chip Huyen)
+
+Comprehensive action items, architectural alignment, and critical bug fixes identified during the systematic review against Chip Huyen's *Designing Machine Learning Systems* (`books/_OceanofPDF.com_Designing_Machine_Learning_Systems_.../`).
+
+### 16.1. Critical Defects & Immediate Bug Fixes (P0)
+
+- [ ] **Priority:** P0  
+  **Area:** ML Inference REST Service / Runtime 500 Crash  
+  **File:** [`service/ml-service/app.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/service/ml-service/app.py)  
+  **Problem:** `POST /api/predict` crashes with HTTP 500 (`TypeError: float() argument must be a string or a real number, not 'VesselFeatures'`). `parse_features` returns a Pydantic model instance which is directly passed to `global_drift_monitor.record_observation` (expects numpy array) and to `score(x=x_arr, track_id=...)` with invalid kwargs (`score` expects positional `feature_array` and `feature_names`).  
+  **Fix:** Call `feature_array = features_model.to_array()` and pass canonical `feature_array` and `feature_names` to both `global_drift_monitor.record_observation` and `score()`, matching the working pattern in `grpc_server.py`.
+
+- [ ] **Priority:** P0  
+  **Area:** Continuous Training Pipeline / CLI Parameter Handling  
+  **Files:** [`Jenkinsfile.mlops`](file:///home/tp24/SHARED/Projects/HormuzWatch/Jenkinsfile.mlops), [`pipeline/deploy_candidate.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/pipeline/deploy_candidate.py)  
+  **Problem:** `Jenkinsfile.mlops` invokes `python3 pipeline/deploy_candidate.py --validate-only` and `python3 pipeline/deploy_candidate.py --execute`. However, `deploy_candidate.py` reads `sys.argv[1]` as the domain name, crashing immediately with `ValueError: Unknown domain '--validate-only'`.  
+  **Fix:** Implement formal `argparse` in `pipeline/deploy_candidate.py` supporting `--domain [domain]`, `--validate-only`, and `--execute`.
+
+### 16.2. Configuration & Integration Defects (P1)
+
+- [ ] **Priority:** P1  
+  **Area:** Statistical Drift Monitor / Config Attribute Mismatch  
+  **File:** [`pipeline/drift_monitor.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/pipeline/drift_monitor.py)  
+  **Problem:** Line 58 accesses `config.ks_alpha`, but the field is defined as `ks_test_alpha` in [`pipeline/config.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/pipeline/config.py). Invoking feature drift evaluation raises `AttributeError`.  
+  **Fix:** Align attribute name to `config.ks_test_alpha` (or add alias `ks_alpha`).
+
+- [ ] **Priority:** P1  
+  **Area:** Feature Extractor / Database Fallback Swallowing  
+  **Files:** [`pipeline/extract_features.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/pipeline/extract_features.py), [`pipeline/config.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/pipeline/config.py)  
+  **Problem:** `extract_features_from_db` references `config.db_url` and `config.min_samples_for_retrain`, which are absent from `MLOpsConfig`. The resulting `AttributeError` is caught by a blanket `except Exception: pass`, silently forcing training pipelines to always use synthetic parametric data instead of PostgreSQL telemetry history.  
+  **Fix:** Add `db_url: str = os.getenv("DATABASE_URL", ...)` and `min_samples_for_retrain: int = 500` to `MLOpsConfig`, and add logging for database connection failures.
+
+- [ ] **Priority:** P1  
+  **Area:** Dynamic Model Registry / String Formatting Exception  
+  **File:** [`service/ml-service/core/registry.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/service/ml-service/core/registry.py)  
+  **Problem:** Line 80 uses Go format specifier `%v` (`logger.error("Failed to load model module '%s': %v", ...)`), causing a `ValueError: unsupported format character 'v'` upon module discovery errors.  
+  **Fix:** Replace `%v` with `%s`.
+
+- [ ] **Priority:** P1  
+  **Area:** Container Orchestration / Missing Pluggable Core Volume  
+  **File:** [`docker-compose.dev.yml`](file:///home/tp24/SHARED/Projects/HormuzWatch/docker-compose.dev.yml)  
+  **Problem:** The `ml` service volume mounts mount individual files and `api/` and `lib/`, but omit `./service/ml-service/core:/app/core:ro`. New models or registry modifications in `core/` are not mounted into the dev container.  
+  **Fix:** Add `- ./service/ml-service/core:/app/core:ro` to `ml` service volumes.
+
+### 16.3. Advanced MLOps System Evolution (P2 — Architectural Alignment)
+
+- [ ] **Priority:** P2  
+  **Area:** Slice-Based Evaluation (Chip Huyen Chapter 6)  
+  **Files:** [`pipeline/train_and_evaluate.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/pipeline/train_and_evaluate.py), [`pipeline/benchmark_poc.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/pipeline/benchmark_poc.py)  
+  **Objective:** Expand offline evaluation from aggregate PR-AUC to fine-grained slice metrics:
+  - Vessel type slices (Cargo, Tanker, Fishing, High-Speed Craft, Military/Law Enforcement).
+  - Geofence slices (Hormuz TSS Chokepoint vs Fujairah Offshore Anchorage vs Persian Gulf Basin).
+  - Time-of-day / visibility slices (Day vs Night navigation).  
+  **Outcome:** Guard against slice-level metric degradation that is hidden by macro-level averages.
+
+- [ ] **Priority:** P2  
+  **Area:** Automated Event-Driven Drift Remediation Loop (Chip Huyen Chapters 8 & 9)  
+  **Files:** [`service/ml-service/lib/drift.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/service/ml-service/lib/drift.py), [`pipeline/orchestrator.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/pipeline/orchestrator.py)  
+  **Objective:** Connect the in-memory rolling drift monitor (`global_drift_monitor`) to an automated webhook / dispatch trigger:
+  - When cumulative PSI for any canonical feature exceeds `0.20` or KS $p < 0.01$ over a rolling 1,000-sample window, automatically emit a drift alert and dispatch `run_pipeline_cycle(domain, reason="CRITICAL_DATA_DRIFT")`.
+  - Expose Prometheus metrics for per-feature PSI and KS statistics so Prometheus / Alertmanager can track covariate shifts over time.
+
+- [ ] **Priority:** P2  
+  **Area:** Unified Pluggable Architecture Migration (Chip Huyen Chapter 10)  
+  **Files:** [`service/ml-service/core/ensemble.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/service/ml-service/core/ensemble.py), [`service/ml-service/grpc_server.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/service/ml-service/grpc_server.py)  
+  **Objective:** Transition `grpc_server.py` and `app.py` from reading rigid dictionary `.joblib` bundles to natively loading registered `PluggableEnsemble` instances managed via `ModelRegistry`. Allows seamless integration of newly developed models (e.g., `reconstruction_autoencoder`, Deep One-Class Classifiers) without altering serving logic.
