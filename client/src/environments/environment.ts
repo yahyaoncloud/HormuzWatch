@@ -138,25 +138,25 @@ export const env = {
 
   // ── Maps ──────────────────────────────────────────────────────────
   map: {
-    /** Primary dark tactical basemap tile URL template (XYZ format). Default: CartoDB Dark Matter. */
+    /** Primary dark tactical basemap tile URL template (XYZ format). Default: ESRI World Dark Gray Canvas (No watermark / No API key). */
     tileUrlDark:
       import.meta.env.VITE_MAP_TILE_URL_DARK ||
       import.meta.env.VITE_MAP_TILE_URL ||
-      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
     /** Satellite reconnaissance tile URL template (XYZ format). Default: ESRI World Imagery. */
     tileUrlSatellite:
       import.meta.env.VITE_MAP_TILE_URL_SATELLITE ||
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    /** Primary light basemap tile URL template (XYZ format). Default: CartoDB Positron (Nautical Daylight). */
+    /** Primary light basemap tile URL template (XYZ format). Default: ESRI World Light Gray Base (Nautical Daylight). */
     tileUrlLight:
       import.meta.env.VITE_MAP_TILE_URL_LIGHT ||
-      "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
     /** Fallback basemap URL (OSM with custom tactical shader grading). */
     tileUrlFallback:
       import.meta.env.VITE_MAP_TILE_URL_FALLBACK ||
       "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-    /** Subdomains for tile rotation. Default: 'abcd'. */
-    subdomains: (import.meta.env.VITE_MAP_SUBDOMAINS as string) || "abcd",
+    /** Subdomains for tile rotation. Default: ''. */
+    subdomains: (import.meta.env.VITE_MAP_SUBDOMAINS as string) || "",
     /** Map copyright & attribution HTML. */
     attribution:
       import.meta.env.VITE_MAP_ATTRIBUTION ||

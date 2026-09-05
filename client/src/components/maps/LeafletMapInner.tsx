@@ -39,13 +39,13 @@ function getTileLayerConfig(mode: BasemapMode, isDarkMode: boolean, useFallback 
     attribution = '&copy; Esri &mdash; DigitalGlobe, Earthstar Geographics, CNES/Airbus DS, USDA, USGS';
     className = 'tactical-esri-satellite';
   } else if (effectiveMode === 'light') {
-    rawUrl = env.map.tileUrlLight || 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-    attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    rawUrl = env.map.tileUrlLight || 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+    attribution = '&copy; <a href="https://www.esri.com" target="_blank" rel="noopener noreferrer">Esri</a> &mdash; HERE, Garmin, OpenStreetMap contributors';
     className = 'tactical-esri-light';
   } else {
     // dark mode
-    rawUrl = env.map.tileUrlDark || 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-    attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    rawUrl = env.map.tileUrlDark || 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+    attribution = '&copy; <a href="https://www.esri.com" target="_blank" rel="noopener noreferrer">Esri</a> &mdash; HERE, Garmin, OpenStreetMap contributors';
     className = 'tactical-esri-dark';
   }
 

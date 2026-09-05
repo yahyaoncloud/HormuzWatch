@@ -63,8 +63,16 @@ export default defineConfig({
       },
     },
   },
+  define: {
+    __BUNDLED_DEV__: false,
+  },
   optimizeDeps: {
-    include: ['maplibre-gl', 'uplot'],
+    include: [
+      'maplibre-gl',
+      'uplot',
+      '@tanstack/react-query',
+      '@tanstack/react-query-devtools',
+    ],
   },
   server: {
     port: 5173,
