@@ -94,6 +94,7 @@
 
   /* Fonts with robust system fallbacks */
   --font-display: "Share Tech", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-wide: "Space Grotesk", "Share Tech", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
   --font-data: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
@@ -744,6 +745,12 @@ html.dark .tactical-header-strip,
   background: linear-gradient(180deg, #182332 0%, #0d1420 100%);
   border-bottom: 1px solid var(--color-border);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.font-wide {
+  font-family: var(--font-wide);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
 }
 
 @media print {

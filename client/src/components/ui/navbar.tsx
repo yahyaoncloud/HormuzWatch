@@ -36,13 +36,26 @@ export function Navbar({ transparent = false, children }: NavbarProps) {
       <div className="flex items-center gap-3 shrink-0">
         <Link
           to="/"
-          className="flex items-center gap-2 shrink-0 group text-[var(--color-fg)]"
+          className="flex items-center gap-2.5 shrink-0 group text-[var(--color-fg)]"
           aria-label="HormuzWatch Home"
         >
-          <div className="w-6 h-6 border border-[var(--color-border-strong)] bg-[var(--color-bg-card)] flex items-center justify-center text-[var(--color-primary-600)] dark:text-[#38bdf8] text-xs font-mono font-bold shadow-inner">
-            HW
+          {/* Main Tactical Logo Emblem */}
+          <div className="w-6 h-6 border border-[var(--color-border-strong)] bg-[var(--color-bg-card)] flex items-center justify-center overflow-hidden shadow-xs shrink-0">
+            <img
+              src="/logo.png"
+              alt="HW"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                const parent = e.currentTarget.parentElement;
+                if (parent) {
+                  parent.innerHTML = '<span class="text-[var(--color-primary-600)] dark:text-[#38bdf8] text-[11px] font-mono font-bold">HW</span>';
+                }
+              }}
+            />
           </div>
-          <span className="font-mono text-sm font-bold tracking-wider uppercase text-[var(--color-fg)]">
+          {/* Capital Widefont Text Logo */}
+          <span className="font-wide text-xs sm:text-[13px] font-extrabold uppercase text-[var(--color-fg)] select-none">
             HORMUZ<span className="text-[var(--color-primary-600)] dark:text-[#38bdf8]">WATCH</span>
           </span>
         </Link>
