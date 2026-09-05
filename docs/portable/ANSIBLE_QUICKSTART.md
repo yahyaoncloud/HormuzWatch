@@ -104,3 +104,23 @@ ansible/
     ├── private_registry/          # Launches registry:5000 and minio:9000
     └── system_prep/               # Apt packages, kernel sysctl, directories
 ```
+
+---
+
+## ⚖️ Separation of Concerns: What Ansible Does (and What It Does NOT Do)
+
+To keep the architecture robust, maintainable, and prevent tool overlap, Ansible adheres strictly to the **Single Responsibility Principle**:
+
+| Tool | Single Responsibility | When It Runs | What It Owns |
+| :--- | :--- | :--- | :--- |
+| **Ansible** | **Infrastructure Provisioning & Cold-Start Portability** | Day 0 / Day 1 (Only on new machines or disaster recovery) | OS packages, sysctl tuning, Docker CE installation, `/etc/docker/daemon.json`, directories, user permissions. |
+| **Docker Compose** | **Container Isolation & Runtime Execution** | Continuous Runtime | Container processes, network boundaries (`hormuzwatch-dev-network`), volumes, restarts. |
+| **Jenkins** | **Application CI/CD on Commits** | Day 2 (On every Git commit / push) | Pulling code changes, running test suites, rebuilding images, rolling container recreation, automated rollbacks. |
+| **SRE CLI & Prometheus** | **Reliability Engineering & Observability** | 24/7 Monitoring | Probing health endpoints, SLI/SLO tracking, log streaming, failure detection. |
+
+### Architectural Boundary Rules:
+- **Rule 1**: Ansible does **NOT** listen to Git webhooks or deploy code on commits. That is strictly Jenkins's job.
+- **Rule 2**: Jenkins does **NOT** install OS packages or modify kernel sysctl parameters. That is strictly Ansible's job.
+- **Rule 3**: Ansible does **NOT** monitor metrics or tail logs. That is strictly the SRE CLI (`sre.sh`) and Prometheus's job.
+- **Rule 4**: Ansible's sole reason for existing in this repository is to answer: *"How do we spin up the entire server on a blank machine from zero in under 5 minutes?"*
+
