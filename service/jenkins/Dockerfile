@@ -22,8 +22,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     docker-compose-plugin \
     && rm -rf /var/lib/apt/lists/*
 
-# Add jenkins user to docker group (GID 983 on tunkstun host)
-RUN groupadd -g 983 docker-host || true && \
+# Add jenkins user to docker group (GID 127 on tunkstun host)
+RUN groupadd -g 127 docker-host || true && \
     usermod -aG docker-host jenkins || true
 
 USER jenkins

@@ -9,7 +9,7 @@
   gather_facts: true
 
   vars:
-    compose_file: "{{ compose_file | default('docker-compose.dev.yml') }}"
+    compose_file: "docker-compose.dev.yml"
 
   roles:
     - role: system_prep

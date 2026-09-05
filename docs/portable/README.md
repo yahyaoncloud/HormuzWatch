@@ -48,6 +48,7 @@ graph TD
 | [**DOCKER_REGISTRY.md**](./DOCKER_REGISTRY.md) | Private Docker v2 registry deployment and image distribution | Docker Registry v2, `scripts/registry/` |
 | [**MODEL_REGISTRY.md**](./MODEL_REGISTRY.md) | ML model versioning, staging, and S3 artifact registry | MinIO, `scripts/model_registry.py` |
 | [**DATASET_REGISTRY.md**](./DATASET_REGISTRY.md) | Maritime & aviation telemetry dataset versioning | SHA256 catalogs, `scripts/dataset_registry.py` |
+| [**JENKINS_DEPLOYMENT_GUIDE.md**](./JENKINS_DEPLOYMENT_GUIDE.md) | Automated CD pipeline deploying workloads on commits | Jenkins, Docker Socket, Webhooks |
 | [**COLD_START_RUNBOOK.md**](./COLD_START_RUNBOOK.md) | Emergency recovery & cold start SOP from blank hardware | Complete step-by-step checklist |
 
 ---
