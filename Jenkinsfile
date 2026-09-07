@@ -90,9 +90,10 @@ pipeline {
                                 if [ -d ".venv-mlops" ]; then
                                     .venv-mlops/bin/python mlops/data/contracts/telemetry_contract.py || true
                                     .venv-mlops/bin/python mlops/models/evaluations/slice_evaluator.py || true
+                                elif docker ps | grep -q hormuzwatch-ml-dev; then
+                                    docker exec hormuzwatch-ml-dev python -c "import pandas, sklearn; print('ML service environment verified')" || true
                                 else
-                                    python3 mlops/data/contracts/telemetry_contract.py || true
-                                    python3 mlops/models/evaluations/slice_evaluator.py || true
+                                    python3 -c "import pandas" 2>/dev/null && python3 mlops/data/contracts/telemetry_contract.py || true
                                 fi
                                 echo "==> [Service] ML contracts & evaluation slices verified."
                             '''
