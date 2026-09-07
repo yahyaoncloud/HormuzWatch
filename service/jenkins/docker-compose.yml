@@ -6,7 +6,7 @@ services:
     image: hormuzwatch-jenkins:lts
     container_name: hormuzwatch-jenkins
     restart: unless-stopped
-    user: "1000:127"
+    user: "1000:984"
     ports:
       - "${JENKINS_PORT:-8085}:8080"
       - "50000:50000"

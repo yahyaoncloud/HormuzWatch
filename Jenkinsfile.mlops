@@ -22,7 +22,7 @@ pipeline {
     }
 
     environment {
-        PROJECT_DIR = '/run/media/tp24/SHARED1/Projects/HormuzWatch'
+        PROJECT_DIR = '/home/yahya/SHARED/Projects/HormuzWatch'
         PYTHONUNBUFFERED = '1'
         MIN_PR_AUC = '0.90'
         MAX_P95_LATENCY_MS = '12.0'
