@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { checkHealth, type HealthResponse } from '@/lib/api';
 import { useHealthStore } from '@/stores/slices/health.store';
+import { useServerStatusStore } from '@/stores/slices/serverStatus.store';
 
 export function useSystemHealth(pollIntervalMs = 10000) {
   const setSystemHealth = useHealthStore((s) => s.setSystemHealth);
@@ -29,6 +30,9 @@ export function useSystemHealth(pollIntervalMs = 10000) {
         },
       });
 
+      const isHealthy = data.status === 'healthy' || data.status === 'ok' || data.status === 'ready';
+      useServerStatusStore.getState().setHttpHealth(isHealthy, data);
+
       const db = data.components?.database;
       const ml = data.components?.ml_service;
       setMetricLog('api', {
@@ -38,8 +42,10 @@ export function useSystemHealth(pollIntervalMs = 10000) {
         details: `DB Latency: ${db?.latency || (db?.ping_ms !== undefined ? `${db.ping_ms}ms` : '45ms')} (Healthy: ${db?.healthy ?? true}) | ML Circuit: ${ml?.circuit || 'CLOSED'}`,
         status: data.status === 'healthy' ? 'ok' : data.status === 'degraded' ? 'warn' : 'error',
       });
+    } else if (error) {
+      useServerStatusStore.getState().setHttpHealth(false);
     }
-  }, [data, setSystemHealth, setMetricLog]);
+  }, [data, error, setSystemHealth, setMetricLog]);
 
   return {
     health: systemHealth || data,

@@ -8,17 +8,23 @@ export interface DataFreshnessIndicatorProps {
   staleThresholdSec?: number;
   className?: string;
   showLabel?: boolean;
+  isStreaming?: boolean;
+  playbackDelaySec?: number;
+  statusOverride?: FreshnessState;
 }
 
-export type FreshnessState = 'live' | 'recent' | 'stale' | 'offline';
+export type FreshnessState = 'live' | 'buffered' | 'recent' | 'stale' | 'offline';
 
 export const DataFreshnessIndicator: React.FC<DataFreshnessIndicatorProps> = ({
   timestamp,
-  liveThresholdSec = 5,
-  recentThresholdSec = 30,
-  staleThresholdSec = 120,
+  liveThresholdSec = 15,
+  recentThresholdSec = 60,
+  staleThresholdSec = 180,
   className,
   showLabel = true,
+  isStreaming,
+  playbackDelaySec = 0,
+  statusOverride,
 }) => {
   const [ageSec, setAgeSec] = useState<number | null>(null);
 
@@ -44,17 +50,32 @@ export const DataFreshnessIndicator: React.FC<DataFreshnessIndicatorProps> = ({
   }, [timestamp]);
 
   let state: FreshnessState = 'offline';
-  if (ageSec !== null) {
-    if (ageSec <= liveThresholdSec) state = 'live';
-    else if (ageSec <= recentThresholdSec) state = 'recent';
-    else if (ageSec <= staleThresholdSec) state = 'stale';
-    else state = 'offline';
+  if (statusOverride) {
+    state = statusOverride;
+  } else if (ageSec !== null) {
+    // If stream is in playback buffer (e.g. 90s delay), calculate age relative to buffer delay
+    const effectiveAge = playbackDelaySec > 0 ? Math.max(0, ageSec - playbackDelaySec) : ageSec;
+    if (playbackDelaySec > 0 && isStreaming) {
+      state = effectiveAge <= recentThresholdSec ? 'buffered' : effectiveAge <= staleThresholdSec ? 'stale' : 'offline';
+    } else if (isStreaming && ageSec <= staleThresholdSec) {
+      state = ageSec <= liveThresholdSec ? 'live' : 'buffered';
+    } else if (effectiveAge <= liveThresholdSec) {
+      state = 'live';
+    } else if (effectiveAge <= recentThresholdSec) {
+      state = 'recent';
+    } else if (effectiveAge <= staleThresholdSec) {
+      state = 'stale';
+    } else {
+      state = 'offline';
+    }
+  } else if (isStreaming) {
+    state = 'buffered';
   }
 
   const formatAge = (sec: number | null): string => {
-    if (sec === null) return 'NO DATA';
+    if (sec === null) return isStreaming ? 'STREAMING' : 'NO DATA';
     if (sec < 1) return '< 1s';
-    if (sec < 60) return `${sec.toFixed(1)}s`;
+    if (sec < 60) return `${sec.toFixed(0)}s`;
     const min = Math.floor(sec / 60);
     const remSec = Math.floor(sec % 60);
     return `${min}m ${remSec}s`;
@@ -62,9 +83,15 @@ export const DataFreshnessIndicator: React.FC<DataFreshnessIndicatorProps> = ({
 
   const statusConfig = {
     live: {
-      color: 'bg-emerald-500 shadow-[0_0_4px_#22c55e]',
+      color: 'bg-emerald-500 shadow-[0_0_6px_#22c55e]',
       text: 'text-emerald-400',
-      label: 'LIVE',
+      label: 'LIVE STREAM',
+      pulse: true,
+    },
+    buffered: {
+      color: 'bg-cyan-500 shadow-[0_0_6px_#06b6d4]',
+      text: 'text-cyan-400',
+      label: playbackDelaySec > 0 ? `STREAMING (${playbackDelaySec}s BUF)` : 'STREAMING',
       pulse: true,
     },
     recent: {

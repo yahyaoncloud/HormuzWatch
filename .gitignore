@@ -35,6 +35,8 @@ server/datasets/
 !server/datasets/registry_manifest.json
 data/docker-registry/
 data/minio-data/
+**/docker-registry/
+**/minio-data/
 dist/
 
 # Go
@@ -43,6 +45,7 @@ bin/
 *.test
 *.prof
 server/cmd/main
+server/main
 server/dataset-generator
 server/hormuzwatch-server
 
@@ -68,3 +71,4 @@ Thumbs.db
 *.cb
 *.cb2
 ._*
+.venv-mlops/

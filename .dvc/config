@@ -1,0 +1,7 @@
+[core]
+    remote = minio-storage
+['remote "minio-storage"']
+    url = s3://hormuzwatch-datasets
+    endpointurl = http://localhost:9000
+    access_key_id = hormuzadmin
+    secret_access_key = HormuzSecret2026!

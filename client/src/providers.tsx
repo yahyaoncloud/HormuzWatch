@@ -15,7 +15,7 @@ import { env } from "@/environments/environment";
 // ============================================================
 
 import { getSupabase, isSupabaseAvailable } from '@/lib/supabase';
-import { useAdminStore, useRealtimeStore } from '@/stores';
+import { useAdminStore, useRealtimeStore, useServerStatusStore } from '@/stores';
 
 export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const setSession = useAdminStore((s) => s.setSession);
@@ -181,6 +181,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       socket.onopen = () => {
         setStatus('connected');
         rtSetWsStatus('connected');
+        useServerStatusStore.getState().setWsStatus('connected');
+        useServerStatusStore.getState().recordHeartbeat('ws-open');
         setReconnectAttempt(0);
         if (env.isDev) {
           console.log('[WS] Telemetry WebSocket connected');
@@ -196,6 +198,9 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           const payload = rawMessage.payload !== undefined ? rawMessage.payload : rawMessage.data;
           const message = { ...rawMessage, payload } as WSMessage;
           setLastMessage(message);
+
+          // Update server status heartbeat
+          useServerStatusStore.getState().recordHeartbeat(message.type);
 
           // Push to Zustand realtime store (single source of truth)
           switch (message.type) {
@@ -247,9 +252,12 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
               }
               break;
             }
-            case 'stats':
-              rtSetStats(message.payload as StatsPayload);
+            case 'stats': {
+              const sPayload = message.payload as StatsPayload;
+              rtSetStats(sPayload);
+              useServerStatusStore.getState().setTrackCounts(sPayload.maritimeCount || 0, sPayload.aviationCount || 0);
               break;
+            }
             case 'conflict':
               rtAddConflict(message.payload as any);
               break;
@@ -269,6 +277,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
       socket.onclose = () => {
         setStatus('reconnecting');
+        useServerStatusStore.getState().setWsStatus('reconnecting');
         // Clear realtime data on disconnect — no stale metrics
         rtClearAll();
         rtSetWsStatus('disconnected');
@@ -437,7 +446,12 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     connect();
+    const signalInterval = setInterval(() => {
+      useServerStatusStore.getState().evaluateSignal();
+    }, 5000);
+
     return () => {
+      clearInterval(signalInterval);
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;

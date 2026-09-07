@@ -90,6 +90,7 @@ services:
       # Mount only source directories for live-reload dev, NOT the entire ml-service dir
       # This avoids mounting host .venv/ into the container
       - ./service/ml-service/app.py:/app/app.py:ro
+      - ./service/ml-service/core:/app/core:ro
       - ./service/ml-service/api:/app/api:ro
       - ./service/ml-service/lib:/app/lib:ro
       - ./service/ml-service/grpc_server.py:/app/grpc_server.py:ro

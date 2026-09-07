@@ -55,7 +55,7 @@ def evaluate_feature_drift(baseline_df: pd.DataFrame, current_df: pd.DataFrame) 
         ks_stat, ks_pval = ks_2samp(b_vals, c_vals)
         
         status = "NOMINAL"
-        if psi >= config.psi_critical_threshold or ks_pval < config.ks_alpha:
+        if psi >= config.psi_critical_threshold or ks_pval < getattr(config, "ks_test_alpha", getattr(config, "ks_alpha", 0.01)):
             status = "CRITICAL_DRIFT"
             triggered_retrain = True
         elif psi >= config.psi_warning_threshold:

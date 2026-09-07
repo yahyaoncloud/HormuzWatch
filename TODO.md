@@ -386,13 +386,13 @@ Comprehensive action items, architectural alignment, and critical bug fixes iden
 
 ### 16.1. Critical Defects & Immediate Bug Fixes (P0)
 
-- [ ] **Priority:** P0  
+- [x] **Priority:** P0  
   **Area:** ML Inference REST Service / Runtime 500 Crash  
   **File:** [`service/ml-service/app.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/service/ml-service/app.py)  
   **Problem:** `POST /api/predict` crashes with HTTP 500 (`TypeError: float() argument must be a string or a real number, not 'VesselFeatures'`). `parse_features` returns a Pydantic model instance which is directly passed to `global_drift_monitor.record_observation` (expects numpy array) and to `score(x=x_arr, track_id=...)` with invalid kwargs (`score` expects positional `feature_array` and `feature_names`).  
   **Fix:** Call `feature_array = features_model.to_array()` and pass canonical `feature_array` and `feature_names` to both `global_drift_monitor.record_observation` and `score()`, matching the working pattern in `grpc_server.py`.
 
-- [ ] **Priority:** P0  
+- [x] **Priority:** P0  
   **Area:** Continuous Training Pipeline / CLI Parameter Handling  
   **Files:** [`Jenkinsfile.mlops`](file:///home/tp24/SHARED/Projects/HormuzWatch/Jenkinsfile.mlops), [`pipeline/deploy_candidate.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/pipeline/deploy_candidate.py)  
   **Problem:** `Jenkinsfile.mlops` invokes `python3 pipeline/deploy_candidate.py --validate-only` and `python3 pipeline/deploy_candidate.py --execute`. However, `deploy_candidate.py` reads `sys.argv[1]` as the domain name, crashing immediately with `ValueError: Unknown domain '--validate-only'`.  
@@ -400,25 +400,25 @@ Comprehensive action items, architectural alignment, and critical bug fixes iden
 
 ### 16.2. Configuration & Integration Defects (P1)
 
-- [ ] **Priority:** P1  
+- [x] **Priority:** P1  
   **Area:** Statistical Drift Monitor / Config Attribute Mismatch  
   **File:** [`pipeline/drift_monitor.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/pipeline/drift_monitor.py)  
   **Problem:** Line 58 accesses `config.ks_alpha`, but the field is defined as `ks_test_alpha` in [`pipeline/config.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/pipeline/config.py). Invoking feature drift evaluation raises `AttributeError`.  
   **Fix:** Align attribute name to `config.ks_test_alpha` (or add alias `ks_alpha`).
 
-- [ ] **Priority:** P1  
+- [x] **Priority:** P1  
   **Area:** Feature Extractor / Database Fallback Swallowing  
   **Files:** [`pipeline/extract_features.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/pipeline/extract_features.py), [`pipeline/config.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/pipeline/config.py)  
   **Problem:** `extract_features_from_db` references `config.db_url` and `config.min_samples_for_retrain`, which are absent from `MLOpsConfig`. The resulting `AttributeError` is caught by a blanket `except Exception: pass`, silently forcing training pipelines to always use synthetic parametric data instead of PostgreSQL telemetry history.  
   **Fix:** Add `db_url: str = os.getenv("DATABASE_URL", ...)` and `min_samples_for_retrain: int = 500` to `MLOpsConfig`, and add logging for database connection failures.
 
-- [ ] **Priority:** P1  
+- [x] **Priority:** P1  
   **Area:** Dynamic Model Registry / String Formatting Exception  
   **File:** [`service/ml-service/core/registry.py`](file:///home/tp24/SHARED/Projects/HormuzWatch/service/ml-service/core/registry.py)  
   **Problem:** Line 80 uses Go format specifier `%v` (`logger.error("Failed to load model module '%s': %v", ...)`), causing a `ValueError: unsupported format character 'v'` upon module discovery errors.  
   **Fix:** Replace `%v` with `%s`.
 
-- [ ] **Priority:** P1  
+- [x] **Priority:** P1  
   **Area:** Container Orchestration / Missing Pluggable Core Volume  
   **File:** [`docker-compose.dev.yml`](file:///home/tp24/SHARED/Projects/HormuzWatch/docker-compose.dev.yml)  
   **Problem:** The `ml` service volume mounts mount individual files and `api/` and `lib/`, but omit `./service/ml-service/core:/app/core:ro`. New models or registry modifications in `core/` are not mounted into the dev container.  

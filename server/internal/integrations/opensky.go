@@ -5,8 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
+	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
+	"sync"
 	"time"
 
 	"Geospatial-harmuz-watch/server/internal/api"
@@ -18,6 +22,52 @@ import (
 type OpenSkyResponse struct {
 	Time   int64           `json:"time"`
 	States [][]interface{} `json:"states"`
+}
+
+// activeFlightState tracks live flight kinematics for dead-reckoning during poll intervals and 429 backoff
+type activeFlightState struct {
+	TrackID      string
+	Callsign     string
+	Lat          float64
+	Lon          float64
+	SpeedKnots   float64
+	HeadingDeg   float64
+	AltitudeM    float64
+	VerticalRate float64
+	LastUpdated  time.Time
+}
+
+type FlightRegistry struct {
+	mu      sync.RWMutex
+	flights map[string]*activeFlightState
+}
+
+func newFlightRegistry() *FlightRegistry {
+	return &FlightRegistry{
+		flights: make(map[string]*activeFlightState),
+	}
+}
+
+func (r *FlightRegistry) update(f *activeFlightState) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.flights[f.TrackID] = f
+}
+
+func (r *FlightRegistry) snapshot() []*activeFlightState {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	list := make([]*activeFlightState, 0, len(r.flights))
+	cutoff := time.Now().Add(-20 * time.Minute)
+	for id, f := range r.flights {
+		if f.LastUpdated.Before(cutoff) {
+			delete(r.flights, id)
+			continue
+		}
+		cp := *f
+		list = append(list, &cp)
+	}
+	return list
 }
 
 func StartOpenSky(ctx context.Context, p *intelligence.Pipeline) {
@@ -34,17 +84,74 @@ func StartOpenSky(ctx context.Context, p *intelligence.Pipeline) {
 		"https://opensky-network.org/api/states/all?lamin=21&lomin=47&lamax=32.5&lomax=62",
 	}
 
-	// Rate limit: anonymous users get 400 requests/day (~1 call per 3.6 min)
-	// Authenticated users get 4000 requests/day. Use 4-min for anon, 2-min for auth.
-	pollInterval := 4 * time.Minute
+	// Lenient rate limit intervals to strictly prevent 429 Too Many Requests:
+	// Anonymous quota: 400 requests/day (~3.6 min/req). We use 4.5m to guarantee headroom.
+	// Authenticated quota: 4000 requests/day. We use 2.5m.
+	pollInterval := 270 * time.Second
 	if !isAnonymous {
-		pollInterval = 2 * time.Minute
+		pollInterval = 150 * time.Second
 	}
 	currentInterval := pollInterval
 
 	client := &http.Client{Timeout: 15 * time.Second}
+	registry := newFlightRegistry()
 
-	log.Printf("[OpenSky] Starting poll loop (interval=%v, anonymous=%v, boxes=%d)", pollInterval, isAnonymous, len(urls))
+	log.Printf("[OpenSky] Starting lenient poll loop (base interval=%v, anonymous=%v, boxes=%d)", pollInterval, isAnonymous, len(urls))
+
+	// Background dead-reckoning extrapolator: advances flight paths every 15s so the map stays
+	// silky smooth and realistic without needing aggressive upstream API calls.
+	go func() {
+		ticker := time.NewTicker(15 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case now := <-ticker.C:
+				flights := registry.snapshot()
+				for _, f := range flights {
+					dtHours := now.Sub(f.LastUpdated).Hours()
+					if dtHours <= 0 || dtHours > 0.35 {
+						continue
+					}
+
+					// Dead-reckon position along great circle vector
+					distNm := f.SpeedKnots * dtHours
+					rad := f.HeadingDeg * (math.Pi / 180.0)
+					dLat := (distNm * math.Cos(rad)) / 60.0
+					cosLat := math.Cos(f.Lat * (math.Pi / 180.0))
+					if cosLat < 0.1 {
+						cosLat = 0.1
+					}
+					dLon := (distNm * math.Sin(rad)) / (60.0 * cosLat)
+
+					newLat := f.Lat + dLat
+					newLon := f.Lon + dLon
+
+					// Check bounds
+					if newLat < 20.0 || newLat > 33.5 || newLon < 46.0 || newLon > 63.0 {
+						continue
+					}
+
+					payload := api.TelemetryPayload{
+						TrackID:           f.TrackID,
+						AssetName:         f.Callsign,
+						Timestamp:         now.UTC().Format(time.RFC3339),
+						Lat:               newLat,
+						Lon:               newLon,
+						Speed:             f.SpeedKnots,
+						Heading:           f.HeadingDeg,
+						Altitude:          f.AltitudeM,
+						AisAgeMinutes:     0,
+						HotZoneDistanceNm: 0,
+						ObjectType:        telemetry.DomainAircraft,
+						Source:            telemetry.SourceOpenSky,
+					}
+					p.EnqueueObservation(&payload)
+				}
+			}
+		}
+	}()
 
 	for {
 		select {
@@ -55,7 +162,7 @@ func StartOpenSky(ctx context.Context, p *intelligence.Pipeline) {
 		}
 
 		for _, url := range urls {
-			log.Println("[OpenSky] Fetching OpenSky data...")
+			log.Println("[OpenSky] Fetching OpenSky telemetry snapshot...")
 
 			req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 			if err != nil {
@@ -63,7 +170,7 @@ func StartOpenSky(ctx context.Context, p *intelligence.Pipeline) {
 				continue
 			}
 
-			req.Header.Set("User-Agent", "HormuzWatch/2.0 (Maritime & Aviation Intelligence; contact@hormuzwatch.internal)")
+			req.Header.Set("User-Agent", "HormuzWatch/2.4 (Maritime & Aviation Intelligence; contact@hormuzwatch.internal)")
 			if !isAnonymous {
 				req.SetBasicAuth(username, password)
 			}
@@ -79,15 +186,27 @@ func StartOpenSky(ctx context.Context, p *intelligence.Pipeline) {
 				}
 			}
 
+			// Handle HTTP 429 Too Many Requests with leniency & backoff
+			if resp.StatusCode == http.StatusTooManyRequests {
+				resp.Body.Close()
+				backoffDuration := 10 * time.Minute
+				if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {
+					if sec, err := strconv.Atoi(retryAfter); err == nil && sec > 0 {
+						backoffDuration = time.Duration(sec)*time.Second + time.Duration(rand.Intn(30))*time.Second
+					}
+				}
+				currentInterval = backoffDuration
+				log.Printf("[OpenSky] Rate limited (HTTP 429). Dead-reckoning cache active. Backing off to %v", currentInterval)
+				continue
+			}
+
 			if resp.StatusCode != http.StatusOK {
 				log.Printf("[OpenSky] API error: HTTP %d (%s)", resp.StatusCode, resp.Status)
-				if resp.StatusCode == 429 {
-					currentInterval = 10 * time.Minute
-					log.Printf("[OpenSky] Rate limited (429). Backing off to %v", currentInterval)
-				}
 				resp.Body.Close()
 				continue
 			}
+
+			// Reset interval to base pollInterval on success
 			currentInterval = pollInterval
 
 			var openSkyData OpenSkyResponse
@@ -99,6 +218,7 @@ func StartOpenSky(ctx context.Context, p *intelligence.Pipeline) {
 			resp.Body.Close()
 
 			observations := 0
+			now := time.Now()
 			for _, state := range openSkyData.States {
 				if len(state) < 17 {
 					continue
@@ -132,14 +252,44 @@ func StartOpenSky(ctx context.Context, p *intelligence.Pipeline) {
 					altMeters = baroAlt
 				}
 
+				var vertRate float64
+				if vr, ok := state[11].(float64); ok {
+					vertRate = vr
+				}
+
 				if callsign == "" {
 					callsign = fmt.Sprintf("ICAO-%s", icao24)
 				}
 
+				trackID := fmt.Sprintf("FLIGHT-%s", icao24)
+
+				// Reject obvious sensor errors (aircraft > Mach 3 / ~2000 kn)
+				if speedKnots > 2000.0 {
+					continue
+				}
+
+				// Data Quality: Reject positions on ocean if altitude is below -100m
+				if altMeters < -100 && !geo.IsOnLand(lat, lon) {
+					continue
+				}
+
+				// Update registry for smooth dead reckoning
+				registry.update(&activeFlightState{
+					TrackID:      trackID,
+					Callsign:     callsign,
+					Lat:          lat,
+					Lon:          lon,
+					SpeedKnots:   speedKnots,
+					HeadingDeg:   heading,
+					AltitudeM:    altMeters,
+					VerticalRate: vertRate,
+					LastUpdated:  now,
+				})
+
 				payload := api.TelemetryPayload{
-					TrackID:           fmt.Sprintf("FLIGHT-%s", icao24),
+					TrackID:           trackID,
 					AssetName:         callsign,
-					Timestamp:         time.Now().UTC().Format(time.RFC3339),
+					Timestamp:         now.UTC().Format(time.RFC3339),
 					Lat:               lat,
 					Lon:               lon,
 					Speed:             speedKnots,
@@ -149,16 +299,6 @@ func StartOpenSky(ctx context.Context, p *intelligence.Pipeline) {
 					HotZoneDistanceNm: 0,
 					ObjectType:        telemetry.DomainAircraft,
 					Source:            telemetry.SourceOpenSky,
-				}
-
-				// Reject obvious sensor errors (aircraft > Mach 3 / ~2000 kn)
-				if speedKnots > 2000.0 {
-					continue
-				}
-
-				// Data Quality: Reject positions on ocean if altitude is below 0
-				if altMeters < -100 && !geo.IsOnLand(lat, lon) {
-					continue
 				}
 
 				p.EnqueueObservation(&payload)

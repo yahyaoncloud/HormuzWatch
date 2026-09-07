@@ -49,6 +49,7 @@ type Pipeline struct {
 	Hub      *hub.Hub
 	TSM      *TrackStateManager
 	MLClient *MLClient
+	Playback *PlaybackBuffer
 
 	// ── Worker pool (bounded buffered channel work queue) ────────
 	jobQueue         chan *telemetry.Observation
@@ -75,6 +76,7 @@ func NewPipelineWithQueue(h *hub.Hub, tsm *TrackStateManager, ml *MLClient, work
 		Hub:      h,
 		TSM:      tsm,
 		MLClient: ml,
+		Playback: NewPlaybackBuffer(h, 90*time.Second),
 		jobQueue: make(chan *telemetry.Observation, queueSize),
 		ctx:      ctx,
 		cancel:   cancel,
@@ -146,6 +148,9 @@ func (p *Pipeline) ProcessObservation(ctx context.Context, payload *telemetry.Ob
 func (p *Pipeline) Shutdown(timeout time.Duration) {
 	log.Println("[pipeline] Shutting down worker pool...")
 	p.cancel()
+	if p.Playback != nil {
+		p.Playback.Close()
+	}
 
 	// Wait for workers to drain with timeout
 	done := make(chan struct{})
@@ -237,24 +242,30 @@ func (p *Pipeline) process(payload *telemetry.Observation) ThreatAssessment {
 	assessment := ComputeComposite(features, ruleScore, mlScore, geoScore, explanation)
 	p.TSM.SetAssessment(payload.TrackID, assessment.FinalScore, assessment.Severity, assessment.Reasons)
 
-	// ── 7. Publish live telemetry (non-blocking) ──────────────
-	p.Hub.Publish(hub.Message{
-		Type: "telemetry",
-		Data: payload,
-	})
+	// ── 7. Enqueue into time-shifted playback buffer (pregather & comfortable 1-2m delay) ──
+	if p.Playback != nil {
+		p.Playback.Push(payload, &assessment)
+	} else {
+		p.Hub.Publish(hub.Message{
+			Type: "telemetry",
+			Data: payload,
+		})
+		if assessment.FinalScore > 0 {
+			p.Hub.Publish(hub.Message{
+				Type: "anomaly",
+				Data: assessment,
+			})
+		}
+	}
 
 	// ── 8. Persist telemetry ──────────────────────────────────
 	if err := db.PersistTelemetry(context.Background(), *payload); err != nil {
 		log.Printf("[pipeline] persist telemetry %s: %v", payload.TrackID, err)
 	}
 
-	// ── 9. Publish & persist anomaly if above threshold ───────
+	// ── 9. Persist anomaly if above threshold ───────
 	if assessment.FinalScore > 0 {
 		observability.AnomaliesDetected.Add(1)
-		p.Hub.Publish(hub.Message{
-			Type: "anomaly",
-			Data: assessment,
-		})
 
 		reasonsJSON, _ := json.Marshal(assessment.Reasons)
 		actionsJSON, _ := json.Marshal(assessment.Actions)
@@ -299,11 +310,21 @@ func (p *Pipeline) processBlockadeObservation(payload *telemetry.Observation) Th
 	assessment := ComputeComposite(features, ruleScore, mlScore, geoScore, explanation)
 	assessment.TrackID = payload.TrackID
 
-	// Publish telemetry
-	p.Hub.Publish(hub.Message{
-		Type: "telemetry",
-		Data: payload,
-	})
+	// Enqueue into time-shifted playback buffer (pregather & comfortable 1-2m delay)
+	if p.Playback != nil {
+		p.Playback.Push(payload, &assessment)
+	} else {
+		p.Hub.Publish(hub.Message{
+			Type: "telemetry",
+			Data: payload,
+		})
+		if assessment.FinalScore > 0 {
+			p.Hub.Publish(hub.Message{
+				Type: "anomaly",
+				Data: assessment,
+			})
+		}
+	}
 
 	if err := db.PersistTelemetry(context.Background(), *payload); err != nil {
 		log.Printf("[pipeline] persist telemetry %s: %v", payload.TrackID, err)
@@ -311,10 +332,6 @@ func (p *Pipeline) processBlockadeObservation(payload *telemetry.Observation) Th
 
 	if assessment.FinalScore > 0 {
 		observability.AnomaliesDetected.Add(1)
-		p.Hub.Publish(hub.Message{
-			Type: "anomaly",
-			Data: assessment,
-		})
 
 		reasonsJSON, _ := json.Marshal(assessment.Reasons)
 		actionsJSON, _ := json.Marshal(assessment.Actions)

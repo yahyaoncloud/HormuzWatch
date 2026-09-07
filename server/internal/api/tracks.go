@@ -3,6 +3,7 @@ package api
 import (
 	"Geospatial-harmuz-watch/server/internal/db"
 	"Geospatial-harmuz-watch/server/internal/integrations/ais"
+	"Geospatial-harmuz-watch/server/internal/intelligence"
 	"net/http"
 	"time"
 
@@ -94,8 +95,28 @@ func queryActiveTracks(filter string) []ActiveTrack {
 		}
 	}
 
-	// 2. Ingest tracks from GlobalTSM
-	if GlobalTSM != nil && GlobalTSM.TrackCount() > 0 {
+	// 2. Ingest tracks from GlobalPlayback (Time-shifted comfortable delay presentation) or GlobalTSM
+	if intelligence.GlobalPlayback != nil && intelligence.GlobalPlayback.TrackCount() > 0 {
+		snapshots := intelligence.GlobalPlayback.GetActiveTracksSnapshot(filter)
+		for _, s := range snapshots {
+			if !isGulfCoordinate(s.Lat, s.Lon) || seen[s.TrackID] {
+				continue
+			}
+			seen[s.TrackID] = true
+			tracks = append(tracks, ActiveTrack{
+				TrackID:      s.TrackID,
+				AssetName:    s.AssetName,
+				Timestamp:    s.Timestamp,
+				Lat:          s.Lat,
+				Lon:          s.Lon,
+				Speed:        s.Speed,
+				Heading:      s.Heading,
+				AnomalyScore: s.AnomalyScore,
+				Severity:     s.Severity,
+				LastUpdated:  s.LastUpdated,
+			})
+		}
+	} else if GlobalTSM != nil && GlobalTSM.TrackCount() > 0 {
 		snapshots := GlobalTSM.GetActiveTracksSnapshot(filter)
 		for _, s := range snapshots {
 			if !isGulfCoordinate(s.Lat, s.Lon) || seen[s.TrackID] {

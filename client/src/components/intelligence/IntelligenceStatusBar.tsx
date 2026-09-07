@@ -1,7 +1,8 @@
 import React from 'react';
-import { AlertTriangle, Flame, ShieldAlert, Clock, Activity } from 'lucide-react';
+import { AlertTriangle, Flame, ShieldAlert, Clock, Activity, Server, Radio, Cpu, Layers } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { DataFreshnessIndicator } from '@/components/common/DataFreshnessIndicator';
+import { useServerStatusStore } from '@/stores/slices/serverStatus.store';
 
 export interface IntelligenceStatusBarProps {
   activeAnomalies: number;
@@ -22,15 +23,21 @@ export const IntelligenceStatusBar: React.FC<IntelligenceStatusBarProps> = ({
   avgScore,
   className,
 }) => {
+  const isOnline = useServerStatusStore((s) => s.isOnline);
+  const isStreaming = useServerStatusStore((s) => s.isStreaming);
+  const serverState = useServerStatusStore((s) => s.serverState);
+  const stages = useServerStatusStore((s) => s.stages);
+  const playbackDelaySec = useServerStatusStore((s) => s.playbackDelaySec);
+
   return (
     <div
       className={cn(
-        'w-full border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 tactical-beveled flex items-center justify-between gap-2 flex-wrap select-none',
+        'w-full border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 tactical-beveled flex items-center justify-between gap-3 flex-wrap select-none',
         className
       )}
     >
       {/* Metrics Group */}
-      <div className="flex items-center gap-3 sm:gap-6 flex-wrap">
+      <div className="flex items-center gap-3 sm:gap-5 flex-wrap">
         {/* Active Anomalies Readout */}
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 border border-[var(--color-border)] bg-[var(--color-bg-input)] flex items-center justify-center text-[var(--color-primary-600)] dark:text-[#38bdf8]">
@@ -117,10 +124,68 @@ export const IntelligenceStatusBar: React.FC<IntelligenceStatusBarProps> = ({
         )}
       </div>
 
-      {/* Freshness Indicator */}
-      <div className="flex items-center gap-2">
-        <span className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase hidden md:inline">STREAM STATUS:</span>
-        <DataFreshnessIndicator timestamp={latestTimestamp} />
+      {/* Global Server State & Pipeline Stages Cluster */}
+      <div className="flex items-center gap-2 sm:gap-3 flex-wrap ml-auto">
+        {/* Pipeline Stages Mini Badges */}
+        <div className="hidden xl:flex items-center gap-1.5 font-mono text-[9px]">
+          {/* Ingestion */}
+          <span
+            className="px-1.5 py-0.5 border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 flex items-center gap-1"
+            title={stages.ingestion.details}
+          >
+            <Radio className="w-2.5 h-2.5 animate-pulse" />
+            INGEST: LIVE
+          </span>
+
+          {/* ML Ensemble */}
+          <span
+            className="px-1.5 py-0.5 border border-cyan-500/40 bg-cyan-500/10 text-cyan-400 flex items-center gap-1"
+            title={stages.mlEnsemble.details}
+          >
+            <Cpu className="w-2.5 h-2.5" />
+            ML: {stages.mlEnsemble.badge}
+          </span>
+
+          {/* Playback Buffer */}
+          <span
+            className="px-1.5 py-0.5 border border-indigo-500/40 bg-indigo-500/10 text-indigo-400 flex items-center gap-1"
+            title={stages.playbackBuffer.details}
+          >
+            <Layers className="w-2.5 h-2.5" />
+            BUFFER: {playbackDelaySec}s
+          </span>
+        </div>
+
+        <div className="w-px h-6 bg-[var(--color-border)] hidden xl:block" />
+
+        {/* Server Online Indicator */}
+        <div className="flex items-center gap-1.5 px-2 py-1 border border-[var(--color-border)] bg-[var(--color-bg-input)] font-mono text-[10px]">
+          <Server className="w-3 h-3 text-[var(--color-fg-muted)]" />
+          <span className="text-[var(--color-fg-muted)] uppercase hidden sm:inline">SERVER:</span>
+          {isOnline ? (
+            <span className="font-bold text-emerald-400 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-none shadow-[0_0_6px_#22c55e] animate-pulse" />
+              ONLINE
+            </span>
+          ) : serverState === 'reconnecting' ? (
+            <span className="font-bold text-amber-400 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-amber-400 rounded-none animate-ping" />
+              RECONNECTING
+            </span>
+          ) : (
+            <span className="font-bold text-rose-400 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-rose-400 rounded-none" />
+              OFFLINE
+            </span>
+          )}
+        </div>
+
+        {/* Data Stream Freshness Indicator (Steady, buffered) */}
+        <DataFreshnessIndicator
+          timestamp={latestTimestamp}
+          isStreaming={isStreaming}
+          playbackDelaySec={playbackDelaySec}
+        />
       </div>
     </div>
   );

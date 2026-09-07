@@ -1,0 +1,4 @@
+# DVC data ignore: do not track large data blobs in Git
+*
+!.gitignore
+!*.dvc

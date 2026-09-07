@@ -79,3 +79,31 @@ services:
       echo 'Registry buckets provisioned: hormuzwatch-models, hormuzwatch-datasets';
       exit 0;
       "
+
+  # ============================================================================
+  # 4. Open-Source MLflow Tracking & Model Registry Server (Port 5001)
+  # ============================================================================
+  mlflow-server:
+    image: ghcr.io/mlflow/mlflow:v2.19.0
+    container_name: hormuzwatch-mlflow-server
+    restart: unless-stopped
+    ports:
+      - "${MLFLOW_PORT:-5001}:5001"
+    environment:
+      - MLFLOW_S3_ENDPOINT_URL=http://model-registry:9000
+      - AWS_ACCESS_KEY_ID=${MINIO_USER:-hormuzadmin}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_PASSWORD:-HormuzSecret2026!}
+      - AWS_DEFAULT_REGION=us-east-1
+    command: >
+      mlflow server
+      --backend-store-uri sqlite:////data/mlflow.db
+      --default-artifact-root s3://hormuzwatch-models/
+      --host 0.0.0.0
+      --port 5001
+    volumes:
+      - minio_data:/data
+    networks:
+      - hormuzwatch-registry-net
+    depends_on:
+      model-registry:
+        condition: service_healthy

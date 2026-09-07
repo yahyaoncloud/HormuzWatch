@@ -204,16 +204,19 @@ async def api_predict(req: ApiPredictRequest):
         raise HTTPException(500, f"Model load error: {exc}")
 
     try:
-        x_arr = parse_features(req.domain, req.features)
+        features_model = parse_features(req.domain, req.features)
+        feature_array = features_model.to_array()
+        feature_names = DOMAIN_FEATURE_COLS[req.domain]
     except (ValueError, KeyError) as exc:
         raise HTTPException(422, f"Feature validation failed for domain '{req.domain}': {exc}")
 
     # Track feature observations for statistical drift analysis
-    global_drift_monitor.record_observation(req.domain, x_arr)
+    global_drift_monitor.record_observation(req.domain, feature_array)
 
     try:
         result: ScoringResult = score(
-            x=x_arr,
+            feature_array=feature_array,
+            feature_names=feature_names,
             bundle=bundle,
             explain=req.explain,
             track_id=req.track_id,

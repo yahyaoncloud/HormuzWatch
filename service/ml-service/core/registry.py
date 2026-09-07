@@ -77,4 +77,4 @@ class ModelRegistry:
                 importlib.import_module(full_module_name)
                 logger.debug("Auto-discovered and loaded model module: %s", full_module_name)
             except Exception as err:
-                logger.error("Failed to load model module '%s': %v", full_module_name, err)
+                logger.error("Failed to load model module '%s': %s", full_module_name, err)

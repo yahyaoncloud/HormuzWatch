@@ -1,6 +1,7 @@
 import React from 'react';
-import { Cpu, Database, Radio, Server, Activity, ShieldCheck } from 'lucide-react';
+import { Cpu, Database, Radio, Server, ShieldCheck, Layers } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { useServerStatusStore } from '@/stores/slices/serverStatus.store';
 
 export interface SystemStatusProps {
   systemHealth?: any;
@@ -17,10 +18,17 @@ export const IntelligenceSystemStatus: React.FC<SystemStatusProps> = ({
   aircraftCount = 0,
   className,
 }) => {
+  const isOnline = useServerStatusStore((s) => s.isOnline);
+  const isStreaming = useServerStatusStore((s) => s.isStreaming);
+  const signalQuality = useServerStatusStore((s) => s.signalQuality);
+  const playbackDelaySec = useServerStatusStore((s) => s.playbackDelaySec);
+  const stages = useServerStatusStore((s) => s.stages);
+
   const isHealthy =
     systemHealth?.status === 'healthy' ||
     systemHealth?.status === 'ready' ||
-    systemHealth?.status === 'ok';
+    systemHealth?.status === 'ok' ||
+    isOnline;
 
   const dbHealth = systemHealth?.components?.database;
   const mlHealth = systemHealth?.components?.ml_service;
@@ -29,7 +37,7 @@ export const IntelligenceSystemStatus: React.FC<SystemStatusProps> = ({
     {
       id: 'ais',
       name: 'AIS MARITIME TELEMETRY',
-      status: vesselCount > 0 ? 'LIVE' : 'INGESTING',
+      status: vesselCount > 0 ? 'LIVE STREAM' : 'INGESTING',
       details: `${vesselCount} VESSELS TRACKED`,
       isLive: true,
       icon: Radio,
@@ -37,40 +45,40 @@ export const IntelligenceSystemStatus: React.FC<SystemStatusProps> = ({
     {
       id: 'adsb',
       name: 'ADS-B AIR RADAR SENSORS',
-      status: aircraftCount > 0 ? 'LIVE' : 'ACTIVE',
-      details: `${aircraftCount} AIR ASSETS MONITORED`,
+      status: aircraftCount > 0 ? 'LIVE RADAR' : 'RATE-LENIENT',
+      details: `${aircraftCount} AIR CONTACTS (EXTRAPOLATED)`,
       isLive: true,
       icon: Radio,
     },
     {
       id: 'ml',
       name: 'ML ANOMALY ENSEMBLE',
-      status: mlHealth?.healthy ? '6/6 MODELS READY' : 'ONLINE',
-      details: 'ISOLATION FOREST + KINEMATIC ENSEMBLE',
-      isLive: mlHealth?.healthy ?? true,
+      status: mlHealth?.healthy || stages.mlEnsemble.status === 'ready' ? '6/6 MODELS READY' : 'ONLINE',
+      details: 'ISOLATION FOREST + LOF (ISOTONIC)',
+      isLive: true,
       icon: Cpu,
     },
     {
-      id: 'news',
-      name: 'GDELT 2.0 / RSS OSINT SCRAPER',
-      status: 'LIVE',
-      details: 'CONTINUOUS 60s INGESTION CYCLE',
-      isLive: true,
-      icon: Activity,
+      id: 'playback',
+      name: 'PLAYBACK BUFFER STAGE',
+      status: `${playbackDelaySec}s TIME-SHIFT`,
+      details: 'PRE-GATHERED STREAM FOR COMFORTABLE MAP DISPLAY',
+      isLive: isStreaming,
+      icon: Layers,
     },
     {
       id: 'ws',
       name: 'REALTIME WEBSOCKET HUB',
-      status: wsStatus.toUpperCase(),
-      details: wsStatus === 'connected' ? 'SUB-SECOND STREAMING ACTIVE' : 'RECONNECTING',
-      isLive: wsStatus === 'connected',
+      status: isStreaming ? `STREAMING (${signalQuality.toUpperCase()})` : wsStatus.toUpperCase(),
+      details: isStreaming ? 'ACTIVE DATA STREAMING (FIXATED)' : 'RECONNECTING BACKOFF',
+      isLive: isStreaming || wsStatus === 'connected',
       icon: Server,
     },
     {
       id: 'db',
-      name: 'SUPABASE POSTGRESQL POOL',
+      name: 'MEMORY TSM & SUPABASE POOL',
       status: dbHealth?.healthy ? 'HEALTHY' : isHealthy ? 'HEALTHY' : 'DEGRADED',
-      details: dbHealth?.ping_ms ? `TRANSACTION POOL (${dbHealth.ping_ms}ms)` : 'ZERO-EGRESS IN-MEMORY TSM',
+      details: dbHealth?.ping_ms ? `TRANSACTION POOL (${dbHealth.ping_ms}ms)` : 'ZERO-EGRESS IN-MEMORY TSM LAYER',
       isLive: dbHealth?.healthy ?? true,
       icon: Database,
     },

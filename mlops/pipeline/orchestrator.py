@@ -32,7 +32,14 @@ import schedule
 # [OBJECTIVE]: Resolve pipeline paths and link ML continuous training components.
 # ------------------------------------------------------------------------------
 PIPELINE_ROOT = Path(__file__).resolve().parent
-PROJECT_ROOT = PIPELINE_ROOT.parent
+current = PIPELINE_ROOT
+while current.parent != current:
+    if (current / 'service' / 'ml-service' / 'lib').exists():
+        PROJECT_ROOT = current
+        break
+    current = current.parent
+else:
+    PROJECT_ROOT = PIPELINE_ROOT.parent
 sys.path.insert(0, str(PROJECT_ROOT / "service" / "ml-service"))
 if "/app" not in sys.path:
     sys.path.insert(0, "/app")

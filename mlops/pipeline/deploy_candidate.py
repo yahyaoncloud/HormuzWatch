@@ -23,6 +23,7 @@ CORE SAFETY INVARIANTS:
 
 from __future__ import annotations
 
+import argparse
 import fcntl
 import hashlib
 import json
@@ -44,7 +45,14 @@ import requests
 # [OBJECTIVE]: Resolve project directories and load ML service dependencies.
 # ------------------------------------------------------------------------------
 PIPELINE_ROOT = Path(__file__).resolve().parent
-PROJECT_ROOT = PIPELINE_ROOT.parent
+current = PIPELINE_ROOT
+while current.parent != current:
+    if (current / 'service' / 'ml-service' / 'lib').exists():
+        PROJECT_ROOT = current
+        break
+    current = current.parent
+else:
+    PROJECT_ROOT = PIPELINE_ROOT.parent
 sys.path.insert(0, str(PROJECT_ROOT / "service" / "ml-service"))
 
 try:
@@ -191,7 +199,7 @@ def compare_against_champion(candidate_bundle: Dict[str, Any], domain: str) -> T
 #                   manifest updated, and inference cache hot-reloaded.
 # [SAFETY INVARIANT]: Interrupted deployments leave existing champion completely intact.
 # ==============================================================================
-def evaluate_and_deploy(domain: str = "vessel") -> Dict[str, Any]:
+def evaluate_and_deploy(domain: str = "vessel", validate_only: bool = False) -> Dict[str, Any]:
     """
     Safely validate, atomically promote, and trigger hot-reloading of candidate model.
     Includes automated backup and rollback protection.
@@ -223,6 +231,15 @@ def evaluate_and_deploy(domain: str = "vessel") -> Dict[str, Any]:
             if not passed_champ_eval:
                 logger.warning(f"Candidate rejected against champion: {champ_reason}")
                 return {"status": "REJECTED_BY_CHAMPION_GATE", "reason": champ_reason}
+
+            if validate_only:
+                logger.info(f"Candidate validation and champion gate check passed for '{domain}' (--validate-only).")
+                return {
+                    "status": "VALIDATED",
+                    "domain": domain,
+                    "reason": champ_reason,
+                    "metrics": candidate_bundle.get("metrics", {}),
+                }
                 
             production_path = MODELS_DIR / f"{domain}_ensemble.joblib"
             backup_path = MODELS_DIR / f"{domain}_ensemble.joblib.bak"
@@ -296,6 +313,22 @@ def evaluate_and_deploy(domain: str = "vessel") -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    domain_arg = sys.argv[1] if len(sys.argv) > 1 else "vessel"
-    res = evaluate_and_deploy(domain_arg)
+    parser = argparse.ArgumentParser(description="Candidate Model Validation & Deployment Gatekeeper")
+    parser.add_argument("domain_pos", nargs="?", default=None, help="Target domain (positional)")
+    parser.add_argument("--domain", "-d", default=None, help="Target domain (flag)")
+    parser.add_argument("--validate-only", action="store_true", help="Validate candidate without promoting")
+    parser.add_argument("--execute", action="store_true", help="Execute promotion and service hot-reload")
+    args = parser.parse_args()
+
+    domain = args.domain or args.domain_pos or "vessel"
+    if domain.startswith("--"):
+        if domain == "--validate-only":
+            args.validate_only = True
+        elif domain == "--execute":
+            args.execute = True
+        domain = "vessel"
+
+    res = evaluate_and_deploy(domain=domain, validate_only=args.validate_only)
     print(json.dumps(res, indent=2))
+    if res.get("status") in ("FAILED", "REJECTED", "REJECTED_BY_CHAMPION_GATE"):
+        sys.exit(1)

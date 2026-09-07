@@ -1,0 +1,28 @@
+stages:
+  extract_features:
+    cmd: python3 pipeline/extract_features.py
+    deps:
+      - pipeline/extract_features.py
+      - pipeline/config.py
+    outs:
+      - data/features/vessel_features.parquet:
+          cache: true
+          persist: false
+
+  train_and_evaluate:
+    cmd: python3 pipeline/train_and_evaluate.py vessel
+    deps:
+      - pipeline/train_and_evaluate.py
+      - data/features/vessel_features.parquet
+    outs:
+      - models/artifacts/vessel_candidate.joblib:
+          cache: true
+    metrics:
+      - service/ml-service/models/vessel_training_report.json:
+          cache: false
+
+  deploy_candidate:
+    cmd: python3 pipeline/deploy_candidate.py --validate-only
+    deps:
+      - pipeline/deploy_candidate.py
+      - models/artifacts/vessel_candidate.joblib
