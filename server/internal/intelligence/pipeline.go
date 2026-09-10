@@ -53,6 +53,7 @@ type Pipeline struct {
 
 	// ── Worker pool (bounded buffered channel work queue) ────────
 	jobQueue         chan *telemetry.Observation
+	persistQueue     chan telemetry.Observation
 	blockadeFeatures sync.Map
 	ctx              context.Context
 	cancel           context.CancelFunc
@@ -73,13 +74,14 @@ func NewPipelineWithQueue(h *hub.Hub, tsm *TrackStateManager, ml *MLClient, work
 	observability.QueueCapacity.Store(int64(queueSize))
 
 	p := &Pipeline{
-		Hub:      h,
-		TSM:      tsm,
-		MLClient: ml,
-		Playback: NewPlaybackBuffer(h, 90*time.Second),
-		jobQueue: make(chan *telemetry.Observation, queueSize),
-		ctx:      ctx,
-		cancel:   cancel,
+		Hub:          h,
+		TSM:          tsm,
+		MLClient:     ml,
+		Playback:     NewPlaybackBuffer(h, 90*time.Second),
+		jobQueue:     make(chan *telemetry.Observation, queueSize),
+		persistQueue: make(chan telemetry.Observation, queueSize),
+		ctx:          ctx,
+		cancel:       cancel,
 	}
 
 	// Start worker goroutines
@@ -87,6 +89,9 @@ func NewPipelineWithQueue(h *hub.Hub, tsm *TrackStateManager, ml *MLClient, work
 		go p.worker(i)
 	}
 	p.active.Store(int32(workerCount))
+
+	// Start asynchronous telemetry persistence micro-batcher
+	go p.persistenceBatcher()
 
 	log.Printf("[pipeline] Worker pool started: %d workers, %d buffer queue capacity", workerCount, queueSize)
 	return p
@@ -258,9 +263,11 @@ func (p *Pipeline) process(payload *telemetry.Observation) ThreatAssessment {
 		}
 	}
 
-	// ── 8. Persist telemetry ──────────────────────────────────
-	if err := db.PersistTelemetry(context.Background(), *payload); err != nil {
-		log.Printf("[pipeline] persist telemetry %s: %v", payload.TrackID, err)
+	// ── 8. Enqueue telemetry for micro-batched persistence ───
+	select {
+	case p.persistQueue <- *payload:
+	default:
+		// Saturated queue: drop persistence to preserve real-time pipeline latency
 	}
 
 	// ── 9. Persist anomaly if above threshold ───────
@@ -326,8 +333,9 @@ func (p *Pipeline) processBlockadeObservation(payload *telemetry.Observation) Th
 		}
 	}
 
-	if err := db.PersistTelemetry(context.Background(), *payload); err != nil {
-		log.Printf("[pipeline] persist telemetry %s: %v", payload.TrackID, err)
+	select {
+	case p.persistQueue <- *payload:
+	default:
 	}
 
 	if assessment.FinalScore > 0 {
@@ -348,4 +356,39 @@ func (p *Pipeline) processBlockadeObservation(payload *telemetry.Observation) Th
 	}
 
 	return assessment
+}
+
+// persistenceBatcher drains persistQueue and issues high-throughput bulk database operations.
+func (p *Pipeline) persistenceBatcher() {
+	const batchSize = 100
+	const flushInterval = 500 * time.Millisecond
+
+	batch := make([]telemetry.Observation, 0, batchSize)
+	ticker := time.NewTicker(flushInterval)
+	defer ticker.Stop()
+
+	flush := func() {
+		if len(batch) == 0 {
+			return
+		}
+		if err := db.PersistTelemetryBatch(p.ctx, batch); err != nil {
+			log.Printf("[pipeline] batch persist %d records failed: %v", len(batch), err)
+		}
+		batch = make([]telemetry.Observation, 0, batchSize)
+	}
+
+	for {
+		select {
+		case <-p.ctx.Done():
+			flush()
+			return
+		case obs := <-p.persistQueue:
+			batch = append(batch, obs)
+			if len(batch) >= batchSize {
+				flush()
+			}
+		case <-ticker.C:
+			flush()
+		}
+	}
 }

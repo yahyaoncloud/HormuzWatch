@@ -5,6 +5,8 @@ import (
 	"errors"
 
 	"Geospatial-harmuz-watch/server/internal/domain/telemetry"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // PersistTelemetry keeps the current track projection and append-only history
@@ -80,4 +82,105 @@ func PersistTelemetry(ctx context.Context, observation telemetry.Observation) er
 
 	_ = tx.Commit(ctx)
 	return nil
+}
+
+// PersistTelemetryBatch performs high-throughput bulk persistence of observations.
+func PersistTelemetryBatch(ctx context.Context, observations []telemetry.Observation) error {
+	if len(observations) == 0 {
+		return nil
+	}
+
+	if PGX != nil {
+		batch := &pgx.Batch{}
+		for _, obs := range observations {
+			if obs.TrackID == "" {
+				continue
+			}
+			assetName := obs.AssetName
+			if assetName == "" {
+				assetName = "Vessel-" + obs.TrackID
+			}
+			source := obs.Source
+			if source == "" {
+				source = telemetry.SourceAISStream
+			}
+
+			batch.Queue(upsertTrackQuery,
+				obs.TrackID, assetName, obs.Timestamp,
+				obs.Lat, obs.Lon, obs.Speed, obs.PreviousSpeed,
+				obs.Heading, obs.CourseDelta, obs.AisAgeMinutes,
+				obs.HotZoneDistanceNm, obs.Domain(), source,
+			)
+
+			batch.Queue(insertTelemetryObservationQuery,
+				obs.TrackID, assetName, obs.Domain(), source,
+				obs.ObservedAt(), obs.Lat, obs.Lon, obs.Speed,
+				obs.PreviousSpeed, obs.Heading, obs.CourseDelta,
+				obs.AisAgeMinutes, obs.HotZoneDistanceNm, obs.Altitude,
+				obs.Squawk, obs.OnGround,
+			)
+		}
+
+		br := PGX.SendBatch(ctx, batch)
+		defer br.Close()
+		for i := 0; i < batch.Len(); i++ {
+			if _, err := br.Exec(); err != nil {
+				// Continue draining batch to avoid broken connections
+			}
+		}
+		return nil
+	}
+
+	if DB == nil {
+		return nil
+	}
+
+	tx, err := DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	stmtTrack, err := tx.PrepareContext(ctx, upsertTrackQuery)
+	if err != nil {
+		return err
+	}
+	defer stmtTrack.Close()
+
+	stmtObs, err := tx.PrepareContext(ctx, insertTelemetryObservationQuery)
+	if err != nil {
+		return err
+	}
+	defer stmtObs.Close()
+
+	for _, obs := range observations {
+		if obs.TrackID == "" {
+			continue
+		}
+		assetName := obs.AssetName
+		if assetName == "" {
+			assetName = "Vessel-" + obs.TrackID
+		}
+		source := obs.Source
+		if source == "" {
+			source = telemetry.SourceAISStream
+		}
+
+		_, _ = stmtTrack.ExecContext(ctx,
+			obs.TrackID, assetName, obs.Timestamp,
+			obs.Lat, obs.Lon, obs.Speed, obs.PreviousSpeed,
+			obs.Heading, obs.CourseDelta, obs.AisAgeMinutes,
+			obs.HotZoneDistanceNm, obs.Domain(), source,
+		)
+
+		_, _ = stmtObs.ExecContext(ctx,
+			obs.TrackID, assetName, obs.Domain(), source,
+			obs.ObservedAt(), obs.Lat, obs.Lon, obs.Speed,
+			obs.PreviousSpeed, obs.Heading, obs.CourseDelta,
+			obs.AisAgeMinutes, obs.HotZoneDistanceNm, obs.Altitude,
+			obs.Squawk, obs.OnGround,
+		)
+	}
+
+	return tx.Commit()
 }
