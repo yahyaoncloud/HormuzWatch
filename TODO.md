@@ -125,3 +125,22 @@
 - [x] **P1 — Feature Extractor DB Config Fallback:** Added `db_url` and `min_samples_for_retrain` to `MLOpsConfig`.
 - [x] **P1 — Model Registry Logger String Formatting:** Replaced Go format specifier `%v` with `%s` in `service/ml-service/core/registry.py`.
 - [x] **P1 — Compose Core Volume Mount:** Added `- ./service/ml-service/core:/app/core:ro` to `docker-compose.dev.yml`.
+
+---
+
+## 6. Track F: Codebase Security, Concurrency & Technical Debt (Audit Findings)
+
+Reference: [`docs/study/14_codebase_architectural_and_security_audit_report.md`](file:///home/yahya/SHARED/Projects/HormuzWatch/docs/study/14_codebase_architectural_and_security_audit_report.md)
+
+### Critical & High Priority Security (P0/P1)
+- [ ] **CODE-01 (Eliminate Insecure Fallback Secrets):** Remove `"default_unsafe_secret_for_dev_only"` in [`server/internal/auth/jwt.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/auth/jwt.go) and `"a-secret-key"` in [`client/src/environments/environment.ts`](file:///home/yahya/SHARED/Projects/HormuzWatch/client/src/environments/environment.ts). Force fatal process exit if `JWT_SECRET` is missing.
+- [ ] **CODE-02 (Strict Cryptographic Model Gating):** Patch [`service/ml-service/app.py`](file:///home/yahya/SHARED/Projects/HormuzWatch/service/ml-service/app.py) to reject `joblib.load()` and raise a fatal security exception if SHA-256 verification fails or `manifest.json` is missing.
+- [ ] **CODE-03 (Server-Side Admin Role Enforcement):** Remove hardcoded admin email whitelists (`ykinwork1@gmail.com`) from client. Admin UI elements must strictly rely on server-validated JWT role claims.
+- [ ] **CODE-05 (Fix WebSocket Hub Race Condition & Channel Panic):** In [`server/internal/websocket/hub/hub.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/websocket/hub/hub.go), eliminate background `go func(c *Client)` channel closure inside the broadcast loop. Close slow client channels strictly inside the single-threaded `Run()` select loop.
+- [ ] **CODE-06 (Sanitize FastAPI CORS Configuration):** In [`service/ml-service/app.py`](file:///home/yahya/SHARED/Projects/HormuzWatch/service/ml-service/app.py), disallow `allow_credentials=True` when `allow_origins=["*"]`.
+
+### Performance, Persistence & Reliability (P1/P2)
+- [ ] **CODE-04 (Extract Database DDL to Migrations):** Remove synchronous `CREATE TABLE` and `ALTER TABLE` blocks from [`server/internal/db/db.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/db/db.go). Migrate to versioned `server/migrations/` managed by `golang-migrate`.
+- [ ] **CODE-07 (Bounded LRU Cache & Rate Limiting):** In [`server/internal/api/middleware.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/api/middleware.go), replace unbounded `cacheMap` and `visitors` maps with a memory-bounded LRU cache to prevent memory exhaustion DoS.
+- [ ] **CODE-08 (Telemetry Bulk Micro-Batching):** In [`server/internal/intelligence/pipeline.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/intelligence/pipeline.go), replace per-observation synchronous SQL inserts with a high-throughput micro-batch buffer (500ms or 100 rows).
+- [ ] **CODE-09 (Global React Error Boundary):** Implement `<ErrorBoundary>` around tactical map canvas in [`client/src/App.tsx`](file:///home/yahya/SHARED/Projects/HormuzWatch/client/src/App.tsx) to catch WebGL/MapLibre shader crashes gracefully without breaking the entire UI.
