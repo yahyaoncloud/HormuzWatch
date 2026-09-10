@@ -869,3 +869,44 @@ All study notes have been authored, structured, and committed under `/docs/study
 6. [`11_complete_devops_pipeline_end_to_end_report.md`](file:///home/yahya/SHARED/Projects/HormuzWatch/docs/study/11_complete_devops_pipeline_end_to_end_report.md)
 7. [`DEVOPS_AND_CI_CD_STUDY_GUIDE.md`](file:///home/yahya/SHARED/Projects/HormuzWatch/docs/study/DEVOPS_AND_CI_CD_STUDY_GUIDE.md)
 8. [`DEVOPS_CHAT_SESSION_TRANSCRIPT.md`](file:///home/yahya/SHARED/Projects/HormuzWatch/docs/study/DEVOPS_CHAT_SESSION_TRANSCRIPT.md)
+
+---
+
+## 9. Upgrade to Java 21 LTS & Remote Workload Migration to E5530 (Build #10)
+
+### 9.1 Context & Motivation
+1. **Java 17 EOL Deprecation:** Jenkins announced official phaseout of Java 17 support in 2026. Upgrading to `jenkins/jenkins:lts-jdk21` future-proofs the master instance.
+2. **Workload Separation:** To prevent build/compilation compute from degrading production microservice performance, workload containers (`server`, `ml`, `client`, `postgres`) are pinned exclusively to edge production node **E5530** (`100.66.64.31`).
+3. **Storage & Cache Reclaim:** All workload containers, unused images, named volumes, and 12.05 GB of Docker build cache were purged from **tunkstun**.
+
+### 9.2 Verification Commands Executed
+```bash
+# Verify Java version on Jenkins container
+docker exec hormuzwatch-jenkins java -version
+# Output: openjdk version "21.0.12.1" 2026-08-18 LTS
+
+# Verify clean state on tunkstun (only Jenkins running)
+docker ps
+# Output: hormuzwatch-jenkins (Only container)
+
+# Verify workload deployment on E5530
+ssh yahya@100.66.64.31 "docker ps"
+# Output:
+# hormuzwatch-postgres-dev   Up (healthy)
+# hormuzwatch-ml-dev         Up (healthy)
+# hormuzwatch-server-dev     Up (healthy)
+# hormuzwatch-client-dev     Up (healthy)
+
+# Health check probes on E5530
+curl -sf http://100.66.64.31:10020/health/live # 200 OK (Go Backend)
+curl -sf http://100.66.64.31:8090/health      # 200 OK (ML Engine)
+curl -sf -I http://100.66.64.31:3000          # 200 OK (React Client)
+```
+
+### 9.3 Build #10 Result
+```text
+==========================================================
+ 🚀 HormuzWatch DevOps Deployment to E5530 SUCCEEDED!    
+==========================================================
+Finished: SUCCESS
+```
