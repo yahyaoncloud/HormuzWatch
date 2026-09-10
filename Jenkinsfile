@@ -51,10 +51,19 @@ pipeline {
                     echo " Trigger: ${currentBuild.getBuildCauses()}                "
                     echo "=========================================================="
 
-                    env.PREV_COMMIT = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
-                    echo "==> Rollback baseline captured: ${env.PREV_COMMIT}"
-                    
-                    echo "==> Checked out latest commit: ${env.PREV_COMMIT}"
+                    try {
+                        env.PREV_COMMIT = sh(
+                            script: "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 ${env.DEPLOY_USER}@${env.DEPLOY_HOST} 'cd ${env.DEPLOY_DIR} && git rev-parse HEAD 2>/dev/null || echo \"\"'",
+                            returnStdout: true
+                        ).trim()
+                        if (!env.PREV_COMMIT || env.PREV_COMMIT == "") {
+                            env.PREV_COMMIT = sh(script: 'git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD', returnStdout: true).trim()
+                        }
+                    } catch (Exception e) {
+                        echo "==> Warning: Could not query baseline from ${env.DEPLOY_HOST}. Defaulting to HEAD~1."
+                        env.PREV_COMMIT = sh(script: 'git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD', returnStdout: true).trim()
+                    }
+                    echo "==> Live running baseline captured from ${env.DEPLOY_HOST}: ${env.PREV_COMMIT}"
                 }
             }
         }
@@ -166,10 +175,10 @@ pipeline {
                         echo "==> [Server] Compiling Go Server Binary & Running Unit Tests..."
                         sh '''
                             cd server
-                            go test -v ./... || true
+                            go test -v ./...
                             go build -v ./cmd/main.go
                             rm -f main
-                            echo "==> [Server] Go binary build succeeded."
+                            echo "==> [Server] Go binary build and unit tests passed."
                         '''
                     }
                 }
@@ -225,7 +234,7 @@ pipeline {
             steps {
                 echo "==> Deploying updated containers to production node E5530 (${env.DEPLOY_HOST})..."
                 sh '''
-                    ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "cd ${DEPLOY_DIR} && git pull origin ${BRANCH_NAME} && docker compose -p ${COMPOSE_PROJECT_NAME} -f ${COMPOSE_FILE} up -d --remove-orphans"
+                    ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "cd ${DEPLOY_DIR} && git pull origin ${BRANCH_NAME} && docker compose -p ${COMPOSE_PROJECT_NAME} -f ${COMPOSE_FILE} up -d --build --remove-orphans"
                 '''
             }
         }
@@ -278,7 +287,7 @@ pipeline {
             echo "=========================================================="
             sh """
                 if [ -n "${env.PREV_COMMIT}" ] && [ "${env.PREV_COMMIT}" != "null" ]; then
-                    ssh -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.DEPLOY_HOST} "cd ${env.DEPLOY_DIR} && git checkout ${env.PREV_COMMIT} && docker compose -p ${env.COMPOSE_PROJECT_NAME} -f ${env.COMPOSE_FILE} up -d"
+                    ssh -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.DEPLOY_HOST} "cd ${env.DEPLOY_DIR} && git checkout ${env.PREV_COMMIT} && docker compose -p ${env.COMPOSE_PROJECT_NAME} -f ${env.COMPOSE_FILE} up -d --build --remove-orphans"
                     echo "==> Rollback complete on E5530. Restored to commit: ${env.PREV_COMMIT}"
                 fi
             """
