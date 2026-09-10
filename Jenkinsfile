@@ -141,10 +141,10 @@ pipeline {
             }
             steps {
                 echo "==> Validating ML Model Registry checksums..."
-                sh 'python3 scripts/model_registry.py verify || true'
+                sh 'python3 scripts/model_registry.py verify'
                 
                 echo "==> Validating Dataset Registry manifests..."
-                sh 'python3 scripts/dataset_registry.py list || true'
+                sh 'python3 scripts/dataset_registry.py list'
             }
         }
 

@@ -54,12 +54,11 @@ app = FastAPI(
 
 _allowed_raw = os.environ.get("ALLOWED_ORIGINS", "*")
 _allowed_origins = [o.strip() for o in _allowed_raw.split(",") if o.strip()]
-if _allowed_origins == ["*"]:
-    _allowed_origins = ["*"]
+_allow_credentials = _allowed_origins != ["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
-    allow_credentials=True,
+    allow_credentials=_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -84,27 +83,33 @@ def _load_bundle(domain: str) -> dict[str, Any]:
             f"Run: python api/train.py --domain {domain} --input <data.csv>"
         )
 
-    # Verify SHA-256 integrity against manifest.json if present
-    manifest_path = _MODELS_DIR / "manifest.json"
-    if manifest_path.exists():
-        try:
-            with open(manifest_path, "r", encoding="utf-8") as f:
-                manifest = json.load(f)
-            model_key = f"{domain}_ensemble"
-            if model_key in manifest.get("models", {}):
-                expected_sha = manifest["models"][model_key].get("sha256")
-                if expected_sha:
-                    hasher = hashlib.sha256()
-                    with open(artifact_path, "rb") as bf:
-                        while chunk := bf.read(65536):
-                            hasher.update(chunk)
-                    actual_sha = hasher.hexdigest()
-                    if actual_sha == expected_sha:
+    # Verify SHA-256 integrity against registry_manifest.json or manifest.json if present
+    for m_filename in ("registry_manifest.json", "manifest.json"):
+        manifest_path = _MODELS_DIR / m_filename
+        if manifest_path.exists():
+            try:
+                with open(manifest_path, "r", encoding="utf-8") as f:
+                    manifest = json.load(f)
+                model_key = f"{domain}_ensemble"
+                if model_key in manifest.get("models", {}):
+                    expected_sha = manifest["models"][model_key].get("sha256")
+                    if expected_sha:
+                        hasher = hashlib.sha256()
+                        with open(artifact_path, "rb") as bf:
+                            while chunk := bf.read(65536):
+                                hasher.update(chunk)
+                        actual_sha = hasher.hexdigest()
+                        if actual_sha != expected_sha:
+                            raise ValueError(
+                                f"Cryptographic integrity mismatch for '{domain}' ensemble: "
+                                f"expected {expected_sha}, got {actual_sha}. Refusing to deserialize artifact."
+                            )
                         logger.info("Verified SHA-256 integrity for '%s' ensemble (%s)", domain, actual_sha[:12])
-                    else:
-                        logger.warning("SHA-256 mismatch for '%s' (expected %s, got %s)", domain, expected_sha, actual_sha)
-        except Exception as err:
-            logger.warning("Manifest verification notice: %s", err)
+                        break
+            except ValueError:
+                raise
+            except Exception as err:
+                logger.warning("Manifest verification notice (%s): %s", m_filename, err)
 
     logger.info("Loading model bundle: %s", artifact_path)
     import joblib

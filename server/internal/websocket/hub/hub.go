@@ -118,26 +118,25 @@ func (h *Hub) Run() {
 			}
 
 		case message := <-h.Broadcast:
-			h.mu.RLock()
+			var slowClients []*Client
+			h.mu.Lock()
 			for client := range h.Clients {
 				select {
 				case client.Send <- message:
 				default:
-					// Client's send buffer is full — drop and unregister
-					log.Printf("[Hub] Client send buffer full. Dropping slow client.")
-					go func(c *Client) {
-						h.mu.Lock()
-						if _, ok := h.Clients[c]; ok {
-							delete(h.Clients, c)
-							close(c.Send)
-							active := len(h.Clients)
-							observability.WebSocketClientsActive.Store(int64(active))
-						}
-						h.mu.Unlock()
-					}(client)
+					slowClients = append(slowClients, client)
 				}
 			}
-			h.mu.RUnlock()
+			for _, client := range slowClients {
+				delete(h.Clients, client)
+				close(client.Send)
+			}
+			if len(slowClients) > 0 {
+				active := len(h.Clients)
+				observability.WebSocketClientsActive.Store(int64(active))
+				log.Printf("[Hub] Client send buffer full. Evicted %d slow client(s). Active: %d", len(slowClients), active)
+			}
+			h.mu.Unlock()
 		}
 	}
 }

@@ -1,6 +1,6 @@
 {
   "registry_version": "2.4.0",
-  "last_updated": "2026-09-05T15:03:37.883500+00:00",
+  "last_updated": "2026-09-10T23:42:28.161508+00:00",
   "total_models": 8,
   "models": {
     "aviation_ensemble": {
@@ -10,7 +10,7 @@
       "sha256": "74bd38375a349d89c5a72617452889b23cb34dec4edacbe630ca76afad153278",
       "size_bytes": 4438958,
       "size_mb": 4.23,
-      "updated_at": "2026-09-03T23:16:21.308790+00:00",
+      "updated_at": "2026-09-05T17:47:36.347269+00:00",
       "metrics": {
         "status": "SUCCESS",
         "domain": "aviation",
@@ -59,7 +59,7 @@
       "sha256": "79dc7e084f103888dd4fc17a935089a5b35b4a638921d1d4a399b477970fda85",
       "size_bytes": 2762990,
       "size_mb": 2.63,
-      "updated_at": "2026-08-29T20:44:01.924650+00:00",
+      "updated_at": "2026-09-05T17:47:36.362269+00:00",
       "metrics": {}
     },
     "conflict_model": {
@@ -69,7 +69,7 @@
       "sha256": "664a0357cd43305869d1712d821ab0b8e55cc5419575e1d0d050a67c94bc2e4d",
       "size_bytes": 228467,
       "size_mb": 0.22,
-      "updated_at": "2026-07-21T06:08:36+00:00",
+      "updated_at": "2026-09-05T17:47:36.363269+00:00",
       "metrics": {}
     },
     "heatmap_ensemble": {
@@ -79,7 +79,7 @@
       "sha256": "e13b2396a75dbf3706e2baf67879f1fd33cb936b2da39b773b69f344398c91aa",
       "size_bytes": 422924,
       "size_mb": 0.4,
-      "updated_at": "2026-08-29T20:44:00.543665+00:00",
+      "updated_at": "2026-09-05T17:47:36.364269+00:00",
       "metrics": {}
     },
     "isolation_forest": {
@@ -89,7 +89,7 @@
       "sha256": "bdffae18355e4ab0ecb45a5aa5211af7d50477ea5987fa27c79c3d7cd9e36112",
       "size_bytes": 594639,
       "size_mb": 0.57,
-      "updated_at": "2026-07-05T12:17:54+00:00",
+      "updated_at": "2026-09-05T17:47:36.367269+00:00",
       "metrics": {}
     },
     "news_ensemble": {
@@ -99,7 +99,7 @@
       "sha256": "eb84735e3756d67abdd4dde449b048868328cc3575acd69f7f6558e83a0e8436",
       "size_bytes": 2562432,
       "size_mb": 2.44,
-      "updated_at": "2026-08-29T20:43:59.981671+00:00",
+      "updated_at": "2026-09-05T17:47:36.385268+00:00",
       "metrics": {}
     },
     "transit_ensemble": {
@@ -109,17 +109,17 @@
       "sha256": "33ec2f4498e42297680b58c8ce0c6e673256e240e7541a153af665fed7ba926e",
       "size_bytes": 3028717,
       "size_mb": 2.89,
-      "updated_at": "2026-08-29T20:44:01.196658+00:00",
+      "updated_at": "2026-09-05T17:47:36.408268+00:00",
       "metrics": {}
     },
     "vessel_ensemble": {
       "artifact": "vessel_ensemble.joblib",
       "version": "2.4.0",
       "stage": "production",
-      "sha256": "a2a9945b482c2afe29533badce4bed4907f9ca865ae719a427db87de2b90d2c9",
-      "size_bytes": 37045838,
-      "size_mb": 35.33,
-      "updated_at": "2026-09-03T23:17:18.342140+00:00",
+      "sha256": "9926cd75a2788094a0695531db376d462da4c4bd97cca5af2097ce75a17dbb5f",
+      "size_bytes": 2918584,
+      "size_mb": 2.78,
+      "updated_at": "2026-09-07T14:26:12.948784+00:00",
       "metrics": {
         "status": "SUCCESS",
         "domain": "vessel",

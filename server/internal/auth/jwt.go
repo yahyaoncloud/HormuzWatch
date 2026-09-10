@@ -203,6 +203,9 @@ func ValidateToken(tokenString string) (jwt.MapClaims, bool, error) {
 	// Fall back to legacy JWT secret
 	legacySecret := os.Getenv("JWT_SECRET")
 	if legacySecret == "" {
+		if os.Getenv("GIN_MODE") == "release" {
+			return nil, false, fmt.Errorf("JWT_SECRET environment variable is strictly required in release mode")
+		}
 		legacySecret = "default_unsafe_secret_for_dev_only"
 	}
 
@@ -330,6 +333,9 @@ func ValidateSessionClaims(claims jwt.MapClaims) (AuthenticatedUser, error) {
 func GenerateToken(username, email, role, sessionID string, duration time.Duration) (string, error) {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
+		if os.Getenv("GIN_MODE") == "release" {
+			return "", fmt.Errorf("JWT_SECRET environment variable is strictly required in release mode")
+		}
 		secret = "default_unsafe_secret_for_dev_only"
 	}
 
