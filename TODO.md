@@ -1,41 +1,72 @@
 # HormuzWatch — Master Engineering Roadmap & DevOps / MLOps Backlog
 
-## 0. Executive Summary & Program Architecture
+## 0. Infrastructure & Topology Overview
 
-Reference Specifications:
-- [`docs/MLOPS_COMPLETION_REPORT.md`](file:///home/yahya/SHARED/Projects/HormuzWatch/docs/MLOPS_COMPLETION_REPORT.md)
-- [`docs/plan/DEVOPS_AND_MLOPS_SRE_PLANNING_MINDMAP.md`](file:///home/yahya/SHARED/Projects/HormuzWatch/docs/plan/DEVOPS_AND_MLOPS_SRE_PLANNING_MINDMAP.md)
-- Theoretical Basis: *The DevOps Handbook (2nd Ed.)* & *Designing Machine Learning Systems* in `books/`
-
-Target Deployment Infrastructure:
-- Host: `tunkstun` (`192.168.1.46`) Docker Compose Engine (Passwordless SSH via `yahya@192.168.1.46`)
-- CI/CD Orchestrator: Jenkins LTS (`service/jenkins/`, Port `8085`)
-- Server Ports:
-  - React Frontend Client: `http://192.168.1.46:3000`
-  - Go Backend Server: `http://192.168.1.46:10020`
-  - Python ML Service: `http://192.168.1.46:8090` (HTTP) / `:8091` (gRPC)
-  - PostgreSQL 16 Alpine: `http://192.168.1.46:5433` -> `:5432`
-  - MinIO S3 Object Store: `http://192.168.1.46:9000` / `:9001`
-  - MLflow Registry Server: `http://192.168.1.46:5001`
+- **CI/CD Controller Node (`tunkstun`):**
+  - Host IP: `100.126.193.36` (Tailscale) / `192.168.1.46` (LAN)
+  - Role: Jenkins Master (Java 21 LTS, Port `:8085`), Artifact Linters, SAST, Security Scanners
+  - Workload State: Dedicated CI runner (No application containers hosted here)
+- **Production Workload Edge Node (`E5530` / `late5530`):**
+  - Host IP: `100.66.64.31` (Tailscale)
+  - Public Ingress: `https://hormuzwatch.aburcloud.com` (Nginx reverse proxy + SSL)
+  - Deployed Services:
+    - React Frontend Client: `:3000`
+    - Go Backend Server: `:10020`
+    - Python ML Service: `:8090` (HTTP) / `:8091` (gRPC)
+    - PostgreSQL 16 Alpine: `:5433` -> `:5432`
+    - Prometheus (`:9090`) & Grafana (`:3001`)
+- **Reference Specifications:**
+  - [`docs/study/11_complete_devops_pipeline_end_to_end_report.md`](file:///home/yahya/SHARED/Projects/HormuzWatch/docs/study/11_complete_devops_pipeline_end_to_end_report.md)
+  - [`docs/study/12_graceful_shutdown_and_cold_start_runbook.md`](file:///home/yahya/SHARED/Projects/HormuzWatch/docs/study/12_graceful_shutdown_and_cold_start_runbook.md)
+  - [`docs/study/13_critical_issue_analysis_and_devops_audit_report.md`](file:///home/yahya/SHARED/Projects/HormuzWatch/docs/study/13_critical_issue_analysis_and_devops_audit_report.md)
+  - [`docs/study/DEVOPS_CHAT_SESSION_TRANSCRIPT.md`](file:///home/yahya/SHARED/Projects/HormuzWatch/docs/study/DEVOPS_CHAT_SESSION_TRANSCRIPT.md)
 
 ---
 
-## 1. Track A: DevOps, Continuous Delivery (CI/CD) & SRE
+## 1. Track A: DevOps CI/CD Pipeline Remediation (Phased Implementation)
 
-- [x] **Passwordless Remote Authentication:** Configured SSH keys (`id_ed25519_tnkstn`, `id_ed25519_ytp24`, `id_ed25519_yoc`) into `yahya@192.168.1.46:~/.ssh/authorized_keys`. Verified passwordless logins and updated local `~/.ssh/config` for `Host tunkstun`.
-- [x] **Declarative Jenkins CI/CD DevOps Pipeline:** Authored [`Jenkinsfile`](file:///home/yahya/SHARED/Projects/HormuzWatch/Jenkinsfile) orchestrating:
-  - Baseline capture & automated rollback on failure
-  - Parallel pre-flight verification: Python ML telemetry contracts, Go server binary build, React client TypeScript check
-  - Multi-service Docker container image build (`server`, `ml`, `client`)
-  - Zero-downtime container rollout on `tunkstun`
-  - Automated SRE health gate verification (20 attempts probing `:10020`, `:8090`, `:3000`)
-  - Post-deployment SRE diagnostic health suite
-- [x] **Jenkins Server Infrastructure:** Dockerized Jenkins LTS in [`service/jenkins/`](file:///home/yahya/SHARED/Projects/HormuzWatch/service/jenkins/) with host Docker socket passthrough (configured with GID `984` matching `tunkstun`).
-- [x] **Remote Host Deployment (`tunkstun`):** Synchronized codebase via `rsync`, pulled images, built containers, and deployed `server`, `ml`, `postgres`, and `client` on `192.168.1.46`. All containers reporting `healthy` status.
-- [x] **Automated Codebase Synchronization:** Configured bidirectional deployment flow between local workstation and `tunkstun`.
-- [ ] **Open-Source Telemetry Overlay:** Deploy `docker-compose.monitoring.yml` on `tunkstun` with Prometheus (`:9090`), Node Exporter (`:9100`), and cAdvisor (`:8080`).
-- [ ] **Grafana SRE Dashboard:** Configure Grafana (`:3001`) with host hardware panels, container memory/CPU throttling, and Go API request duration histograms.
-- [ ] **DevSecOps in CI:** Integrate Aqua Security `trivy` container scanning and `govulncheck` into pipeline.
+### Phase 1: Critical Hotfixes & Quality Enforcement (Immediate / In-Progress)
+- [x] **AUDIT-03 (Fix Rollback Target):** Patch [`Jenkinsfile`](file:///home/yahya/SHARED/Projects/HormuzWatch/Jenkinsfile) to remotely query target host `E5530` (`git rev-parse HEAD`) *prior* to rollout. Ensures failures roll back to the previously stable running commit instead of re-checking out the broken commit.
+- [x] **AUDIT-02 (Strict Go Test Gate):** Remove `|| true` from `go test -v ./...` in the backend verification stage. Unit test failures now strictly abort the build.
+- [x] **AUDIT-01 (Remote Container Rebuild):** Add `--build --remove-orphans` to `Zero-Downtime Rollout` and post-failure rollback on `E5530` so git updates actually rebuild images rather than executing stale container caches.
+- [ ] **AUDIT-02 (Enforce Blocking Security Gates):**
+  - Configure Trivy to fail on Critical container CVEs (`--exit-code 1 --severity CRITICAL`).
+  - Configure Gitleaks to block on high-entropy secrets and exposed API tokens (`--exit-code 1`).
+  - Configure Python Bandit to fail on high-confidence security flaws (`-ll -ii`).
+- [ ] **AUDIT-05 (Edge Environment Sanitization):**
+  - Replace `docker-compose.dev.yml` on `E5530` with hardened production compose configuration.
+  - Disable `AUTH_DISABLED=true` on public domain; enforce JWT authentication for mutating API endpoints.
+  - Migrate hardcoded database credentials (`Yahya@123`) to Jenkins Credentials Store / `.env.production`.
+  - Set `GIN_MODE=release` to prevent stack trace disclosures on unexpected panics.
+
+### Phase 2: Architectural Realignment & Artifact Delivery (Medium Term)
+- [ ] **AUDIT-01 (OCI Container Registry Integration - GHCR):**
+  - Eliminate the "Ghost Build" disconnect between `tunkstun` and `E5530`.
+  - Authenticate Jenkins with GitHub Container Registry (`ghcr.io/yahyaoncloud/hormuzwatch-*`).
+  - Build, tag (`:${GIT_COMMIT}`), scan with Trivy, and push images from `tunkstun`.
+  - Update deployment on `E5530` to pull signed, immutable image digests directly from GHCR (zero builds on edge hardware).
+- [ ] **AUDIT-06 (True Zero-Downtime Blue/Green Rollout):**
+  - Replace in-place `docker compose up -d` container restarts with Blue/Green deployment slots.
+  - Provision dual service groups: Blue (`:10020`, `:8090`, `:3000`) and Green (`:10022`, `:8092`, `:3002`).
+  - Orchestrate rolling cutover: Start Green -> Probe health until ML models warm up -> Atomically switch Nginx upstream proxy on `E5530` -> Gracefully terminate Blue.
+  - Eliminates the 10–25s `502 Bad Gateway` window during model weight loading.
+- [ ] **AUDIT-08 (Automated Database Schema Migrations):**
+  - Integrate `golang-migrate` CLI step into Jenkins pipeline prior to service rollout.
+  - Version-control relational schema migrations under `server/migrations/`.
+  - Implement automated down-migration step inside post-failure rollback block.
+
+### Phase 3: Infrastructure Hardening & Resilience (Long Term)
+- [ ] **AUDIT-04 (Eliminate Host Docker Socket Mounting):**
+  - Remove `/var/run/docker.sock` mount from Jenkins master container on `tunkstun`.
+  - Migrate container builds to rootless build systems (e.g. Kaniko, Buildah, or ephemeral isolated DinD agents).
+  - Enforce least-privilege non-root execution inside build containers.
+- [ ] **AUDIT-07 (Decouple Ingress & Eliminate Circular Mesh SPOF):**
+  - Move GitHub webhook ingress away from edge host `E5530` to a dedicated ingress proxy / Cloudflare Worker pointing directly to `tunkstun:8085`.
+  - Decouples CI trigger availability from target node health (if `E5530` crashes, Jenkins remains reachable to deploy fixes).
+  - Implement automated SSH fallback routes if Tailscale connection is degraded.
+- [ ] **Jenkins Controller/Agent Decoupling:**
+  - Convert monolithic Jenkins setup to Master/Agent architecture.
+  - Offload linters (Go, Node, Python) into ephemeral containerized agents to keep the controller clean.
 
 ---
 
@@ -54,10 +85,13 @@ Target Deployment Infrastructure:
 - [x] **Fine-Grained Slice-Based Evaluation:** Built [`mlops/models/evaluations/slice_evaluator.py`](file:///home/yahya/SHARED/Projects/HormuzWatch/mlops/models/evaluations/slice_evaluator.py) assessing vessel types, geofences, and diurnal navigation slices to prevent masked aggregate degradation.
 - [x] **Cryptographic Model & Dataset Manifests:** Added SHA-256 verification via `scripts/model_registry.py verify` and `scripts/dataset_registry.py list`.
 - [x] **Continuous Training (CT) Loop:** Integrated `Jenkinsfile.mlops` for scheduled weekly retraining and drift-triggered pipeline runs.
+- [ ] **Automated Event-Driven Drift Remediation:** Automatically trigger CT pipelines when cumulative PSI exceeds 0.20 or KS p < 0.01 over rolling 1,000-sample window.
+- [ ] **Deep Learning Autoencoder Anomaly Scoring:** Train semi-supervised reconstruction autoencoder on normal transit corridor coordinates.
+- [ ] **Multi-Chokepoint Expansion:** Replicate model architecture for Bab el-Mandeb and the Strait of Malacca.
 
 ---
 
-## 3. Server Rate-Limit Leniency & Playback Buffer Architecture
+## 3. Track C: Server Reliability & Telemetry Architecture
 
 - [x] **HTTP 429 Prevention & Upstream Leniency:**
   - Implemented quota-compliant polling schedules (4.5 min anonymous, 2.5 min auth) in [`server/internal/integrations/opensky.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/integrations/opensky.go).
@@ -69,7 +103,7 @@ Target Deployment Infrastructure:
 
 ---
 
-## 4. Client Global State & Stream Fixation
+## 4. Track D: Client Global State & Stream Fixation
 
 - [x] **Global Server Status Store:** Built [`client/src/stores/slices/serverStatus.store.ts`](file:///home/yahya/SHARED/Projects/HormuzWatch/client/src/stores/slices/serverStatus.store.ts) tracking connection state (`online`, `streaming`, `buffered_playback`, `reconnecting`, `offline`), signal quality, heartbeat timestamps, and pipeline stages (`ingestion`, `mlEnsemble`, `playbackBuffer`, `storage`).
 - [x] **Eliminated Remote Signal Flickering:**
@@ -82,19 +116,12 @@ Target Deployment Infrastructure:
 
 ---
 
-## 5. Resolved Critical Bugs & Technical Debt (P0/P1)
+## 5. Track E: Resolved Critical Bugs & Technical Debt (P0/P1)
 
 - [x] **P0 — ML Inference REST Service 500 Crash:** Fixed `service/ml-service/app.py` by converting Pydantic `VesselFeatures` to numpy array with canonical feature names passed to `score()` and `global_drift_monitor`.
 - [x] **P0 — CT Pipeline Deploy Script CLI Args:** Fixed `mlops/pipeline/deploy_candidate.py` to support `--validate-only`, `--execute`, and `--domain [domain]`.
+- [x] **P0 — Jenkins Java 17 EOL Upgrade:** Upgraded Jenkins container from `jenkins/jenkins:lts-jdk17` to `jenkins/jenkins:lts-jdk21` (Java 21 LTS).
 - [x] **P1 — Statistical Drift Monitor Config Mismatch:** Aligned `ks_test_alpha` and `ks_alpha` across `mlops/pipeline/drift_monitor.py` and `config.py`.
 - [x] **P1 — Feature Extractor DB Config Fallback:** Added `db_url` and `min_samples_for_retrain` to `MLOpsConfig`.
 - [x] **P1 — Model Registry Logger String Formatting:** Replaced Go format specifier `%v` with `%s` in `service/ml-service/core/registry.py`.
 - [x] **P1 — Compose Core Volume Mount:** Added `- ./service/ml-service/core:/app/core:ro` to `docker-compose.dev.yml`.
-
----
-
-## 6. Future Expansion Roadmap
-
-- [ ] **Automated Event-Driven Drift Remediation:** Automatically trigger CT pipelines when cumulative PSI exceeds 0.20 or KS p < 0.01 over rolling 1,000-sample window.
-- [ ] **Deep Learning Autoencoder Anomaly Scoring:** Train semi-supervised reconstruction autoencoder on normal transit corridor coordinates.
-- [ ] **Multi-Chokepoint Expansion:** Replicate model architecture for Bab el-Mandeb and the Strait of Malacca.
