@@ -17,23 +17,38 @@ type visitor struct {
 	lastSeen time.Time
 }
 
+const (
+	maxVisitors     = 10000
+	maxCacheEntries = 2000
+)
+
 var (
 	visitors = make(map[string]*visitor)
 	mu       sync.Mutex
 )
 
 func init() {
-	// Background cleanup ticker to purge inactive visitors every 5 minutes
+	// Background cleanup ticker to purge inactive visitors and expired cache entries
 	go func() {
-		ticker := time.NewTicker(5 * time.Minute)
+		ticker := time.NewTicker(2 * time.Minute)
 		for range ticker.C {
+			now := time.Now()
+
 			mu.Lock()
 			for ip, v := range visitors {
-				if time.Since(v.lastSeen) > 10*time.Minute {
+				if now.Sub(v.lastSeen) > 10*time.Minute {
 					delete(visitors, ip)
 				}
 			}
 			mu.Unlock()
+
+			cacheMu.Lock()
+			for k, entry := range cacheMap {
+				if now.After(entry.expiresAt) {
+					delete(cacheMap, k)
+				}
+			}
+			cacheMu.Unlock()
 		}
 	}()
 }
@@ -45,6 +60,12 @@ func getVisitorLimiter(ip string) *rate.Limiter {
 
 	v, exists := visitors[ip]
 	if !exists {
+		if len(visitors) >= maxVisitors {
+			for k := range visitors {
+				delete(visitors, k)
+				break
+			}
+		}
 		// 20 requests per second, burst of 40
 		limiter := rate.NewLimiter(rate.Limit(20), 40)
 		visitors[ip] = &visitor{limiter: limiter, lastSeen: time.Now()}
@@ -91,7 +112,7 @@ type responseWriter struct {
 	body *bytes.Buffer
 }
 
-func (w responseWriter) Write(b []byte) (int, error) {
+func (w *responseWriter) Write(b []byte) (int, error) {
 	w.body.Write(b)
 	return w.ResponseWriter.Write(b)
 }
@@ -127,6 +148,20 @@ func CacheMiddleware(duration time.Duration) gin.HandlerFunc {
 		// Store in cache only if success
 		if c.Writer.Status() == http.StatusOK {
 			cacheMu.Lock()
+			if len(cacheMap) >= maxCacheEntries {
+				now := time.Now()
+				for k, v := range cacheMap {
+					if now.After(v.expiresAt) {
+						delete(cacheMap, k)
+					}
+				}
+				if len(cacheMap) >= maxCacheEntries {
+					for k := range cacheMap {
+						delete(cacheMap, k)
+						break
+					}
+				}
+			}
 			cacheMap[cacheKey] = &cacheEntry{
 				data:        w.body.Bytes(),
 				expiresAt:   time.Now().Add(duration),
