@@ -37,6 +37,9 @@ pipeline {
         DOCKER_BUILDKIT = '1'
         PREV_COMMIT = ''
         TRIVY_SEVERITY = 'HIGH,CRITICAL'
+        DEPLOY_HOST = '100.66.64.31'
+        DEPLOY_USER = 'yahya'
+        DEPLOY_DIR = '/home/yahya/SHARED/Projects/HormuzWatch'
     }
 
     stages {
@@ -220,33 +223,26 @@ pipeline {
 
         stage('Zero-Downtime Rollout') {
             steps {
-                echo "==> Recreating and rolling out updated containers..."
-                sh "docker compose -p ${env.COMPOSE_PROJECT_NAME} -f ${env.COMPOSE_FILE} up -d --remove-orphans"
+                echo "==> Deploying updated containers to production node E5530 (${env.DEPLOY_HOST})..."
+                sh '''
+                    ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "cd ${DEPLOY_DIR} && git pull origin ${BRANCH_NAME} && docker compose -p ${COMPOSE_PROJECT_NAME} -f ${COMPOSE_FILE} up -d --remove-orphans"
+                '''
             }
         }
 
         stage('Automated SRE Health Gate Verification') {
             steps {
                 script {
-                    echo "==> Executing Automated SRE Health Gate (20 attempts x 3s = 60s probe)..."
-                    def hostIP = '172.18.0.1'
-                    try {
-                        def resolved = sh(script: 'python3 -c "import struct; f=open(\'/proc/net/route\').readlines()[1].split()[2]; print(\'.\'.join(str(b) for b in bytes.fromhex(f)[::-1]))" 2>/dev/null', returnStdout: true).trim()
-                        if (resolved) { hostIP = resolved }
-                    } catch (Exception e) {
-                        echo "--> Note: Falling back to default gateway ${hostIP}"
-                    }
-                    echo "==> Target Host Gateway for SRE Health Probes: ${hostIP}"
-
+                    echo "==> Executing Automated SRE Health Gate on E5530 (${env.DEPLOY_HOST}) (20 attempts x 3s = 60s probe)..."
                     def isHealthy = false
                     for (int i = 1; i <= 20; i++) {
-                        echo "Probing services health (attempt ${i}/20)..."
-                        def serverCheck = sh(script: "curl -sf http://${hostIP}:10020/health/live >/dev/null || curl -sf http://172.17.0.1:10020/health/live >/dev/null || curl -sf http://localhost:10020/health/live >/dev/null", returnStatus: true)
-                        def mlCheck = sh(script: "curl -sf http://${hostIP}:8090/health >/dev/null || curl -sf http://172.17.0.1:8090/health >/dev/null || curl -sf http://localhost:8090/health >/dev/null", returnStatus: true)
-                        def clientCheck = sh(script: "curl -sf -I http://${hostIP}:3000 >/dev/null || curl -sf -I http://172.17.0.1:3000 >/dev/null || curl -sf -I http://localhost:3000 >/dev/null", returnStatus: true)
+                        echo "Probing E5530 services health (attempt ${i}/20)..."
+                        def serverCheck = sh(script: "curl -sf http://${env.DEPLOY_HOST}:10020/health/live >/dev/null", returnStatus: true)
+                        def mlCheck = sh(script: "curl -sf http://${env.DEPLOY_HOST}:8090/health >/dev/null", returnStatus: true)
+                        def clientCheck = sh(script: "curl -sf -I http://${env.DEPLOY_HOST}:3000 >/dev/null", returnStatus: true)
 
                         if (serverCheck == 0 && mlCheck == 0 && clientCheck == 0) {
-                            echo "==> [SRE Gate] All services (Server :10020, ML Service :8090, Client :3000) are HEALTHY!"
+                            echo "==> [SRE Gate] All services on E5530 (Server :10020, ML Service :8090, Client :3000) are HEALTHY!"
                             isHealthy = true
                             break
                         }
@@ -254,7 +250,7 @@ pipeline {
                     }
 
                     if (!isHealthy) {
-                        error("Automated Health Gate FAILED! Services did not respond healthy within 60s.")
+                        error("Automated Health Gate FAILED! Services on E5530 did not respond healthy within 60s.")
                     }
                 }
             }
@@ -262,8 +258,8 @@ pipeline {
 
         stage('SRE Diagnostic Audit') {
             steps {
-                echo "==> Running SRE health report..."
-                sh './service/sre/sre.sh health || true'
+                echo "==> Running SRE diagnostic audit on E5530 (${env.DEPLOY_HOST})..."
+                sh 'ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "cd ${DEPLOY_DIR} && ./service/sre/sre.sh health || true"'
             }
         }
     }
@@ -271,20 +267,19 @@ pipeline {
     post {
         success {
             echo "=========================================================="
-            echo " 🚀 HormuzWatch DevOps Deployment SUCCEEDED!              "
+            echo " 🚀 HormuzWatch DevOps Deployment to E5530 SUCCEEDED!    "
             echo "=========================================================="
-            sh "docker compose -p ${env.COMPOSE_PROJECT_NAME} -f ${env.COMPOSE_FILE} ps"
+            sh 'ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "cd ${DEPLOY_DIR} && docker compose -p ${COMPOSE_PROJECT_NAME} -f ${COMPOSE_FILE} ps"'
         }
         failure {
             echo "=========================================================="
-            echo " ❌ Deployment FAILED! Triggering automated rollback...    "
+            echo " ❌ Deployment FAILED! Triggering automated rollback on E5530... "
             echo " Restoring baseline commit: ${env.PREV_COMMIT}             "
             echo "=========================================================="
             sh """
                 if [ -n "${env.PREV_COMMIT}" ] && [ "${env.PREV_COMMIT}" != "null" ]; then
-                    git checkout ${env.PREV_COMMIT}
-                    docker compose -p ${env.COMPOSE_PROJECT_NAME} -f ${env.COMPOSE_FILE} up -d --build
-                    echo "==> Rollback complete. Restored to commit: ${env.PREV_COMMIT}"
+                    ssh -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.DEPLOY_HOST} "cd ${env.DEPLOY_DIR} && git checkout ${env.PREV_COMMIT} && docker compose -p ${env.COMPOSE_PROJECT_NAME} -f ${env.COMPOSE_FILE} up -d"
+                    echo "==> Rollback complete on E5530. Restored to commit: ${env.PREV_COMMIT}"
                 fi
             """
         }
