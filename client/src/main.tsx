@@ -4,6 +4,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { enableMapSet } from 'immer';
 import { Toaster } from '@/components/ui/toaster';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { App } from './App';
 import { Providers } from './providers';
 import './styles/globals.css';
@@ -37,12 +38,14 @@ const root = createRoot(rootElement);
 
 root.render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <Providers>
-        <App />
-        <Toaster position="bottom-right" />
-        <ReactQueryDevtools initialIsOpen={false} />
-      </Providers>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <Providers>
+          <App />
+          <Toaster position="bottom-right" />
+          <ReactQueryDevtools initialIsOpen={false} />
+        </Providers>
+      </QueryClientProvider>
+    </ErrorBoundary>
   </StrictMode>
 );
