@@ -229,12 +229,16 @@ pipeline {
             steps {
                 script {
                     echo "==> Executing Automated SRE Health Gate (20 attempts x 3s = 60s probe)..."
+                    def hostIP = sh(script: "ip route 2>/dev/null | awk '/default/ {print \\$3}' || echo '127.0.0.1'", returnStdout: true).trim()
+                    if (!hostIP) { hostIP = "127.0.0.1" }
+                    echo "==> Target Host Gateway for SRE Health Probes: ${hostIP}"
+
                     def isHealthy = false
                     for (int i = 1; i <= 20; i++) {
                         echo "Probing services health (attempt ${i}/20)..."
-                        def serverCheck = sh(script: 'curl -sf http://localhost:10020/health/live >/dev/null', returnStatus: true)
-                        def mlCheck = sh(script: 'curl -sf http://localhost:8090/health >/dev/null', returnStatus: true)
-                        def clientCheck = sh(script: 'curl -sf -I http://localhost:3000 >/dev/null', returnStatus: true)
+                        def serverCheck = sh(script: "curl -sf http://${hostIP}:10020/health/live >/dev/null || curl -sf http://localhost:10020/health/live >/dev/null", returnStatus: true)
+                        def mlCheck = sh(script: "curl -sf http://${hostIP}:8090/health >/dev/null || curl -sf http://localhost:8090/health >/dev/null", returnStatus: true)
+                        def clientCheck = sh(script: "curl -sf -I http://${hostIP}:3000 >/dev/null || curl -sf -I http://localhost:3000 >/dev/null", returnStatus: true)
 
                         if (serverCheck == 0 && mlCheck == 0 && clientCheck == 0) {
                             echo "==> [SRE Gate] All services (Server :10020, ML Service :8090, Client :3000) are HEALTHY!"
