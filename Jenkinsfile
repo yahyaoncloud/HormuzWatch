@@ -33,6 +33,7 @@ pipeline {
 
     environment {
         COMPOSE_FILE = 'docker-compose.dev.yml'
+        COMPOSE_PROJECT_NAME = 'hormuzwatch'
         DOCKER_BUILDKIT = '1'
         PREV_COMMIT = ''
         TRIVY_SEVERITY = 'HIGH,CRITICAL'
@@ -189,7 +190,7 @@ pipeline {
                 script {
                     def buildFlags = params.FORCE_REBUILD ? '--no-cache' : ''
                     echo "==> Building Docker images for Server, Service, and Client (${buildFlags})..."
-                    sh "docker compose -f ${env.COMPOSE_FILE} build ${buildFlags} server ml client"
+                    sh "docker compose -p ${env.COMPOSE_PROJECT_NAME} -f ${env.COMPOSE_FILE} build ${buildFlags} server ml client"
                 }
             }
         }
@@ -201,7 +202,7 @@ pipeline {
             steps {
                 echo "==> [Trivy] Scanning built container images for vulnerabilities (${env.TRIVY_SEVERITY})..."
                 sh '''
-                    IMAGES=$(docker compose -f docker-compose.dev.yml config --images 2>/dev/null || echo "hormuzwatch-server:latest hormuzwatch-ml:latest hormuzwatch-client:latest")
+                    IMAGES=$(docker compose -p ${COMPOSE_PROJECT_NAME} -f ${COMPOSE_FILE} config --images 2>/dev/null || echo "hormuzwatch-server:latest hormuzwatch-ml:latest hormuzwatch-client:latest")
                     for img in $IMAGES; do
                         if docker image inspect "$img" >/dev/null 2>&1; then
                             echo "--> Scanning Image: $img"
@@ -220,7 +221,7 @@ pipeline {
         stage('Zero-Downtime Rollout') {
             steps {
                 echo "==> Recreating and rolling out updated containers..."
-                sh "docker compose -f ${env.COMPOSE_FILE} up -d --remove-orphans"
+                sh "docker compose -p ${env.COMPOSE_PROJECT_NAME} -f ${env.COMPOSE_FILE} up -d --remove-orphans"
             }
         }
 
@@ -263,7 +264,7 @@ pipeline {
             echo "=========================================================="
             echo " 🚀 HormuzWatch DevOps Deployment SUCCEEDED!              "
             echo "=========================================================="
-            sh "docker compose -f ${env.COMPOSE_FILE} ps"
+            sh "docker compose -p ${env.COMPOSE_PROJECT_NAME} -f ${env.COMPOSE_FILE} ps"
         }
         failure {
             echo "=========================================================="
@@ -271,9 +272,9 @@ pipeline {
             echo " Restoring baseline commit: ${env.PREV_COMMIT}             "
             echo "=========================================================="
             sh """
-                if [ -n "${env.PREV_COMMIT}" ]; then
+                if [ -n "${env.PREV_COMMIT}" ] && [ "${env.PREV_COMMIT}" != "null" ]; then
                     git checkout ${env.PREV_COMMIT}
-                    docker compose -f ${env.COMPOSE_FILE} up -d --build
+                    docker compose -p ${env.COMPOSE_PROJECT_NAME} -f ${env.COMPOSE_FILE} up -d --build
                     echo "==> Rollback complete. Restored to commit: ${env.PREV_COMMIT}"
                 fi
             """
