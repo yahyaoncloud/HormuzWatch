@@ -29,7 +29,7 @@ export default function AdminWatchlist() {
     if (!newItem.id || !newItem.name) return;
     const item: WatchlistItem = {
       ...newItem,
-      addedBy: "ykinwork1@gmail.com",
+      addedBy: "operator",
       addedAt: new Date().toISOString().split("T")[0],
     };
     setWatchlist(prev => [item, ...prev]);

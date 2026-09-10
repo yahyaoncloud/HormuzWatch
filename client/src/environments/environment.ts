@@ -122,16 +122,16 @@ export const env = {
 
   // ── Auth / Admin ──────────────────────────────────────────────────
   auth: {
-    /** Exact emails allowed for admin registration. */
+    /** Allowed admin emails configured via environment. */
     adminEmails: [
-      "ykinwork1@gmail.com",
+      (import.meta.env.VITE_ADMIN_EMAIL as string) || "admin@hormuzwatch.aburcloud.com",
     ] as readonly string[],
-    /** Regex pattern for admin email domains (applied case-insensitively). */
-    adminEmailPattern: /^yk.*@.*\.com$/i,
-    /** Email used by the UI guard screens for display only (never for logic). */
-    adminDisplayEmail: "ykinwork1@gmail.com",
+    /** Regex pattern for admin email verification. */
+    adminEmailPattern: /^.+@.+\..+$/i,
+    /** Email used by the UI guard screens for display only. */
+    adminDisplayEmail: (import.meta.env.VITE_ADMIN_EMAIL as string) || "admin@hormuzwatch.aburcloud.com",
     /** Secret used for admin session signing. */
-    sessionSecret: (import.meta.env.VITE_SESSION_SECRET as string) || "a-secret-key",
+    sessionSecret: (import.meta.env.VITE_SESSION_SECRET as string) || "",
     /** Session expiry in milliseconds (default 7 days). */
     sessionExpiryMs: num(import.meta.env.VITE_SESSION_EXPIRY_MS, 7 * 24 * 60 * 60 * 1000),
   },
