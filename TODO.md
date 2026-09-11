@@ -35,7 +35,16 @@ flowchart TD
 
 ---
 
-## Current Sprint: 3-Node Architecture & End-to-End Migration
+## Current Sprint: Multi-Node Kubernetes (K3s) Cluster Orchestration
+- [x] **K8S-01 (Control Plane Setup):** Deployed K3s Server v1.36.4 on `tunkstun` (`192.168.1.46`), configured kubectl, flannel VXLAN, core DNS, local-path provisioner, and metrics-server. Tainted control plane (`CriticalAddonsOnly=true:NoSchedule`) to isolate observability.
+- [x] **K8S-02 (Production Worker Join):** Joined `LATE5530` (`192.168.1.40`) as production worker node with labels `environment=production,tier=edge-prod,roles=production,worker`. Configured firewalld for VXLAN (UDP 8472), kubelet (TCP 10250), and API server (TCP 6443).
+- [x] **K8S-03 (Production Workloads Migration):** Imported production images into K3s containerd on `LATE5530`. Deployed `hormuzwatch-prod` namespace: PostgreSQL 16 StatefulSet with dynamic local-path PVC, ML service with 6 preloaded models, Go server with `/health` and circuit closed, and client SPA on NodePort 30000. All pods 1/1 Running with 0 restarts.
+- [x] **K8S-04 (Dev Worker Automation):** Prepared `k8s/scripts/join_tp24_worker.sh` and `k8s/dev/00-dev-workloads.yaml` with `nodeSelector: environment: dev` and systemd sleep masking.
+- [x] **K8S-05 (Runbook & Verification):** Authored `docs/k8s/KUBERNETES_CLUSTER_SETUP_RUNBOOK.md` and `k8s/scripts/verify_cluster.sh`.
+
+---
+
+## Completed Sprint: 3-Node Architecture & End-to-End Migration
 - [x] **TASK-01 (Topology Architecture):** Formalized and documented node roles (`tp24` build/heavy ops, `LATE5530` prod workloads, `tunkstun` observability).
 - [x] **TASK-02 (tp24 Process Sanitization):** Kill stale processes, prune orphan containers, free memory/ports on `tp24`, resolved Nextcloud port 80 conflict (`sudo snap set nextcloud ports.http=8080`).
 - [x] **TASK-03 (tp24 Dev Workload Deployment):** Deployed and verified HormuzWatch dev stack on `tp24` on Docker 29.7.2 (`docker-compose.dev.yml`). Nginx ingress reverse proxy active on port 80 (`/`, `/api`, `/ml`, `/nextcloud`).

@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hormuzwatch-client
+  namespace: hormuzwatch-prod
+spec:
+  type: NodePort
+  ports:
+    - port: 3000
+      targetPort: 3000
+      nodePort: 30000
+      name: http-client
+  selector:
+    app: hormuzwatch-client
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hormuzwatch-client
+  namespace: hormuzwatch-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hormuzwatch-client
+  template:
+    metadata:
+      labels:
+        app: hormuzwatch-client
+    spec:
+      nodeSelector:
+        environment: production
+      containers:
+        - name: client
+          image: localhost/hormuzwatch-client:2.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10

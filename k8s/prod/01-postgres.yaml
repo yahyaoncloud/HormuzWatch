@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: hormuzwatch-prod
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+  selector:
+    app: hormuzwatch-postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hormuzwatch-postgres
+  namespace: hormuzwatch-prod
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+  selector:
+    app: hormuzwatch-postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: hormuzwatch-postgres
+  namespace: hormuzwatch-prod
+spec:
+  serviceName: hormuzwatch-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hormuzwatch-postgres
+  template:
+    metadata:
+      labels:
+        app: hormuzwatch-postgres
+    spec:
+      nodeSelector:
+        environment: production
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: hormuzwatch-config
+                  key: POSTGRES_USER
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: hormuzwatch-config
+                  key: POSTGRES_DB
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: hormuzwatch-secrets
+                  key: POSTGRES_PASSWORD
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: pgdata
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 2Gi

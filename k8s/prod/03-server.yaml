@@ -1,0 +1,115 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: server
+  namespace: hormuzwatch-prod
+spec:
+  ports:
+    - port: 10020
+      targetPort: 10020
+      name: http-api
+  selector:
+    app: hormuzwatch-server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hormuzwatch-server
+  namespace: hormuzwatch-prod
+spec:
+  type: NodePort
+  ports:
+    - port: 10020
+      targetPort: 10020
+      nodePort: 30020
+      name: http-api
+  selector:
+    app: hormuzwatch-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hormuzwatch-server
+  namespace: hormuzwatch-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hormuzwatch-server
+  template:
+    metadata:
+      labels:
+        app: hormuzwatch-server
+    spec:
+      nodeSelector:
+        environment: production
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - "until pg_isready -h postgres.hormuzwatch-prod.svc.cluster.local -p 5432 -U postgres; do echo waiting for postgres; sleep 2; done"
+      containers:
+        - name: server
+          image: localhost/hormuzwatch-server:2.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 10020
+              name: http
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: hormuzwatch-config
+                  key: PORT
+            - name: GIN_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: hormuzwatch-config
+                  key: GIN_MODE
+            - name: AUTH_DISABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: hormuzwatch-config
+                  key: AUTH_DISABLED
+            - name: ML_SERVICE_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  name: hormuzwatch-config
+                  key: ML_SERVICE_ADDR
+            - name: ML_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: hormuzwatch-config
+                  key: ML_SERVICE_URL
+            - name: DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: hormuzwatch-config
+                  key: DATABASE_URL
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: hormuzwatch-secrets
+                  key: JWT_SECRET
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 10020
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 10020
+            initialDelaySeconds: 15
+            periodSeconds: 20

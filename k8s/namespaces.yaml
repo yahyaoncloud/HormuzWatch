@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hormuzwatch-prod
+  labels:
+    name: hormuzwatch-prod
+    environment: production
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hormuzwatch-dev
+  labels:
+    name: hormuzwatch-dev
+    environment: dev

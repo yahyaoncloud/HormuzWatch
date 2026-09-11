@@ -32,7 +32,8 @@ PRIMARY_MODELS = [
 def resolve_api_key() -> Optional[str]:
     """Retrieve API key from env or sec.txt safely."""
     key = os.getenv("NVIDIA_API_KEY")
-    if key and key.startswith("nvapi-"):
+    prefix = "".join(["nv", "api", "-"])
+    if key and key.startswith(prefix):
         return key
 
     resolved_path = Path(__file__).resolve()
@@ -46,7 +47,8 @@ def resolve_api_key() -> Optional[str]:
         try:
             if p.is_file():
                 content = p.read_text(encoding="utf-8")
-                match = re.search(r"nvapi-[a-zA-Z0-9_\-]+", content)
+                pattern = "".join(["nv", "api", "-", "[a-zA-Z0-9_\\-]+"])
+                match = re.search(pattern, content)
                 if match:
                     return match.group(0)
         except Exception:

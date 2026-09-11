@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hormuzwatch-dev-runner
+  namespace: hormuzwatch-dev
+spec:
+  ports:
+    - port: 8090
+      targetPort: 8090
+      name: http
+  selector:
+    app: hormuzwatch-dev-runner
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hormuzwatch-dev-runner
+  namespace: hormuzwatch-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hormuzwatch-dev-runner
+  template:
+    metadata:
+      labels:
+        app: hormuzwatch-dev-runner
+        tier: dev
+    spec:
+      nodeSelector:
+        environment: dev
+      containers:
+        - name: dev-runner
+          image: python:3.11-slim
+          command: ["sh", "-c", "echo '[✓] Dev Runner active on tp24 high-capacity compute node'; sleep infinity"]
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "3.5"
+              memory: 16Gi

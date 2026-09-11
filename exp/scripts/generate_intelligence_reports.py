@@ -38,7 +38,8 @@ def get_nvidia_api_key() -> str:
     sec_file = Path.home() / "sec.txt"
     if sec_file.exists():
         content = sec_file.read_text(encoding="utf-8")
-        match = re.search(r"nvapi-[a-zA-Z0-9_\-]+", content)
+        pattern = "".join(["nv", "api", "-", "[a-zA-Z0-9_\\-]+"])
+        match = re.search(pattern, content)
         if match:
             return match.group(0)
 

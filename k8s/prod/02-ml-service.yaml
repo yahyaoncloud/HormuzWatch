@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ml
+  namespace: hormuzwatch-prod
+spec:
+  ports:
+    - port: 8090
+      targetPort: 8090
+      name: http-diag
+    - port: 8091
+      targetPort: 8091
+      name: grpc
+  selector:
+    app: hormuzwatch-ml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hormuzwatch-ml
+  namespace: hormuzwatch-prod
+spec:
+  ports:
+    - port: 8090
+      targetPort: 8090
+      name: http-diag
+    - port: 8091
+      targetPort: 8091
+      name: grpc
+  selector:
+    app: hormuzwatch-ml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hormuzwatch-ml
+  namespace: hormuzwatch-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hormuzwatch-ml
+  template:
+    metadata:
+      labels:
+        app: hormuzwatch-ml
+    spec:
+      nodeSelector:
+        environment: production
+      containers:
+        - name: ml-service
+          image: localhost/hormuzwatch-ml:2.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8090
+              name: http
+            - containerPort: 8091
+              name: grpc
+          env:
+            - name: ML_PORT
+              value: "8090"
+            - name: GRPC_PORT
+              value: "8091"
+            - name: MODELS_DIR
+              value: "/app/models"
+            - name: APP_VERSION
+              value: "2.0.0"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1.0"
+              memory: 1536Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8090
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8090
+            initialDelaySeconds: 20
+            periodSeconds: 30
