@@ -32,11 +32,11 @@ To prevent database corruption and abrupt TCP RST packets, workloads were stoppe
 ```bash
 # Executed on E5530 (100.66.64.31):
 cd /home/yahya/SHARED/Projects/HormuzWatch
-docker compose -p hormuzwatch -f docker-compose.dev.yml stop -t 15
-docker compose -p hormuzwatch -f docker-compose.dev.yml down
+docker compose -p hormuzwatch -f docker-compose.yml stop -t 15
+docker compose -p hormuzwatch -f docker-compose.yml down
 
 # Stopped standalone observability containers
-docker stop prometheus grafana && docker rm prometheus grafana
+docker stop prometheus grafana 2>/dev/null && docker rm prometheus grafana 2>/dev/null || true
 ```
 
 **Verification:**
@@ -108,10 +108,10 @@ curl -I http://localhost:8085
 
 #### Step 2: Power On Production Workloads (on `E5530`)
 ```bash
-ssh yahya@100.66.64.31 "cd /home/yahya/SHARED/Projects/HormuzWatch && docker compose -p hormuzwatch -f docker-compose.dev.yml up -d"
+ssh yahya@100.66.64.31 "cd /home/yahya/SHARED/Projects/HormuzWatch && git checkout production-ready && git pull origin production-ready && docker compose -p hormuzwatch -f docker-compose.yml up -d"
 
 # Verify all containers are healthy on E5530
-ssh yahya@100.66.64.31 "docker compose -p hormuzwatch -f docker-compose.dev.yml ps"
+ssh yahya@100.66.64.31 "docker compose -p hormuzwatch -f docker-compose.yml ps"
 ```
 
 #### Step 3: Run Automated SRE Diagnostic Probes
