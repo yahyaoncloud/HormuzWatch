@@ -35,20 +35,22 @@ def resolve_api_key() -> Optional[str]:
     if key and key.startswith("nvapi-"):
         return key
 
+    resolved_path = Path(__file__).resolve()
     sec_candidates = [
         Path.home() / "sec.txt",
         Path("/root/sec.txt"),
-        Path(__file__).resolve().parents[3] / "sec.txt",
     ]
+    if len(resolved_path.parents) > 3:
+        sec_candidates.append(resolved_path.parents[3] / "sec.txt")
     for p in sec_candidates:
-        if p.exists():
-            try:
+        try:
+            if p.is_file():
                 content = p.read_text(encoding="utf-8")
                 match = re.search(r"nvapi-[a-zA-Z0-9_\-]+", content)
                 if match:
                     return match.group(0)
-            except Exception:
-                pass
+        except Exception:
+            pass
     return None
 
 

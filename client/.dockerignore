@@ -49,3 +49,6 @@ coverage
 
 # Misc
 *.tsbuildinfo
+.react-router
+.vite
+exports

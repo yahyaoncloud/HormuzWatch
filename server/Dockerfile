@@ -13,7 +13,8 @@ RUN apk add --no-cache git ca-certificates
 WORKDIR /src
 
 COPY go.mod go.sum ./
-RUN go mod download && go mod verify
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download && go mod verify
 
 COPY . ./
 
@@ -21,13 +22,16 @@ ARG VERSION=2.0.0
 ARG BUILD_TIME
 ARG GIT_COMMIT
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -trimpath \
     -ldflags="-w -s \
       -X main.Version=${VERSION} \
       -X main.BuildTime=${BUILD_TIME} \
       -X main.GitCommit=${GIT_COMMIT}" \
     -o /out/hormuz-server ./cmd/ && \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -trimpath \
     -ldflags="-w -s" \
     -o /out/hormuz-migrate ./cmd/migrate

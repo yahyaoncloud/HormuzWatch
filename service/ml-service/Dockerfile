@@ -28,7 +28,8 @@ RUN groupadd -r hormuz && useradd -r -g hormuz hormuz
 
 # Install Python deps first (cached layer)
 COPY --chown=hormuz:hormuz requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
 
 # Copy application code with ownership (single layer)
 COPY --chown=hormuz:hormuz . .

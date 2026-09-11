@@ -12,7 +12,6 @@ shap==0.45.1
 
 # gRPC transport (production: Go backend -> ml-service)
 grpcio>=1.65.1
-grpcio-tools>=1.65.1
 protobuf>=6.30.0
 
 # Conflict prediction pipeline

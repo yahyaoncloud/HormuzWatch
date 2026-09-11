@@ -22,6 +22,8 @@ vendor
 bin
 dist
 build
+hormuzwatch-server
+dataset-generator
 
 # Config not needed in container
 docker-compose.yml
