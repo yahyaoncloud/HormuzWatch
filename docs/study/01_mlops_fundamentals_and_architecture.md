@@ -120,3 +120,70 @@ curl -s http://localhost:8090/drift/evaluate/vessel | jq .
 # 6. Manually trigger an event-driven continuous training remediation cycle
 curl -X POST http://localhost:8090/drift/remediate/vessel | jq .
 ```
+
+---
+
+## 5. The 10-Step Universal Blueprint: How to Build Any Production ML Model
+
+This standardized 10-step engineering lifecycle translates operational objectives into resilient, calibrated mathematical models in production.
+
+```mermaid
+flowchart LR
+    P1[1. Frame Problem & Metrics] --> P2[2. Data & Feature Contracts]
+    P2 --> P3[3. Leakage-Free Splitting]
+    P3 --> P4[4. Heuristic Baseline]
+    P4 --> P5[5. Model Architecture & Training]
+    P5 --> P6[6. Bayesian HPO & Slices]
+    P6 --> P7[7. Calibration & Thresholding]
+    P7 --> P8[8. Packaging & Registry]
+    P8 --> P9[9. Serving & Deployment]
+    P9 --> P10[10. Drift Monitoring & CT]
+    P10 -.->|Feedback Trigger| P5
+```
+
+### Step 1: Problem Framing & Metric Selection
+- Determine the learning paradigm: Supervised (Classification/Regression), Unsupervised (Density/Outlier), or Self-Supervised (Autoencoders).
+- Align business risk with mathematical loss: On imbalanced datasets, reject raw Accuracy; optimize **Precision-Recall AUC (PR-AUC)**, **Brier Score**, and **Expected Calibration Error (ECE)**.
+
+### Step 2: Data Engineering & Schema Contracts
+- Enforce strict Pydantic schemas specifying allowed numeric ranges, physical units, and non-null invariants before ingestion.
+- Standardize features ($\frac{x - \mu}{\sigma}$) and encode categorical metadata canonically.
+
+### Step 3: Leakage-Free Data Splitting
+- Never use random k-fold splits on temporal or entity telemetry.
+- Execute entity-stratified 4-way splits grouped by entity identity (`MMSI` / `ICAO_HEX`):
+  - **Train (60%)**: Fits model parameters.
+  - **Validation (15%)**: Guides hyperparameter search and early stopping.
+  - **Calibration (15%)**: Fits non-parametric probability calibrators on unseen scores.
+  - **Test (10%)**: Strictly held out for final gate verification.
+
+### Step 4: Simple Heuristic Baseline
+- Before training complex architectures, establish a rule-based or linear benchmark.
+- Complex ML models must decisively outperform heuristic rules to justify deployment and operational maintenance.
+
+### Step 5: Model Family Selection & Training
+- Select model families suited to the data geometry:
+  - Tabular features $\to$ Gradient Boosted Trees (XGBoost/LightGBM) or Isolation Forests.
+  - Spatial Corridors $\to$ Deep Manifold Reconstruction Autoencoders ($MSE$).
+  - High-dimensional Density $\to$ Local Outlier Factor ($k$-NN reachability).
+
+### Step 6: Bayesian Hyperparameter Optimization & Slice Testing
+- Employ Tree-structured Parzen Estimator (TPE) via Optuna to optimize hyperparameters under multi-objective constraints.
+- Evaluate candidate models across fine-grained operational slices (e.g. speed tiers, night vs day, restricted zones) to prevent localized degradation.
+
+### Step 7: Probability Calibration & Threshold Tuning
+- Uncalibrated tree decision margins must be transformed into true posterior probabilities ($P \in [0.0, 1.0]$) via Isotonic Regression.
+- Tune decision thresholds based on real operational costs of False Positives vs False Negatives.
+
+### Step 8: Serialization, Metadata & Cryptographic Registry
+- Package weights, scalers, and feature schemas into immutable artifacts (`.joblib` / `ONNX`).
+- Compute and verify SHA-256 cryptographic digests in a central registry manifest.
+
+### Step 9: Low-Latency Serving & Zero-Downtime Hot-Reloading
+- Serve via dual transport: gRPC for sub-millisecond stream processing, REST for management.
+- Implement thread-safe in-memory pointer swapping (`POST /api/models/reload`) to eliminate downtime during weight refreshes.
+
+### Step 10: Drift Monitoring & Automated Continuous Training (CT)
+- Track distribution shifts in real-time via Population Stability Index ($PSI \ge 0.20$) and Kolmogorov-Smirnov tests ($p < 0.01$).
+- Automatically trigger asynchronous retraining cycles to restore performance when severe drift occurs.
+
