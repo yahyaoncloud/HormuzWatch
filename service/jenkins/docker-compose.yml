@@ -1,3 +1,7 @@
+# HormuzWatch — Hardened Jenkins CI Architecture (AUDIT-04 / AUDIT-07)
+# Resolves host Docker socket mounting by utilizing an isolated DinD sidecar
+# and provisions direct webhook ingress on tunkstun (:8085).
+
 services:
   jenkins:
     build:
@@ -6,25 +10,43 @@ services:
     image: hormuzwatch-jenkins:lts
     container_name: hormuzwatch-jenkins
     restart: unless-stopped
-    user: "1000:984"
     ports:
       - "${JENKINS_PORT:-8085}:8080"
       - "50000:50000"
     environment:
       - JENKINS_OPTS=--httpPort=8080
-      - JAVA_OPTS=-Djenkins.install.runSetupWizard=true -Xmx2048m -Xms512m
-      - DOCKER_HOST=unix:///var/run/docker.sock
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false -Xmx2048m -Xms512m
+      - DOCKER_HOST=tcp://dind:2375
+      - DOCKER_TLS_CERTDIR=
     volumes:
       - jenkins_data:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
       - /home/yahya/SHARED/Projects/HormuzWatch:/home/yahya/SHARED/Projects/HormuzWatch
     networks:
-      - hormuzwatch-dev-network
+      - hormuzwatch-ci-network
+    depends_on:
+      - dind
+
+  # Isolated Docker-in-Docker sidecar (eliminates host /var/run/docker.sock mounting)
+  dind:
+    image: docker:27-dind
+    container_name: hormuzwatch-jenkins-dind
+    privileged: true
+    restart: unless-stopped
+    environment:
+      - DOCKER_TLS_CERTDIR=
+    volumes:
+      - dind_data:/var/lib/docker
+      - /home/yahya/SHARED/Projects/HormuzWatch:/home/yahya/SHARED/Projects/HormuzWatch
+    networks:
+      - hormuzwatch-ci-network
 
 volumes:
   jenkins_data:
     driver: local
+  dind_data:
+    driver: local
 
 networks:
-  hormuzwatch-dev-network:
-    external: true
+  hormuzwatch-ci-network:
+    name: hormuzwatch-ci-network
+    driver: bridge

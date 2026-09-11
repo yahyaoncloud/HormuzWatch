@@ -1,0 +1,24 @@
+# HormuzWatch — Blue Deployment Slot Override
+services:
+  server:
+    container_name: hormuzwatch-server-blue
+    ports:
+      - "10020:10020"
+    environment:
+      - PORT=10020
+      - ML_SERVICE_ADDR=ml:8091
+      - ML_SERVICE_URL=http://ml:8090
+
+  ml:
+    container_name: hormuzwatch-ml-blue
+    ports:
+      - "8090:8090"
+      - "8091:8091"
+    environment:
+      - ML_PORT=8090
+      - GRPC_PORT=8091
+
+  client:
+    container_name: hormuzwatch-client-blue
+    ports:
+      - "3000:3000"

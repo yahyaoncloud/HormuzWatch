@@ -27,7 +27,10 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
       -X main.Version=${VERSION} \
       -X main.BuildTime=${BUILD_TIME} \
       -X main.GitCommit=${GIT_COMMIT}" \
-    -o /out/hormuz-server ./cmd/
+    -o /out/hormuz-server ./cmd/ && \
+    go build -trimpath \
+    -ldflags="-w -s" \
+    -o /out/hormuz-migrate ./cmd/migrate
 
 FROM alpine:${ALPINE_VERSION}
 
@@ -39,6 +42,7 @@ USER hormuz
 WORKDIR /app
 
 COPY --from=builder /out/hormuz-server .
+COPY --from=builder /out/hormuz-migrate .
 
 # data/ and templates/ are mounted as volumes at runtime (see docker-compose)
 # COPY data/ ./data/

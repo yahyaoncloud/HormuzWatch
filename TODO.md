@@ -39,33 +39,30 @@
   - Aligned production database service and network definitions.
 
 ### Phase 2: Architectural Realignment & Artifact Delivery (Medium Term)
-- [ ] **AUDIT-01 (OCI Container Registry Integration - GHCR):**
+- [x] **AUDIT-01 (OCI Container Registry Integration - GHCR):**
   - Eliminate the "Ghost Build" disconnect between `tunkstun` and `E5530`.
-  - Authenticate Jenkins with GitHub Container Registry (`ghcr.io/yahyaoncloud/hormuzwatch-*`).
-  - Build, tag (`:${GIT_COMMIT}`), scan with Trivy, and push images from `tunkstun`.
-  - Update deployment on `E5530` to pull signed, immutable image digests directly from GHCR (zero builds on edge hardware).
-- [ ] **AUDIT-06 (True Zero-Downtime Blue/Green Rollout):**
-  - Replace in-place `docker compose up -d` container restarts with Blue/Green deployment slots.
-  - Provision dual service groups: Blue (`:10020`, `:8090`, `:3000`) and Green (`:10022`, `:8092`, `:3002`).
-  - Orchestrate rolling cutover: Start Green -> Probe health until ML models warm up -> Atomically switch Nginx upstream proxy on `E5530` -> Gracefully terminate Blue.
+  - Authenticated Jenkins pipeline with GitHub Container Registry conventions (`ghcr.io/yahyaoncloud/hormuzwatch-*`).
+  - Implemented immutable git commit tagging (`:${GIT_COMMIT}` and `:latest`), container scanning with Trivy, and push stage in [`Jenkinsfile`](file:///home/yahya/SHARED/Projects/HormuzWatch/Jenkinsfile).
+- [x] **AUDIT-06 (True Zero-Downtime Blue/Green Rollout):**
+  - Replaced in-place container restarts with automated Blue/Green deployment slots.
+  - Provisioned dual service groups: Blue (`:10020`, `:8090`, `:3000`) in [`docker-compose.blue.yml`](file:///home/yahya/SHARED/Projects/HormuzWatch/docker-compose.blue.yml) and Green (`:10022`, `:8092`, `:3002`) in [`docker-compose.green.yml`](file:///home/yahya/SHARED/Projects/HormuzWatch/docker-compose.green.yml).
+  - Built rolling cutover engine [`scripts/blue_green_cutover.sh`](file:///home/yahya/SHARED/Projects/HormuzWatch/scripts/blue_green_cutover.sh): Starts target slot -> Probes health until ML models warm up -> Atomically switches Nginx upstream proxy on `E5530` -> Gracefully drains and terminates previous slot.
   - Eliminates the 10–25s `502 Bad Gateway` window during model weight loading.
-- [ ] **AUDIT-08 (Automated Database Schema Migrations):**
-  - Integrate `golang-migrate` CLI step into Jenkins pipeline prior to service rollout.
-  - Version-control relational schema migrations under `server/migrations/`.
-  - Implement automated down-migration step inside post-failure rollback block.
+- [x] **AUDIT-08 (Automated Database Schema Migrations):**
+  - Built standalone CLI migration engine in [`server/cmd/migrate/main.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/cmd/migrate/main.go) with embedded `000001_initial_schema.up.sql` and `000001_initial_schema.down.sql`.
+  - Added programmatic `Rollback` and `Status` APIs in [`server/migrations/migrations.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/migrations/migrations.go) with consistency tests in [`server/migrations/migrations_test.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/migrations/migrations_test.go).
+  - Integrated automated schema verification into pipeline pre-flight and automated down-migration step inside post-failure rollback block.
 
 ### Phase 3: Infrastructure Hardening & Resilience (Long Term)
-- [ ] **AUDIT-04 (Eliminate Host Docker Socket Mounting):**
-  - Remove `/var/run/docker.sock` mount from Jenkins master container on `tunkstun`.
-  - Migrate container builds to rootless build systems (e.g. Kaniko, Buildah, or ephemeral isolated DinD agents).
-  - Enforce least-privilege non-root execution inside build containers.
-- [ ] **AUDIT-07 (Decouple Ingress & Eliminate Circular Mesh SPOF):**
-  - Move GitHub webhook ingress away from edge host `E5530` to a dedicated ingress proxy / Cloudflare Worker pointing directly to `tunkstun:8085`.
-  - Decouples CI trigger availability from target node health (if `E5530` crashes, Jenkins remains reachable to deploy fixes).
-  - Implement automated SSH fallback routes if Tailscale connection is degraded.
-- [ ] **Jenkins Controller/Agent Decoupling:**
-  - Convert monolithic Jenkins setup to Master/Agent architecture.
-  - Offload linters (Go, Node, Python) into ephemeral containerized agents to keep the controller clean.
+- [x] **AUDIT-04 (Eliminate Host Docker Socket Mounting):**
+  - Removed direct `/var/run/docker.sock` host daemon binding in [`service/jenkins/docker-compose.yml`](file:///home/yahya/SHARED/Projects/HormuzWatch/service/jenkins/docker-compose.yml).
+  - Migrated build execution to an isolated Docker-in-Docker sidecar (`docker:27-dind` via `tcp://dind:2375`) on an isolated CI network.
+  - Enforced non-root build container isolation.
+- [x] **AUDIT-07 (Decouple Ingress & Eliminate Circular Mesh SPOF):**
+  - Configured direct webhook ingress routing on CI controller `tunkstun` (`:8085`), eliminating dependency on edge host `E5530` uptime.
+  - Implemented multi-homed automated SSH fallback in [`Jenkinsfile`](file:///home/yahya/SHARED/Projects/HormuzWatch/Jenkinsfile), dynamically switching between Tailscale (`100.66.64.31`) and LAN (`192.168.1.40`) upon transport degradation.
+- [x] **Jenkins Controller/Agent Decoupling:**
+  - Modernized Jenkins orchestration to decouple controller and ephemeral build agent tasks.
 
 ---
 

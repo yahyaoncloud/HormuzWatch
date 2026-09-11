@@ -1,0 +1,24 @@
+# HormuzWatch — Green Deployment Slot Override
+services:
+  server:
+    container_name: hormuzwatch-server-green
+    ports:
+      - "10022:10022"
+    environment:
+      - PORT=10022
+      - ML_SERVICE_ADDR=ml:8093
+      - ML_SERVICE_URL=http://ml:8092
+
+  ml:
+    container_name: hormuzwatch-ml-green
+    ports:
+      - "8092:8092"
+      - "8093:8093"
+    environment:
+      - ML_PORT=8092
+      - GRPC_PORT=8093
+
+  client:
+    container_name: hormuzwatch-client-green
+    ports:
+      - "3002:3002"
