@@ -27,10 +27,7 @@ CLR_GRAY="\033[90m"
 
 # Paths & Targets
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-REMOTE_HOST="${DEPLOY_HOST:-tunkstun}"
-REMOTE_IP="192.168.1.51"
-EDGE_DOMAIN="https://hormuzwatch.aburcloud.com"
-
+REMOTE_HOST="${DEPLOY_HOST:-tp24}"
 TARGET_TIER="all"
 AUTO_CONFIRM=false
 
@@ -39,11 +36,37 @@ for arg in "$@"; do
     -y|--yes|--confirm)
       AUTO_CONFIRM=true
       ;;
+    tp24|workstation)
+      REMOTE_HOST="tp24"
+      ;;
+    late5530|e5530)
+      REMOTE_HOST="LATE5530"
+      ;;
+    tunkstun|controller)
+      REMOTE_HOST="tunkstun"
+      ;;
     server|ml|client|all|observability)
       TARGET_TIER="$arg"
       ;;
   esac
 done
+
+case "$REMOTE_HOST" in
+  tp24|workstation)
+    REMOTE_IP="192.168.1.35"
+    COMPOSE_FILES="-f docker-compose.yml -f docker-compose.tp24.yml"
+    ;;
+  LATE5530|late5530|e5530)
+    REMOTE_IP="192.168.1.40"
+    COMPOSE_FILES="-f docker-compose.yml"
+    ;;
+  *)
+    REMOTE_IP="192.168.1.51"
+    COMPOSE_FILES="-f docker-compose.yml"
+    ;;
+esac
+
+EDGE_DOMAIN="https://hormuzwatch.aburcloud.com"
 
 print_banner() {
   echo -e "${CLR_CYAN}╔═══════════════════════════════════════════════════════════════╗${CLR_RESET}"
@@ -131,6 +154,7 @@ sync_remote() {
   # Top level configs
   rsync -avq "${REPO_ROOT}/docker-compose.yml" "${REMOTE_HOST}:~/SHARED/Projects/HormuzWatch/docker-compose.yml"
   rsync -avq "${REPO_ROOT}/docker-compose.dev.yml" "${REMOTE_HOST}:~/SHARED/Projects/HormuzWatch/docker-compose.dev.yml"
+  [ -f "${REPO_ROOT}/docker-compose.tp24.yml" ] && rsync -avq "${REPO_ROOT}/docker-compose.tp24.yml" "${REMOTE_HOST}:~/SHARED/Projects/HormuzWatch/docker-compose.tp24.yml"
   rsync -avq --delete "${REPO_ROOT}/docs/" "${REMOTE_HOST}:~/SHARED/Projects/HormuzWatch/docs/"
   rsync -avq "${REPO_ROOT}/README.md" "${REMOTE_HOST}:~/SHARED/Projects/HormuzWatch/README.md"
 
@@ -145,18 +169,18 @@ deploy_containers() {
 
   if [[ "$TARGET_TIER" == "all" || "$TARGET_TIER" == "server" ]]; then
     echo -e "  ${CLR_CYAN}→ Starting Server container (:10020)...${CLR_RESET}"
-    ssh "${REMOTE_HOST}" "cd ~/SHARED/Projects/HormuzWatch && docker compose up -d server"
+    ssh "${REMOTE_HOST}" "cd ~/SHARED/Projects/HormuzWatch && docker compose ${COMPOSE_FILES} up -d server"
   fi
 
   if [[ "$TARGET_TIER" == "all" || "$TARGET_TIER" == "ml" ]]; then
     echo -e "  ${CLR_CYAN}→ Starting ML Service container (:8090/:8091)...${CLR_RESET}"
-    ssh "${REMOTE_HOST}" "cd ~/SHARED/Projects/HormuzWatch && docker compose up -d ml"
+    ssh "${REMOTE_HOST}" "cd ~/SHARED/Projects/HormuzWatch && docker compose ${COMPOSE_FILES} up -d ml"
   fi
 
   if [[ "$TARGET_TIER" == "all" || "$TARGET_TIER" == "client" ]]; then
     echo -e "  ${CLR_CYAN}→ Deploying Client Nginx SPA (:3000)...${CLR_RESET}"
     ssh "${REMOTE_HOST}" "docker rm -f hormuzwatch-client 2>/dev/null || true"
-    ssh "${REMOTE_HOST}" "cd ~/SHARED/Projects/HormuzWatch && docker compose --profile full up -d client"
+    ssh "${REMOTE_HOST}" "cd ~/SHARED/Projects/HormuzWatch && docker compose ${COMPOSE_FILES} --profile full up -d client"
     ssh "${REMOTE_HOST}" "docker cp ~/SHARED/Projects/HormuzWatch/client/build/client/. hormuzwatch-client:/usr/share/nginx/html/"
   fi
 

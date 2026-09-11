@@ -1,0 +1,64 @@
+# ==============================================================================
+# HormuzWatch — Workstation High-Performance Compose Profile (tp24)
+# Hardware: AMD Ryzen 3 3200G (4 Cores / 4 Threads @ 4.0 GHz, AVX2)
+#           32 GiB DDR4 RAM, AMD Radeon RX 6500 XT (4GB VRAM)
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.tp24.yml up -d
+# ==============================================================================
+
+services:
+  server:
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  postgres:
+    command: ["postgres", "-c", "shared_buffers=1GB", "-c", "work_mem=32MB", "-c", "maintenance_work_mem=256MB", "-c", "max_connections=150", "-c", "effective_cache_size=8GB"]
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4096M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  ml:
+    environment:
+      - WORKERS=4
+      - OMP_NUM_THREADS=4
+      - MKL_NUM_THREADS=4
+      - OPENBLAS_NUM_THREADS=4
+    deploy:
+      resources:
+        limits:
+          cpus: '3.5'
+          memory: 8192M
+        reservations:
+          cpus: '1.0'
+          memory: 1024M
+
+  client:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 64M
+
+  dataset-worker:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.2'
+          memory: 128M
