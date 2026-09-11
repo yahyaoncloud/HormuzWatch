@@ -24,7 +24,7 @@ TESTS_DIR = Path(__file__).resolve().parent
 SERVICE_DIR = TESTS_DIR.parent
 PROJECT_ROOT = SERVICE_DIR.parent.parent
 
-for p in ["/app", "/tmp", str(SERVICE_DIR), str(PROJECT_ROOT / "pipeline")]:
+for p in ["/app", str(SERVICE_DIR), str(PROJECT_ROOT / "pipeline")]:
     if p not in sys.path:
         sys.path.insert(0, p)
 

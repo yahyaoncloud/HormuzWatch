@@ -541,11 +541,8 @@ def main():
         app = FastAPI(title="HormuzWatch Analysis API", version="2.0")
         app.include_router(create_router())
 
-        @app.get("/health")
-        async def health():
-            return {"status": "healthy", "service": "analysis-api"}
-
-        uvicorn.run(app, host="0.0.0.0", port=args.port, log_level="info")
+        analysis_host = os.environ.get("ANALYSIS_HOST", "127.0.0.1")
+        uvicorn.run(app, host=analysis_host, port=args.port, log_level="info")
         return
 
     # CLI mode: analyze a single file

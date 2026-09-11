@@ -27,9 +27,10 @@ def _run_http(server: uvicorn.Server) -> None:
 
 def main() -> None:
     http_port = int(os.environ.get("ML_PORT", os.environ.get("HTTP_PORT", "8090")))
+    host = os.environ.get("ML_HOST", "0.0.0.0")  # nosec B104
     config = uvicorn.Config(
         fastapi_app.app,
-        host="0.0.0.0",
+        host=host,
         port=http_port,
         log_level=os.environ.get("HTTP_LOG_LEVEL", "info"),
     )

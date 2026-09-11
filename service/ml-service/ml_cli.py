@@ -32,7 +32,7 @@ def _is_running(port: int = DEFAULT_PORT) -> bool:
     """Check if the ML service is reachable."""
     try:
         import urllib.request
-        resp = urllib.request.urlopen(f"http://localhost:{port}/health", timeout=3)
+        resp = urllib.request.urlopen(f"http://localhost:{port}/health", timeout=3)  # nosec B310
         data = json.loads(resp.read())
         return data.get("status") == "healthy"
     except Exception:
@@ -154,7 +154,7 @@ def cmd_status():
         try:
             import urllib.request
             resp = json.loads(
-                urllib.request.urlopen(f"http://localhost:{DEFAULT_PORT}/health", timeout=3).read()
+                urllib.request.urlopen(f"http://localhost:{DEFAULT_PORT}/health", timeout=3).read()  # nosec B310
             )
             print(f"  Uptime    : {resp.get('uptime_seconds', 'N/A')}s")
             print(f"  Models    : {resp.get('models_loaded', 'N/A')}")
@@ -187,7 +187,7 @@ def cmd_train(domain: str):
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        resp = json.loads(urllib.request.urlopen(req, timeout=120).read())
+        resp = json.loads(urllib.request.urlopen(req, timeout=120).read())  # nosec B310
         print(json.dumps(resp, indent=2))
     except Exception as e:
         print(f"  Training failed: {e}")
@@ -226,7 +226,7 @@ def cmd_predict(domain: str, features: str):
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        resp = json.loads(urllib.request.urlopen(req, timeout=30).read())
+        resp = json.loads(urllib.request.urlopen(req, timeout=30).read())  # nosec B310
         print(json.dumps(resp, indent=2))
     except Exception as e:
         print(f"  Prediction failed: {e}")

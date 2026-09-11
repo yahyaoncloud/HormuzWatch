@@ -231,12 +231,9 @@ func TestCollectAISStreamMetrics(t *testing.T) {
 	}
 
 	// 3. Direct AISStream WebSocket fetch if still under MaxMetricSamples
-	if len(records) < MaxMetricSamples {
+	apiKey := os.Getenv("AISSTREAM_API_KEY")
+	if len(records) < MaxMetricSamples && apiKey != "" {
 		wsURL := "wss://stream.aisstream.io/v0/stream"
-		apiKey := os.Getenv("AISSTREAM_API_KEY")
-		if apiKey == "" {
-			apiKey = "58822c33a850fbabeb00606c0b2d58ed0f4d79c2"
-		}
 		dialer := websocket.Dialer{
 			HandshakeTimeout: 5 * time.Second,
 			TLSClientConfig:  &tls.Config{InsecureSkipVerify: true},

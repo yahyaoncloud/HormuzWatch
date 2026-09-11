@@ -1,0 +1,17 @@
+# Gitleaks Configuration for HormuzWatch
+title = "HormuzWatch Gitleaks Config"
+
+[allowlist]
+description = "Allowlist for local dev env files, compiled assets, and known false positives"
+paths = [
+    '''(?i)\.env''',
+    '''(?i)\.env\.local''',
+    '''(?i)client/dist/''',
+    '''(?i)client/build/''',
+    '''(?i)node_modules/''',
+    '''(?i)\.venv''',
+    '''(?i)\.venv-mlops''',
+]
+stopwords = [
+    "registry-password",
+]

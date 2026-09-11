@@ -7,6 +7,7 @@ Central MLOps configuration, evaluation gates, and drift thresholds.
 from __future__ import annotations
 
 import os
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,7 +24,7 @@ else:
 # Detect container vs local filesystem
 if Path("/app/models").exists():
     MODELS_DIR = Path("/app/models")
-    ARTIFACTS_DIR = Path("/tmp/artifacts")
+    ARTIFACTS_DIR = Path(tempfile.gettempdir()) / "artifacts"
 else:
     MODELS_DIR = PROJECT_ROOT / "service" / "ml-service" / "models"
     ARTIFACTS_DIR = PIPELINE_ROOT / "artifacts"

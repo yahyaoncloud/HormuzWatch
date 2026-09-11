@@ -13,7 +13,7 @@ import (
 func TestAISStreamConnectionDiag(t *testing.T) {
 	apiKey := os.Getenv("AISSTREAM_API_KEY")
 	if apiKey == "" {
-		apiKey = "58822c33a850fbabeb00606c0b2d58ed0f4d79c2"
+		t.Skip("AISSTREAM_API_KEY environment variable not set, skipping live AISStream diagnostic")
 	}
 
 	url := "wss://stream.aisstream.io/v0/stream"

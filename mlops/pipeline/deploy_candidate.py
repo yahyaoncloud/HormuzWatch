@@ -31,6 +31,7 @@ import logging
 import os
 import shutil
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -62,7 +63,8 @@ except (ImportError, ModuleNotFoundError):
         from config import config, MODELS_DIR, ARTIFACTS_DIR
     except (ImportError, ModuleNotFoundError):
         MODELS_DIR = Path("/app/models") if Path("/app/models").exists() else (PROJECT_ROOT / "service" / "ml-service" / "models")
-        ARTIFACTS_DIR = Path("/tmp/artifacts") if Path("/tmp/artifacts").exists() else (PROJECT_ROOT / "pipeline" / "artifacts")
+        _tmp_artifacts = Path(tempfile.gettempdir()) / "artifacts"
+        ARTIFACTS_DIR = _tmp_artifacts if _tmp_artifacts.exists() else (PROJECT_ROOT / "pipeline" / "artifacts")
         class DefaultConfig:
             ml_service_rest_url = "http://localhost:8090"
             max_latency_ms = 12.0

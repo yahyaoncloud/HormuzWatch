@@ -32,7 +32,7 @@ pipeline {
     }
 
     environment {
-        COMPOSE_FILE = 'docker-compose.dev.yml'
+        COMPOSE_FILE = 'docker-compose.yml'
         COMPOSE_PROJECT_NAME = 'hormuzwatch'
         DOCKER_BUILDKIT = '1'
         PREV_COMMIT = ''
@@ -76,11 +76,11 @@ pipeline {
                 echo "==> [Gitleaks] Scanning repository for leaked secrets, tokens, and credentials..."
                 sh '''
                     if command -v gitleaks >/dev/null 2>&1; then
-                        gitleaks detect --source . --verbose --no-git || true
+                        gitleaks detect --source . --config .gitleaks.toml --verbose --no-git
                     else
-                        docker run --rm -v "$(pwd):/path" zricethezav/gitleaks:latest detect --source=/path --verbose --no-git || true
+                        docker run --rm -v "$(pwd):/path" zricethezav/gitleaks:latest detect --source=/path --config=/path/.gitleaks.toml --verbose --no-git
                     fi
-                    echo "==> [Gitleaks] Secret scanning completed."
+                    echo "==> [Gitleaks] Secret scanning passed with zero leaks."
                 '''
             }
         }
@@ -110,10 +110,12 @@ pipeline {
                         echo "==> [Flake8 / Bandit / Ruff] Security & code smell audit for ML Service..."
                         sh '''
                             if command -v bandit >/dev/null 2>&1; then
-                                bandit -r service/ml-service mlops -ll -ii || true
+                                bandit -r service/ml-service mlops -x "*/.venv*,*.venv*" -ll -ii
+                            elif [ -f ".venv-mlops/bin/bandit" ]; then
+                                .venv-mlops/bin/bandit -r service/ml-service mlops -x "*/.venv*,*.venv*" -ll -ii
                             fi
                             if command -v flake8 >/dev/null 2>&1; then
-                                flake8 service/ml-service mlops --max-line-length=120 --ignore=E501,W503 || true
+                                flake8 service/ml-service mlops --exclude="*/.venv*,*.venv*" --max-line-length=120 --ignore=E501,W503 || true
                             fi
                             echo "==> [ML SAST] Python static security and code smell audit completed."
                         '''
@@ -219,13 +221,15 @@ pipeline {
                         if docker image inspect "$img" >/dev/null 2>&1; then
                             echo "--> Scanning Image: $img"
                             if command -v trivy >/dev/null 2>&1; then
-                                trivy image --severity ${TRIVY_SEVERITY} --scanners vuln --no-progress "$img" || true
+                                trivy image --severity ${TRIVY_SEVERITY} --scanners vuln --no-progress "$img"
+                                trivy image --severity CRITICAL --exit-code 1 --scanners vuln --no-progress "$img"
                             else
-                                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --severity ${TRIVY_SEVERITY} --scanners vuln --no-progress "$img" || true
+                                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --severity ${TRIVY_SEVERITY} --scanners vuln --no-progress "$img"
+                                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --severity CRITICAL --exit-code 1 --scanners vuln --no-progress "$img"
                             fi
                         fi
                     done
-                    echo "==> [Trivy] Container image vulnerability scans complete."
+                    echo "==> [Trivy] Container image vulnerability scans passed (zero CRITICAL CVEs)."
                 '''
             }
         }
