@@ -28,7 +28,7 @@ import time
 from pathlib import Path
 from typing import Any, List, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -38,6 +38,9 @@ from lib.drift import global_drift_monitor, DomainDriftReport
 from lib.logger import get_logger
 
 logger = get_logger("hormuzwatch.app")
+_this_file = Path(__file__).resolve()
+_default_root = _this_file.parents[2] if len(_this_file.parents) > 2 else _this_file.parent
+PROJECT_ROOT = Path(os.environ.get("PROJECT_ROOT", _default_root))
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -390,6 +393,36 @@ async def drift_evaluate(domain: str):
     if domain not in DOMAIN_FEATURE_COLS:
         raise HTTPException(400, f"Unknown domain '{domain}'")
     return global_drift_monitor.evaluate_domain(domain, DOMAIN_FEATURE_COLS[domain])
+
+
+@app.post("/drift/remediate/{domain}")
+async def drift_remediate(domain: str, background_tasks: BackgroundTasks):
+    """Trigger automated continuous training remediation cycle for a drifted domain."""
+    if domain not in DOMAIN_FEATURE_COLS:
+        raise HTTPException(400, f"Unknown domain '{domain}'")
+
+    report = global_drift_monitor.evaluate_domain(domain, DOMAIN_FEATURE_COLS[domain])
+
+    def _execute_ct_cycle():
+        import subprocess
+        import sys
+        logger.info("Executing automated continuous training cycle for domain '%s'...", domain)
+        try:
+            cmd = [sys.executable, "mlops/pipeline/orchestrator.py", "--domain", domain, "--mode", "once"]
+            res = subprocess.run(cmd, cwd=str(PROJECT_ROOT), capture_output=True, text=True, timeout=900)  # nosec B603
+            logger.info("CT cycle completed for '%s' with exit code %d", domain, res.returncode)
+            if res.returncode != 0:
+                logger.error("CT cycle error output: %s", res.stderr[:500])
+        except Exception as exc:
+            logger.exception("Failed to execute CT cycle for domain '%s': %s", domain, exc)
+
+    background_tasks.add_task(_execute_ct_cycle)
+    return {
+        "status": "REMEDIATION_ACCEPTED",
+        "domain": domain,
+        "current_drift": report,
+        "message": f"Continuous training remediation cycle initiated in background for '{domain}'.",
+    }
 
 
 @app.get("/health")

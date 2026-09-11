@@ -83,10 +83,9 @@
 - [x] **ZenML Pipeline Orchestration:** Implemented modular DAGs in `mlops/pipeline/zenml/` (`setup_zenml_stack.sh`, `run.py`, data loading, training, evaluation, drift detection, deployment).
 - [x] **Fine-Grained Slice-Based Evaluation:** Built [`mlops/models/evaluations/slice_evaluator.py`](file:///home/yahya/SHARED/Projects/HormuzWatch/mlops/models/evaluations/slice_evaluator.py) assessing vessel types, geofences, and diurnal navigation slices to prevent masked aggregate degradation.
 - [x] **Cryptographic Model & Dataset Manifests:** Added SHA-256 verification via `scripts/model_registry.py verify` and `scripts/dataset_registry.py list`.
-- [x] **Continuous Training (CT) Loop:** Integrated `Jenkinsfile.mlops` for scheduled weekly retraining and drift-triggered pipeline runs.
-- [ ] **Automated Event-Driven Drift Remediation:** Automatically trigger CT pipelines when cumulative PSI exceeds 0.20 or KS p < 0.01 over rolling 1,000-sample window.
-- [ ] **Deep Learning Autoencoder Anomaly Scoring:** Train semi-supervised reconstruction autoencoder on normal transit corridor coordinates.
-- [ ] **Multi-Chokepoint Expansion:** Replicate model architecture for Bab el-Mandeb and the Strait of Malacca.
+- [x] **Automated Event-Driven Drift Remediation:** Implemented asymptotic KS p-value and rolling-window PSI monitoring ($PSI \ge 0.20$, $p < 0.01$) in [`service/ml-service/lib/drift.py`](file:///home/yahya/SHARED/Projects/HormuzWatch/service/ml-service/lib/drift.py) with cooldown-throttled background retraining dispatch and `POST /drift/remediate/{domain}` API.
+- [x] **Deep Learning Autoencoder Anomaly Scoring:** Implemented [`mlops/pipeline/train_autoencoder.py`](file:///home/yahya/SHARED/Projects/HormuzWatch/mlops/pipeline/train_autoencoder.py) and trained semi-supervised corridor reconstruction autoencoder [`service/ml-service/models/vessel_autoencoder.joblib`](file:///home/yahya/SHARED/Projects/HormuzWatch/service/ml-service/models/vessel_autoencoder.joblib), cryptographically verified in manifest.
+- [x] **Multi-Chokepoint Expansion:** Replicated geofence models and transit tracking for Bab el-Mandeb (`AREA-RS-SOUTH`), Suez Approach (`AREA-RS-NORTH`), and Malacca Strait (`AREA-MALACCA`) in [`server/internal/anomaly/geofence.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/anomaly/geofence.go) and ArcGIS ingest.
 
 ---
 

@@ -292,6 +292,16 @@ var DefaultWatchZones = []WatchZone{
 		},
 		Description: "Maritime Security Transit Corridor",
 	},
+	{
+		ID:    "AREA-MALACCA",
+		Name:  "Strait of Malacca",
+		Label: "MALACCA CHOKEPOINT",
+		Color: "#10B981",
+		Coordinates: [][2]float64{
+			{5.5, 98.0}, {5.5, 101.5}, {1.2, 104.2}, {1.0, 103.5}, {3.0, 99.5},
+		},
+		Description: "Indo-Pacific Critical Maritime Chokepoint & TSS",
+	},
 }
 
 func GetDefaultWatchZones() []WatchZone {

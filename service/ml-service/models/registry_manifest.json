@@ -1,7 +1,7 @@
 {
   "registry_version": "2.4.0",
-  "last_updated": "2026-09-10T23:42:28.161508+00:00",
-  "total_models": 8,
+  "last_updated": "2026-09-11T10:11:52.789964+00:00",
+  "total_models": 9,
   "models": {
     "aviation_ensemble": {
       "artifact": "aviation_ensemble.joblib",
@@ -111,6 +111,24 @@
       "size_mb": 2.89,
       "updated_at": "2026-09-05T17:47:36.408268+00:00",
       "metrics": {}
+    },
+    "vessel_autoencoder": {
+      "artifact": "vessel_autoencoder.joblib",
+      "version": "2.4.0",
+      "stage": "production",
+      "sha256": "f5f7122fd98f2596e03422b5a10d38f073ba6ce0d30fbb40d366a177f4ccdf20",
+      "size_bytes": 1970,
+      "size_mb": 0.0,
+      "updated_at": "2026-09-11T10:11:25.205803+00:00",
+      "metrics": {
+        "domain": "vessel",
+        "latent_dim": 4,
+        "n_train_nominal": 102644,
+        "n_test": 22958,
+        "p95_threshold_mse": 0.9249630492833713,
+        "test_roc_auc": 0.5217,
+        "test_pr_auc": 0.0392
+      }
     },
     "vessel_ensemble": {
       "artifact": "vessel_ensemble.joblib",

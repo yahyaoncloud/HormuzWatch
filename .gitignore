@@ -31,6 +31,9 @@ analysis_output/
 *.joblib
 *.pkl
 datasets/
+mlops/models/*.json
+mlops/models/artifacts/
+mlops/models/registry/
 server/datasets/
 !server/datasets/registry_manifest.json
 data/docker-registry/
