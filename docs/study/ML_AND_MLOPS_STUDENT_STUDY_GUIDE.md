@@ -140,15 +140,102 @@ $$\text{PSI} = \sum_{k=1}^K \left( \% T_k - \% B_k \right) \times \ln\left( \fra
 
 ---
 
-## 6. Student Exercises & Lab Projects
+## 6. Deep Learning Corridor Autoencoder Architecture
 
-1. **Exercise 1 (Kinematic Geodesy)**: Implement the Haversine formula in Python and calculate the Great-Circle distance between the Ras Musandam TSS boundary ($26.35^\circ\text{N}, 56.45^\circ\text{E}$) and Fujairah Anchorage ($25.18^\circ\text{N}, 56.36^\circ\text{E}$).
-2. **Exercise 2 (Isolation Forest Tuning)**: Modify `pipeline/train_and_evaluate.py` to test different contamination factors ($0.01, 0.05, 0.10$) and measure the impact on Expected Calibration Error (ECE).
-3. **Exercise 3 (Drift Simulation)**: Artificially inject random $+15^\circ$ heading noise into the test dataset and verify that `pipeline/drift_monitor.py` correctly calculates $\text{PSI} > 0.25$ and triggers a retraining alert.
+In addition to tree-based ensembles, HormuzWatch deploys a deep neural autoencoder for spatial trajectory validation across primary maritime choke points (Strait of Hormuz, Bab el-Mandeb, and Malacca Strait).
+
+### 6.1 Mathematical Formulation
+The autoencoder consists of an encoder network $f_\theta: \mathbb{R}^D \to \mathbb{R}^d$ and a decoder network $g_\phi: \mathbb{R}^d \to \mathbb{R}^D$, where the bottleneck latent dimension $d \ll D$ (here $d=4$, $D=6$ for kinematic feature vectors):
+
+$$\hat{x} = g_\phi(f_\theta(x))$$
+
+The network is trained exclusively on nominal traffic conforming to designated Traffic Separation Schemes (TSS) by minimizing the Mean Squared Error ($MSE$):
+
+$$\mathcal{L}(\theta, \phi) = \frac{1}{N}\sum_{i=1}^N \|x_i - \hat{x}_i\|_2^2$$
+
+### 6.2 Anomaly Scoring & $P_{95}$ Thresholding
+Because the network learns the low-dimensional manifold of compliant corridor transits, rogue maneuvers (e.g. abrupt course alterations, loitering, or contra-flow transits) exhibit high reconstruction error:
+
+$$s_{\text{AE}}(x) = \|x - \hat{x}\|_2^2$$
+
+The production decision threshold $\tau_{\text{AE}}$ is set non-parametrically at the 95th percentile ($P_{95}$) of validation error on nominal traffic:
+
+$$\text{IsAnomaly}(x) = \mathbb{I}\left( s_{\text{AE}}(x) > \tau_{\text{AE}} \right), \quad \text{where } \tau_{\text{AE}} \approx 0.925$$
 
 ---
 
-## 7. Recommended Academic & Industry References
+## 7. MLOps Core Curriculum: Topics to Master
+
+To truly understand both modern enterprise MLOps and the HormuzWatch implementation, focus your study on these 6 structured domains:
+
+### 1. Data Engineering & Feature Integrity
+- **Topics**:
+  - Telemetry Data Contracts & Pydantic Schema Invariants.
+  - Entity-Stratified Grouping (`MMSI` / `ICAO_HEX`) vs Temporal Splitting to eliminate data leakage.
+  - Streaming vs Batch Feature Extraction (online EWMA vs offline Parquet aggregations).
+- **In HormuzWatch**: `mlops/data/contracts/telemetry_contract.py`, `mlops/pipeline/extract_features.py`.
+- **Textbook Reading**: Chip Huyen, *Designing Machine Learning Systems*, Chapter 3 ("Data Engineering Fundamentals") & Chapter 4 ("Training Data").
+
+### 2. Bayesian Hyperparameter Optimization (HPO)
+- **Topics**:
+  - Tree-structured Parzen Estimator (TPE) algorithm vs Random Search / Grid Search.
+  - Objective formulation: Balancing Precision-Recall AUC (PR-AUC) with Expected Calibration Error (ECE).
+  - Search spaces, pruning strategies, and multi-objective optimization.
+- **In HormuzWatch**: `mlops/pipeline/train_and_evaluate.py` (Optuna engine).
+- **Textbook Reading**: Chip Huyen, Chapter 6 ("Model Development and Offline Evaluation").
+
+### 3. Model & Dataset Registries & Cryptographic Provenance
+- **Topics**:
+  - Immutable model artifacts and cryptographic integrity (SHA-256 signing).
+  - Registry states (Candidate, Staging, Champion/Production, Archived).
+  - Lineage tracking: Mapping trained weights to dataset commit hash, hyperparameter configs, and evaluation metrics.
+- **In HormuzWatch**: `scripts/model_registry.py`, `scripts/dataset_registry.py`, `service/ml-service/models/registry_manifest.json`.
+- **Textbook Reading**: Chip Huyen, Chapter 7 ("Model Deployment and Serving Systems").
+
+### 4. Continuous Training (CT) & Statistical Distribution Shifts
+- **Topics**:
+  - Covariate Shift (Data Drift) vs Prior Probability Shift vs Concept Drift.
+  - Two-sample non-parametric hypothesis testing (Kolmogorov-Smirnov Test).
+  - Population Stability Index (PSI) and binning distributions.
+  - Event-driven vs Scheduled Continuous Training architectures.
+- **In HormuzWatch**: `mlops/pipeline/drift_monitor.py`, `service/ml-service/lib/drift.py`, `POST /drift/remediate/{domain}`.
+- **Textbook Reading**: Chip Huyen, Chapter 8 ("Data Distribution Shifts and Monitoring") & Chapter 9 ("Continual Learning and Test in Production").
+
+### 5. High-Throughput Serving & Zero-Downtime Hot-Reloading
+- **Topics**:
+  - gRPC vs REST: Protocol Buffers, HTTP/2 streaming, and sub-millisecond serialization.
+  - Thread-safe hot-reloading (in-memory atomic pointer swaps vs container restarts).
+  - SIMD vectorization and compute hardware dispatch (`detect_hardware_device`).
+- **In HormuzWatch**: `service/ml-service/app.py`, `service/ml-service/service_entrypoint.py`, `service/ml-service/lib/scoring.py`.
+- **Textbook Reading**: Chip Huyen, Chapter 7 ("Model Deployment and Serving Systems"); Gene Kim, *The DevOps Handbook*, Chapter 14 ("Enable Low-Risk Releases").
+
+### 6. DevOps/MLOps Security, SRE Gates & Infrastructure Synchronization
+- **Topics**:
+  - Static Application Security Testing (SAST) with Bandit and secret scanning with Gitleaks.
+  - Automated SRE health checks and Blue/Green canary verification.
+  - Multi-node controller/edge synchronization (fast-forward git state and artifact distribution).
+- **In HormuzWatch**: `Jenkinsfile`, `scripts/blue_green_cutover.sh`, `tests/test_drift.py`.
+- **Textbook Reading**: Gene Kim, *The DevOps Handbook*, Chapter 10 ("Fast Feedback Loops") & Chapter 22 ("Information Security into Change Management").
+
+---
+
+## 8. Student Exercises & Lab Projects
+
+1. **Exercise 1 (Kinematic Geodesy)**: Implement the Haversine formula in Python and calculate the Great-Circle distance between the Ras Musandam TSS boundary ($26.35^\circ\text{N}, 56.45^\circ\text{E}$) and Fujairah Anchorage ($25.18^\circ\text{N}, 56.36^\circ\text{E}$).
+2. **Exercise 2 (Isolation Forest Tuning)**: Modify `mlops/pipeline/train_and_evaluate.py` to test different contamination factors ($0.01, 0.05, 0.10$) and measure the impact on Expected Calibration Error (ECE).
+3. **Exercise 3 (Drift Simulation)**: Artificially inject random $+15^\circ$ heading noise into the test dataset and verify that `test_drift.py` correctly calculates $\text{PSI} > 0.25$ and triggers a retraining alert.
+4. **Exercise 4 (Corridor Reconstruction)**: Run `mlops/pipeline/train_autoencoder.py`, plot the training loss curve, and evaluate the $MSE$ on anomalous off-corridor synthetic pings.
+
+---
+
+## 9. Recommended Academic & Industry References
+
+### Foundational Textbooks in Repository (`/books`)
+1. **Designing Machine Learning Systems** by Chip Huyen (O'Reilly Media)
+   - Read Chapter 8 for drift formulas and real-time monitoring strategies.
+   - Read Chapter 9 for continual learning loops, champion/challenger setups, and offline/online testing.
+2. **The DevOps Handbook** by Gene Kim, Jez Humble, Patrick Debois, & John Willis (IT Revolution)
+   - Read Parts II & III for automated CI/CD gating, fast feedback loops, and immutable infrastructure patterns.
 
 ### Academic Papers
 1. **Isolation Forest**: Liu, F. T., Ting, K. M., & Zhou, Z. H. (2008). *Isolation Forest*. IEEE International Conference on Data Mining (ICDM), pp. 413-422. [DOI: 10.1109/ICDM.2008.17](https://doi.org/10.1109/ICDM.2008.17)
