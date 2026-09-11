@@ -1,0 +1,140 @@
+{
+  "generated_at": "2026-09-11T11:40:43.577501+00:00",
+  "models": {
+    "vessel": {
+      "domain": "vessel",
+      "artifact": "vessel_ensemble.joblib",
+      "artifact_path": "/app/exp/models/vessel_ensemble.joblib",
+      "split_method": "authoritative_entity_stratified",
+      "n_samples": 3000,
+      "optimal_threshold": 0.5,
+      "calibration_mode": "pseudo_quantile",
+      "metrics": {
+        "test_precision": 0.7759,
+        "test_recall": 0.9,
+        "test_f1": 0.8333,
+        "test_specificity": 0.96,
+        "test_balanced_accuracy": 0.93,
+        "test_roc_auc": 0.9298,
+        "test_pr_auc": 0.7116,
+        "test_brier_score": 0.0483,
+        "test_ece": 0.0489,
+        "latency_ms_per_sample": 24.557,
+        "confusion_matrix": {
+          "tp": 45,
+          "fp": 13,
+          "tn": 312,
+          "fn": 5
+        }
+      }
+    },
+    "aviation": {
+      "domain": "aviation",
+      "artifact": "aviation_ensemble.joblib",
+      "artifact_path": "/app/exp/models/aviation_ensemble.joblib",
+      "split_method": "authoritative_entity_stratified",
+      "n_samples": 3000,
+      "optimal_threshold": 0.25999999999999995,
+      "calibration_mode": "supervised_calibration",
+      "metrics": {
+        "test_precision": 0.7143,
+        "test_recall": 0.6863,
+        "test_f1": 0.7,
+        "test_specificity": 0.9568,
+        "test_balanced_accuracy": 0.8215,
+        "test_roc_auc": 0.9564,
+        "test_pr_auc": 0.675,
+        "test_brier_score": 0.0639,
+        "test_ece": 0.064,
+        "latency_ms_per_sample": 24.49,
+        "confusion_matrix": {
+          "tp": 35,
+          "fp": 14,
+          "tn": 310,
+          "fn": 16
+        }
+      }
+    },
+    "transit": {
+      "domain": "transit",
+      "artifact": "transit_ensemble.joblib",
+      "artifact_path": "/app/exp/models/transit_ensemble.joblib",
+      "split_method": "authoritative_entity_stratified",
+      "n_samples": 3000,
+      "optimal_threshold": 0.20999999999999996,
+      "calibration_mode": "supervised_calibration",
+      "metrics": {
+        "test_precision": 0.6667,
+        "test_recall": 0.9091,
+        "test_f1": 0.7692,
+        "test_specificity": 0.9561,
+        "test_balanced_accuracy": 0.9326,
+        "test_roc_auc": 0.9592,
+        "test_pr_auc": 0.6289,
+        "test_brier_score": 0.0513,
+        "test_ece": 0.0506,
+        "latency_ms_per_sample": 24.18,
+        "confusion_matrix": {
+          "tp": 30,
+          "fp": 15,
+          "tn": 327,
+          "fn": 3
+        }
+      }
+    },
+    "blockade": {
+      "domain": "blockade",
+      "artifact": "blockade_ensemble.joblib",
+      "artifact_path": "/app/exp/models/blockade_ensemble.joblib",
+      "split_method": "authoritative_entity_stratified",
+      "n_samples": 3000,
+      "optimal_threshold": 0.05,
+      "calibration_mode": "supervised_calibration",
+      "metrics": {
+        "test_precision": 0.459,
+        "test_recall": 0.9032,
+        "test_f1": 0.6087,
+        "test_specificity": 0.9041,
+        "test_balanced_accuracy": 0.9036,
+        "test_roc_auc": 0.9036,
+        "test_pr_auc": 0.4226,
+        "test_brier_score": 0.0555,
+        "test_ece": 0.042,
+        "latency_ms_per_sample": 21.602,
+        "confusion_matrix": {
+          "tp": 28,
+          "fp": 33,
+          "tn": 311,
+          "fn": 3
+        }
+      }
+    },
+    "heatmap": {
+      "domain": "heatmap",
+      "artifact": "heatmap_ensemble.joblib",
+      "artifact_path": "/app/exp/models/heatmap_ensemble.joblib",
+      "split_method": "authoritative_entity_stratified",
+      "n_samples": 3000,
+      "optimal_threshold": 0.05,
+      "calibration_mode": "supervised_calibration",
+      "metrics": {
+        "test_precision": 0.5,
+        "test_recall": 0.9688,
+        "test_f1": 0.6596,
+        "test_specificity": 0.9025,
+        "test_balanced_accuracy": 0.9356,
+        "test_roc_auc": 0.9293,
+        "test_pr_auc": 0.4516,
+        "test_brier_score": 0.0556,
+        "test_ece": 0.0314,
+        "latency_ms_per_sample": 25.376,
+        "confusion_matrix": {
+          "tp": 31,
+          "fp": 31,
+          "tn": 287,
+          "fn": 1
+        }
+      }
+    }
+  }
+}

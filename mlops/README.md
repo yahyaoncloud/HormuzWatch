@@ -8,15 +8,6 @@ Consolidated MLOps workspace containing data versioning, model governance, conti
 
 ```
 mlops/
-├── notebooks/                              # Interactive Jupyter Experimentation
-│   ├── 01_maritime_vessel_anomaly.ipynb    # Vessel anomaly (Isolation Forest, LOF, Autoencoder)
-│   ├── 02_aviation_anomaly.ipynb           # OpenSky ADS-B flight corridor & kinematics
-│   ├── 03_chokepoint_blockade_transit.ipynb# Strait of Hormuz blockade & transit risk
-│   ├── 04_geopolitical_news_and_conflict.ipynb # GDELT news sentiment & conflict models
-│   ├── 05_geospatial_heatmap_fusion.ipynb  # Multi-source geospatial risk density fusion
-│   ├── 06_statistical_drift_and_ct_loop.ipynb # PSI, KS-test, and ZenML CT pipeline trigger
-│   └── ml_anomaly_detection_experiments.ipynb  # Comprehensive model benchmark suite
-│
 ├── data/                                   # DVC-Managed Data Tier
 │   ├── raw/                                # Raw telemetry feeds (.dvc tracked)
 │   ├── processed/                          # Geofenced & interpolated trajectories (.dvc tracked)
@@ -35,6 +26,7 @@ mlops/
     ├── deploy_candidate.py                 # Champion-challenger quality gatekeeper
     └── drift_monitor.py                    # Data drift monitoring (PSI & KS-test)
 ```
+*(Note: Interactive experimentation notebooks and refinement scripts are hosted in the `/exp` laboratory)*
 
 ---
 

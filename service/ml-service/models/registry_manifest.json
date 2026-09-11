@@ -1,54 +1,38 @@
 {
   "registry_version": "2.4.0",
-  "last_updated": "2026-09-11T11:14:01.056989+00:00",
+  "last_updated": "2026-09-11T11:41:17.767101+00:00",
   "total_models": 9,
   "models": {
     "aviation_ensemble": {
       "artifact": "aviation_ensemble.joblib",
       "version": "2.4.0",
       "stage": "production",
-      "sha256": "74bd38375a349d89c5a72617452889b23cb34dec4edacbe630ca76afad153278",
-      "size_bytes": 4438958,
-      "size_mb": 4.23,
-      "updated_at": "2026-09-05T17:47:36.347269+00:00",
+      "sha256": "6ac0955dfff673d15f31b66d7cd0f6e8acbc485dc5446f8cb2c1caaef9b4eb24",
+      "size_bytes": 8356930,
+      "size_mb": 7.97,
+      "updated_at": "2026-09-11T11:41:17.600049+00:00",
+      "optimal_threshold": 0.25999999999999995,
       "metrics": {
-        "status": "SUCCESS",
         "domain": "aviation",
-        "dataset": "dataset_aircraft_20260902_2200_20260903_2200",
-        "model_path": "v1.20260903231620",
+        "status": "SUCCESS",
+        "n_samples": 3000,
         "metrics": {
-          "domain": "aviation",
-          "version": "v1.20260903231620",
-          "n_samples": 9996,
-          "n_samples_total": 9996,
-          "n_train": 6997,
-          "n_val": 749,
-          "n_calib": 750,
-          "n_test": 1500,
-          "n_features": 9,
-          "split_method": "custom_authoritative_split",
-          "contamination": 0.04,
-          "calibration_mode": "supervised_calibration_set",
-          "f1": 0.6536,
-          "precision": 0.5814,
-          "recall": 0.7465,
-          "anomaly_rate": 0.04,
-          "test_precision": 0.5814,
-          "test_recall": 0.7465,
-          "test_f1": 0.6536,
-          "test_specificity": 0.2932,
-          "test_balanced_accuracy": 0.5198,
-          "test_roc_auc": 0.5188,
-          "test_pr_auc": 0.5771,
-          "test_brier_score": 0.2517,
-          "test_ece": 0.0632,
+          "test_precision": 0.7143,
+          "test_recall": 0.6863,
+          "test_f1": 0.7,
+          "test_specificity": 0.9568,
+          "test_balanced_accuracy": 0.8215,
+          "test_roc_auc": 0.9564,
+          "test_pr_auc": 0.675,
+          "test_brier_score": 0.0639,
+          "test_ece": 0.064,
+          "latency_ms_per_sample": 24.49,
           "confusion_matrix": {
-            "tp": 636,
-            "fp": 458,
-            "tn": 190,
-            "fn": 216
-          },
-          "hardware_device": "CPU (Vectorized SIMD Engine)"
+            "tp": 35,
+            "fp": 14,
+            "tn": 310,
+            "fn": 16
+          }
         }
       }
     },
@@ -56,11 +40,34 @@
       "artifact": "blockade_ensemble.joblib",
       "version": "2.4.0",
       "stage": "production",
-      "sha256": "79dc7e084f103888dd4fc17a935089a5b35b4a638921d1d4a399b477970fda85",
-      "size_bytes": 2762990,
-      "size_mb": 2.63,
-      "updated_at": "2026-09-05T17:47:36.362269+00:00",
-      "metrics": {}
+      "sha256": "06e0c717778b0e2b5127a94f2fc7fc1e4de40965197a32241099f0af81881fee",
+      "size_bytes": 10087713,
+      "size_mb": 9.62,
+      "updated_at": "2026-09-11T11:41:17.708279+00:00",
+      "optimal_threshold": 0.05,
+      "metrics": {
+        "domain": "blockade",
+        "status": "SUCCESS",
+        "n_samples": 3000,
+        "metrics": {
+          "test_precision": 0.459,
+          "test_recall": 0.9032,
+          "test_f1": 0.6087,
+          "test_specificity": 0.9041,
+          "test_balanced_accuracy": 0.9036,
+          "test_roc_auc": 0.9036,
+          "test_pr_auc": 0.4226,
+          "test_brier_score": 0.0555,
+          "test_ece": 0.042,
+          "latency_ms_per_sample": 21.602,
+          "confusion_matrix": {
+            "tp": 28,
+            "fp": 33,
+            "tn": 311,
+            "fn": 3
+          }
+        }
+      }
     },
     "conflict_model": {
       "artifact": "conflict_model.joblib",
@@ -76,11 +83,34 @@
       "artifact": "heatmap_ensemble.joblib",
       "version": "2.4.0",
       "stage": "production",
-      "sha256": "e13b2396a75dbf3706e2baf67879f1fd33cb936b2da39b773b69f344398c91aa",
-      "size_bytes": 422924,
-      "size_mb": 0.4,
-      "updated_at": "2026-09-05T17:47:36.364269+00:00",
-      "metrics": {}
+      "sha256": "40915763a4376dcc108c70fcef4c2c0210a8d6daf516882a65b0a8487738f3a3",
+      "size_bytes": 9662461,
+      "size_mb": 9.21,
+      "updated_at": "2026-09-11T11:41:17.767050+00:00",
+      "optimal_threshold": 0.05,
+      "metrics": {
+        "domain": "heatmap",
+        "status": "SUCCESS",
+        "n_samples": 3000,
+        "metrics": {
+          "test_precision": 0.5,
+          "test_recall": 0.9688,
+          "test_f1": 0.6596,
+          "test_specificity": 0.9025,
+          "test_balanced_accuracy": 0.9356,
+          "test_roc_auc": 0.9293,
+          "test_pr_auc": 0.4516,
+          "test_brier_score": 0.0556,
+          "test_ece": 0.0314,
+          "latency_ms_per_sample": 25.376,
+          "confusion_matrix": {
+            "tp": 31,
+            "fp": 31,
+            "tn": 287,
+            "fn": 1
+          }
+        }
+      }
     },
     "isolation_forest": {
       "artifact": "isolation_forest.joblib",
@@ -106,11 +136,34 @@
       "artifact": "transit_ensemble.joblib",
       "version": "2.4.0",
       "stage": "production",
-      "sha256": "33ec2f4498e42297680b58c8ce0c6e673256e240e7541a153af665fed7ba926e",
-      "size_bytes": 3028717,
-      "size_mb": 2.89,
-      "updated_at": "2026-09-05T17:47:36.408268+00:00",
-      "metrics": {}
+      "sha256": "9deea466591e05465e0179d832e6e83962e95fafabe67ecd89fed86c22bf9fee",
+      "size_bytes": 9622808,
+      "size_mb": 9.18,
+      "updated_at": "2026-09-11T11:41:17.649171+00:00",
+      "optimal_threshold": 0.20999999999999996,
+      "metrics": {
+        "domain": "transit",
+        "status": "SUCCESS",
+        "n_samples": 3000,
+        "metrics": {
+          "test_precision": 0.6667,
+          "test_recall": 0.9091,
+          "test_f1": 0.7692,
+          "test_specificity": 0.9561,
+          "test_balanced_accuracy": 0.9326,
+          "test_roc_auc": 0.9592,
+          "test_pr_auc": 0.6289,
+          "test_brier_score": 0.0513,
+          "test_ece": 0.0506,
+          "latency_ms_per_sample": 24.18,
+          "confusion_matrix": {
+            "tp": 30,
+            "fp": 15,
+            "tn": 327,
+            "fn": 3
+          }
+        }
+      }
     },
     "vessel_autoencoder": {
       "artifact": "vessel_autoencoder.joblib",
@@ -134,48 +187,32 @@
       "artifact": "vessel_ensemble.joblib",
       "version": "2.4.0",
       "stage": "production",
-      "sha256": "9926cd75a2788094a0695531db376d462da4c4bd97cca5af2097ce75a17dbb5f",
-      "size_bytes": 2918584,
-      "size_mb": 2.78,
-      "updated_at": "2026-09-07T14:26:12.948784+00:00",
+      "sha256": "2ecfe58935f4557bdd81af39ae95c4123816c54daca8d6e55f87c335992b913e",
+      "size_bytes": 8949957,
+      "size_mb": 8.54,
+      "updated_at": "2026-09-11T11:41:17.564554+00:00",
+      "optimal_threshold": 0.5,
       "metrics": {
-        "status": "SUCCESS",
         "domain": "vessel",
-        "dataset": "dataset_vessel_20260902_2200_20260903_2200",
-        "model_path": "v1.20260903231627",
+        "status": "SUCCESS",
+        "n_samples": 3000,
         "metrics": {
-          "domain": "vessel",
-          "version": "v1.20260903231627",
-          "n_samples": 153052,
-          "n_samples_total": 153052,
-          "n_train": 107136,
-          "n_val": 11479,
-          "n_calib": 11479,
-          "n_test": 22958,
-          "n_features": 9,
-          "split_method": "custom_authoritative_split",
-          "contamination": 0.04,
-          "calibration_mode": "supervised_calibration_set",
-          "f1": 0.0,
-          "precision": 0.0,
-          "recall": 0.0,
-          "anomaly_rate": 0.04,
-          "test_precision": 0.0,
-          "test_recall": 0.0,
-          "test_f1": 0.0,
-          "test_specificity": 1.0,
-          "test_balanced_accuracy": 0.5,
-          "test_roc_auc": 0.6695,
-          "test_pr_auc": 0.0219,
-          "test_brier_score": 0.0102,
-          "test_ece": 0.0005,
+          "test_precision": 0.7759,
+          "test_recall": 0.9,
+          "test_f1": 0.8333,
+          "test_specificity": 0.96,
+          "test_balanced_accuracy": 0.93,
+          "test_roc_auc": 0.9298,
+          "test_pr_auc": 0.7116,
+          "test_brier_score": 0.0483,
+          "test_ece": 0.0489,
+          "latency_ms_per_sample": 24.557,
           "confusion_matrix": {
-            "tp": 0,
-            "fp": 0,
-            "tn": 22721,
-            "fn": 237
-          },
-          "hardware_device": "CPU (Vectorized SIMD Engine)"
+            "tp": 45,
+            "fp": 13,
+            "tn": 312,
+            "fn": 5
+          }
         }
       }
     }
