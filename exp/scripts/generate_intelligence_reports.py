@@ -57,22 +57,45 @@ class NvidiaIntelligenceClient:
         }
 
     def _call_api(self, system_instruction: str, prompt: str, max_tokens: int = 2048, temperature: float = 0.2) -> str:
-        payload = {
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        }
+        models_to_try = [self.model, "nvidia/nemotron-3-super-120b-a12b", "meta/llama-3.2-11b-vision-instruct"]
+        # Remove duplicates while preserving order
+        unique_models = []
+        for m in models_to_try:
+            if m not in unique_models:
+                unique_models.append(m)
 
-        resp = requests.post(f"{self.base_url}/chat/completions", headers=self.headers, json=payload, timeout=90)
-        if resp.status_code != 200:
-            raise RuntimeError(f"NVIDIA API request failed [{resp.status_code}]: {resp.text}")
+        last_error = None
+        for candidate_model in unique_models:
+            payload = {
+                "model": candidate_model,
+                "messages": [
+                    {"role": "system", "content": system_instruction},
+                    {"role": "user", "content": prompt},
+                ],
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
 
-        data = resp.json()
-        return data["choices"][0]["message"]["content"].strip()
+            for attempt in range(3):
+                try:
+                    resp = requests.post(f"{self.base_url}/chat/completions", headers=self.headers, json=payload, timeout=90)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        msg = data["choices"][0]["message"]
+                        content = msg.get("content") or msg.get("reasoning_content") or ""
+                        if content.strip():
+                            return content.strip()
+                    elif resp.status_code in [429, 500, 502, 503, 504]:
+                        time.sleep(2 * (attempt + 1))
+                        continue
+                    else:
+                        last_error = f"HTTP {resp.status_code}: {resp.text}"
+                        break
+                except Exception as ex:
+                    last_error = str(ex)
+                    time.sleep(2)
+
+        raise RuntimeError(f"NVIDIA API request failed after trying models {unique_models}: {last_error}")
 
     def generate_incident_demarche(self, event_data: Dict[str, Any]) -> str:
         """Generate a formal tactical military/commercial maritime incident demarche."""

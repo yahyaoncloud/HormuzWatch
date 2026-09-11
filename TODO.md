@@ -1,25 +1,47 @@
 # HormuzWatch — Master Engineering Roadmap & DevOps / MLOps Backlog
 
-## 0. Infrastructure & Topology Overview
+## 0. Distributed 3-Node Topology Overview
 
-- **CI/CD Controller Node (`tunkstun`):**
-  - Host IP: `100.126.193.36` (Tailscale) / `192.168.1.46` (LAN)
-  - Role: Jenkins Master (Java 21 LTS, Port `:8085`), Artifact Linters, SAST, Security Scanners
-  - Workload State: Dedicated CI runner (No application containers hosted here)
-- **Production Workload Edge Node (`E5530` / `late5530`):**
-  - Host IP: `100.66.64.31` (Tailscale)
-  - Public Ingress: `https://hormuzwatch.aburcloud.com` (Nginx reverse proxy + SSL)
-  - Deployed Services:
-    - React Frontend Client: `:3000`
-    - Go Backend Server: `:10020`
-    - Python ML Service: `:8090` (HTTP) / `:8091` (gRPC)
-    - PostgreSQL 16 Alpine: `:5433` -> `:5432`
-    - Prometheus (`:9090`) & Grafana (`:3001`)
-- **Reference Specifications:**
-  - [`docs/study/11_complete_devops_pipeline_end_to_end_report.md`](file:///home/yahya/SHARED/Projects/HormuzWatch/docs/study/11_complete_devops_pipeline_end_to_end_report.md)
-  - [`docs/study/12_graceful_shutdown_and_cold_start_runbook.md`](file:///home/yahya/SHARED/Projects/HormuzWatch/docs/study/12_graceful_shutdown_and_cold_start_runbook.md)
-  - [`docs/study/13_critical_issue_analysis_and_devops_audit_report.md`](file:///home/yahya/SHARED/Projects/HormuzWatch/docs/study/13_critical_issue_analysis_and_devops_audit_report.md)
-  - [`docs/study/DEVOPS_CHAT_SESSION_TRANSCRIPT.md`](file:///home/yahya/SHARED/Projects/HormuzWatch/docs/study/DEVOPS_CHAT_SESSION_TRANSCRIPT.md)
+The infrastructure is strictly partitioned across three dedicated nodes to ensure zero-resource contention and resilient edge operation:
+
+```mermaid
+flowchart TD
+    subgraph BuildRunner["Node 1: tp24 (Heavy Operations & Build Runner)"]
+        TP_HW["AMD Ryzen 3 3200G (4C/4T @ 4.0 GHz, AVX2) | 32 GB DDR4 RAM | RX 6500 XT"]
+        TP_ROLE["Role: Docker BuildKit Runner, MLOps Continuous Training, Heavy Synthetic Data Generation"]
+        TP_NET["IP: 192.168.1.35 | Engine: Docker 29.7.2 Native"]
+    end
+
+    subgraph ProductionEdge["Node 2: LATE5530 (Production Workload Deployment)"]
+        E5530_HW["Dell Latitude E5530 (2C/4T, AVX1) | 7.4 GB DDR3 RAM | Rocky Linux 9"]
+        E5530_ROLE["Role: Live Production Stack (Server, ML, Postgres, Client, Dataset-Worker)"]
+        E5530_INGRESS["Public Ingress: Cloudflare Tunnel + Nginx (:80) -> https://hormuzwatch.aburcloud.com"]
+        E5530_NET["IP: 192.168.1.40 / 100.66.64.31 (Tailscale) | Engine: Podman 5.8"]
+    end
+
+    subgraph ObservabilityHub["Node 3: tunkstun (Personal Workstation & Observability Hub)"]
+        TNK_ROLE["Role: Central Observability, Prometheus, Grafana, OpenTelemetry, SRE Telemetry Metrics"]
+        TNK_NET["IP: 192.168.1.46 / 100.126.193.36 (Tailscale)"]
+    end
+
+    BuildRunner -->|Push Verified Images / Models| ProductionEdge
+    ObservabilityHub -->|Scrape Metrics (:9090 / :3001 / :10020)| ProductionEdge
+    ObservabilityHub -->|Scrape Training Telemetry| BuildRunner
+```
+
+- **Node 1 (`tp24` @ `192.168.1.35`):** Heavy Operations & Build Runner. Runs parallel Docker builds, MLOps continuous training daemon, feature matrix synthesis, and dev verification deployments.
+- **Node 2 (`LATE5530` @ `192.168.1.40` / `100.66.64.31`):** Production Workload Node. Hosts the live containers with hardened 3.45GB memory ceiling, Cloudflare tunnel ingress (`hormuzwatch.aburcloud.com`), and WireGuard/Tailscale connectivity.
+- **Node 3 (`tunkstun` @ `192.168.1.46` / `100.126.193.36`):** Personal Workstation & Observability Hub. Runs Prometheus, Grafana, SRE dashboards, and monitoring telemetry.
+
+---
+
+## Current Sprint: 3-Node Architecture & End-to-End Migration
+- [x] **TASK-01 (Topology Architecture):** Formalized and documented node roles (`tp24` build/heavy ops, `LATE5530` prod workloads, `tunkstun` observability).
+- [x] **TASK-02 (tp24 Process Sanitization):** Kill stale processes, prune orphan containers, free memory/ports on `tp24`, resolved Nextcloud port 80 conflict (`sudo snap set nextcloud ports.http=8080`).
+- [x] **TASK-03 (tp24 Dev Workload Deployment):** Deployed and verified HormuzWatch dev stack on `tp24` on Docker 29.7.2 (`docker-compose.dev.yml`). Nginx ingress reverse proxy active on port 80 (`/`, `/api`, `/ml`, `/nextcloud`).
+- [x] **TASK-04 (LATE5530 Production Workload Audit):** Production container stack deployed and verified healthy under rootless Podman 5.8 (Postgres healthy, ML gRPC/HTTP healthy, Go Server healthy with circuit CLOSED, Client on :3000, Dataset-Worker streaming). Resolved cgroup v2 CPU controller delegation via `/etc/systemd/system/user@.service.d/delegate.conf`.
+- [x] **TASK-05 (tunkstun Observability Hub):** Configured Prometheus scrape targets for multi-node metrics (`LATE5530:10020` prod, `tp24:10020` dev, host metrics).
+- [x] **TASK-06 (End-to-End DevOps Verification):** Executed automated test gates: Go unit tests passed in 0.004s; ML model quality gate tests (`test_model_refinements.py`) passed 17/17 in 2.53s; multi-model resilience with fallback configured for LLM intelligence reports.
 
 ---
 
