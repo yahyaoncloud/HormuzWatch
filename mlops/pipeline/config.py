@@ -11,6 +11,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+os.environ.setdefault("MLFLOW_ALLOW_FILE_STORE", "true")
 PIPELINE_ROOT = Path(__file__).resolve().parent
 current = PIPELINE_ROOT
 while current.parent != current:
@@ -56,7 +57,7 @@ class MLOpsConfig:
     optuna_timeout_sec: int = 120
     
     # ── Tracking & Registry ───────────────────────────────────────
-    mlflow_tracking_uri: str = os.getenv("MLFLOW_TRACKING_URI", f"file://{ARTIFACTS_DIR}/mlruns")
+    mlflow_tracking_uri: str = os.getenv("MLFLOW_TRACKING_URI", f"sqlite:///{ARTIFACTS_DIR}/mlflow.db")
     experiment_name: str = "HormuzWatch-ContinuousTraining"
     
     # ── Service Endpoints ─────────────────────────────────────────

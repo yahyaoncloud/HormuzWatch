@@ -1,6 +1,6 @@
 {
   "registry_version": "2.4.0",
-  "last_updated": "2026-09-11T10:11:52.789964+00:00",
+  "last_updated": "2026-09-11T11:14:01.056989+00:00",
   "total_models": 9,
   "models": {
     "aviation_ensemble": {
@@ -116,16 +116,16 @@
       "artifact": "vessel_autoencoder.joblib",
       "version": "2.4.0",
       "stage": "production",
-      "sha256": "f5f7122fd98f2596e03422b5a10d38f073ba6ce0d30fbb40d366a177f4ccdf20",
+      "sha256": "9457df5a0374857aa9627814f3c85d70ad618a28720513f6d26284d14118369e",
       "size_bytes": 1970,
       "size_mb": 0.0,
-      "updated_at": "2026-09-11T10:11:25.205803+00:00",
+      "updated_at": "2026-09-11T11:07:45.450145+00:00",
       "metrics": {
         "domain": "vessel",
         "latent_dim": 4,
         "n_train_nominal": 102644,
         "n_test": 22958,
-        "p95_threshold_mse": 0.9249630492833713,
+        "p95_threshold_mse": 0.9249630492833699,
         "test_roc_auc": 0.5217,
         "test_pr_auc": 0.0392
       }

@@ -408,11 +408,25 @@ async def drift_remediate(domain: str, background_tasks: BackgroundTasks):
         import sys
         logger.info("Executing automated continuous training cycle for domain '%s'...", domain)
         try:
-            cmd = [sys.executable, "mlops/pipeline/orchestrator.py", "--domain", domain, "--mode", "once"]
-            res = subprocess.run(cmd, cwd=str(PROJECT_ROOT), capture_output=True, text=True, timeout=900)  # nosec B603
-            logger.info("CT cycle completed for '%s' with exit code %d", domain, res.returncode)
-            if res.returncode != 0:
-                logger.error("CT cycle error output: %s", res.stderr[:500])
+            script_path = PROJECT_ROOT / "mlops" / "pipeline" / "orchestrator.py"
+            if not script_path.exists():
+                for cand in [
+                    Path("/workspace/mlops/pipeline/orchestrator.py"),
+                    _this_file.parent.parent.parent / "mlops" / "pipeline" / "orchestrator.py",
+                ]:
+                    if cand.exists():
+                        script_path = cand
+                        break
+
+            if script_path.exists():
+                cmd = [sys.executable, str(script_path), "--domain", domain, "--mode", "once"]
+                cwd_dir = script_path.parent.parent.parent
+                res = subprocess.run(cmd, cwd=str(cwd_dir), capture_output=True, text=True, timeout=900)  # nosec B603
+                logger.info("CT cycle completed for '%s' with exit code %d", domain, res.returncode)
+                if res.returncode != 0:
+                    logger.error("CT cycle error output: %s", res.stderr[:500])
+            else:
+                logger.warning("MLOps orchestrator not found at %s. Continuous training skipped in isolated test mode.", script_path)
         except Exception as exc:
             logger.exception("Failed to execute CT cycle for domain '%s': %s", domain, exc)
 

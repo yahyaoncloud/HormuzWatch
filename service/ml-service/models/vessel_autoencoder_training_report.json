@@ -3,7 +3,7 @@
   "latent_dim": 4,
   "n_train_nominal": 102644,
   "n_test": 22958,
-  "p95_threshold_mse": 0.9249630492833713,
+  "p95_threshold_mse": 0.9249630492833699,
   "test_roc_auc": 0.5217,
   "test_pr_auc": 0.0392
 }

@@ -61,6 +61,7 @@ while current.parent != current:
 else:
     PROJECT_ROOT = PIPELINE_ROOT.parent
 sys.path.insert(0, str(PROJECT_ROOT / "service" / "ml-service"))
+sys.path.insert(0, str(PROJECT_ROOT / "mlops"))
 if "/app" not in sys.path:
     sys.path.insert(0, "/app")
 
