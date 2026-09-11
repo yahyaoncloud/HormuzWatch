@@ -1,52 +1,122 @@
 # 📘 MLOps Architecture & Lifecycle — HormuzWatch
 
 ## 1. Executive Overview
-In real-time maritime and geospatial intelligence systems like **HormuzWatch**, machine learning models operate in non-stationary, adversarial environments. Maritime traffic patterns shift due to geopolitical escalations, GPS spoofing, AIS transponder disabling ("dark vessels"), and seasonal weather. Traditional "train-once, deploy-forever" ML paradigms fail catastrophically in such settings due to **concept drift** and **data drift**.
+In real-time maritime and geospatial intelligence systems like **HormuzWatch**, machine learning models operate in non-stationary, adversarial environments. Maritime traffic patterns shift due to geopolitical escalations, GPS spoofing, AIS transponder disabling ("dark vessels"), seasonal shamal winds, and commercial rerouting around the Strait of Hormuz. Traditional "train-once, deploy-forever" ML paradigms fail catastrophically in such settings due to **concept drift** and **data drift**.
 
-**MLOps (Machine Learning Operations)** bridges the chasm between ML development and production operations. It enforces software engineering discipline (CI/CD, version control, testing) onto data engineering and machine learning workflows.
-
----
-
-## 2. The Three Pillars of MLOps
-
-```
-               ┌─────────────────────────────────────────────────────────┐
-               │                     Git Repository                      │
-               │           (Code, Pipeline DAGs, .dvc Pointers)          │
-               └───────────────────────────┬─────────────────────────────┘
-                                           │
-         ┌─────────────────────────────────┼────────────────────────────────┐
-         ▼                                 ▼                                ▼
-┌──────────────────┐             ┌───────────────────┐            ┌──────────────────┐
-│  DATA MANAGEMENT │             │    ORCHESTRATION  │            │  MODEL REGISTRY  │
-│      (DVC)       │             │      (ZenML)      │            │     (MLflow)     │
-│ ──────────────── │             │ ───────────────── │            │ ──────────────── │
-│ • Raw Ingestion  │ ──Features─►│ • Data Extract    │──Weights──►│ • Experiments    │
-│ • S3 Remote      │             │ • Drift Check     │            │ • Model Versions │
-│ • Versioning     │             │ • Train & Gate    │            │ • Staging/Prod   │
-└──────────────────┘             └───────────────────┘            └──────────────────┘
-         │                                 │                                │
-         └─────────────────────────┬───────┴────────────────────────────────┘
-                                   ▼
-                   ┌───────────────────────────────┐
-                   │    Production Serving Layer   │
-                   │   (FastAPI / gRPC Ensemble)   │
-                   └───────────────────────────────┘
-```
-
-1. **Continuous Integration (CI)**: Validates code, data schemas, feature transformations, and unit tests upon commit.
-2. **Continuous Delivery (CD)**: Automatically deploys validated candidate models into staging and canary environments when performance gates are met.
-3. **Continuous Training (CT)**: Automatically retrains models on fresh production data when drift monitors trigger an alarm, with Bayesian Hyperparameter Optimization (Optuna).
+**MLOps (Machine Learning Operations)** bridges the chasm between ML development and production operations. It enforces software engineering discipline (CI/CD, version control, cryptographic gating, testing) onto data engineering and machine learning workflows, yielding an autonomous, self-healing continuous training loop.
 
 ---
 
-## 3. HormuzWatch MLOps Component Topology
+## 2. The 6-Pillar Closed-Loop Architecture
 
-| Capability | Tool Selected | HormuzWatch Implementation |
-| :--- | :--- | :--- |
-| **Data Versioning** | **DVC (Data Version Control)** | Tracks raw telemetry (`AIS`, `OpenSky`, `GDELT`) and feature matrices with S3/MinIO backend. |
-| **Experiment Tracking** | **MLflow Tracking** | Logs metrics (ROC-AUC, Precision, Recall, F1), hyperparams, and loss curves. |
-| **Model Registry** | **MLflow Model Registry** | Enforces lifecycle transitions (`None` -> `Staging` -> `Production` -> `Archived`). |
-| **Pipeline DAGs** | **ZenML** | Clean Python decorators (`@step`, `@pipeline`) decoupling code from execution backends. |
-| **Object Storage** | **MinIO S3** | Self-hosted S3 API (`hormuzwatch-models` and `hormuzwatch-datasets` buckets). |
-| **Containerization** | **Docker Registry** | Built-in private registry (Port 5000) for immutable service image tags. |
+```mermaid
+flowchart TD
+    subgraph DataLayer ["1. Data & Feature Versioning (DVC + MinIO)"]
+        DB[(TimescaleDB / Postgres)] --> FeatureEx["Feature Extractor<br/>(extract_features.py)"]
+        DVC["DVC + MinIO S3<br/>(s3://hormuzwatch-datasets)"] -.-> FeatureEx
+        FeatureEx --> Splitter["Entity-Stratified Splitter<br/>(Group by MMSI / ICAO)"]
+    end
+
+    subgraph TrainingLayer ["2. Bayesian HPO & Ensemble Training"]
+        Splitter --> Optuna["Optuna TPE Optimizer<br/>(Hyperparameter Search)"]
+        Optuna --> Train["Fit Ensembles:<br/>Isolation Forest + LOF + Autoencoder"]
+        Train --> Calibrator["Isotonic Calibration<br/>(Monotonic Probability Mapping)"]
+    end
+
+    subgraph EvaluationLayer ["3. Evaluation Gates & Slice Testing"]
+        Calibrator --> SliceEval["Slice Evaluator<br/>(Vessel Type, Geofence, Time)"]
+        SliceEval --> GateKeeper{"Evaluation Gatekeeper:<br/>PR-AUC >= 0.90<br/>ECE <= 0.10<br/>Latency <= 12ms"}
+    end
+
+    subgraph RegistryLayer ["4. Cryptographic Model Registry"]
+        GateKeeper -- PASS --> ManifestGen["SHA-256 Digest Signing<br/>(registry_manifest.json)"]
+        ManifestGen --> MLflow["MLflow Model Registry<br/>(Candidate & Champion Lineage)"]
+    end
+
+    subgraph ServingLayer ["5. Zero-Downtime Serving & Ingress"]
+        MLflow --> LiveService["FastAPI / gRPC Service<br/>(:8090 / :8091)"]
+        LiveService --> DriftMon["Online Drift Monitor<br/>(FIFO Rolling Window)"]
+    end
+
+    subgraph FeedbackLayer ["6. Event-Driven Continuous Training (CT)"]
+        DriftMon -- "PSI >= 0.20 OR KS p < 0.01" --> Dispatcher["Cooldown Dispatcher<br/>(1800s Throttling)"]
+        Dispatcher --> Trigger["POST /drift/remediate/{domain}"]
+        Trigger --> Optuna
+    end
+```
+
+---
+
+## 3. Deep-Dive: The Six Pillars
+
+### Pillar 1: Data & Feature Versioning (DVC + MinIO S3)
+- **Immutable Storage**: Raw observations (AIS maritime or ADS-B radar) are snapshot into Apache Parquet matrices. Datasets are versioned with **DVC** and stored on self-hosted **MinIO S3** (`s3://hormuzwatch-datasets`).
+- **Data Leakage Elimination via Entity Stratification**: Random train/test splits corrupt time-series models because consecutive pings of the same vessel leak between folds. Splits are strictly grouped by `MMSI` (vessels) and `ICAO_HEX` (aircraft):
+  - **Train (60%)**: Fits Isolation Forests, LOF, and deep autoencoders.
+  - **Validation (15%)**: Guides Optuna objective evaluation.
+  - **Calibration (15%)**: Monotonically maps anomaly outputs to probabilities.
+  - **Test (10%)**: Out-of-sample holdout for strict promotion gating.
+
+### Pillar 2: Bayesian HPO & Deep Autoencoder Training
+- **Optuna TPE Optimization**: Automatically searches the hyperparameter landscape:
+  - Estimator count ($50 \to 200$)
+  - Contamination factor ($0.01 \to 0.10$)
+  - Subsampling ratio ($0.5 \to 1.0$)
+- **Corridor Reconstruction Autoencoder**: Unsupervised deep neural network trained strictly on nominal corridor transits. Anomaly scores are derived from Mean Squared Reconstruction Error ($MSE > \text{Threshold}_{p95}$).
+- **Isotonic Probability Calibration**: Uncalibrated tree path lengths are mapped into true probabilities ($P \in [0.0, 1.0]$) via non-parametric monotonic step functions.
+
+### Pillar 3: Fine-Grained Slice Evaluation
+Aggregate metrics (global ROC-AUC) mask failures in critical operational pockets.
+- Evaluates models across three critical sub-populations:
+  1. **Entity Slice**: Tankers vs Cargo vs Military vs Fishing.
+  2. **Geofence Slice**: Strait of Hormuz vs Bab el-Mandeb vs Malacca Strait.
+  3. **Temporal Slice**: Nighttime loitering vs Daytime transit.
+- **Strict Quality Gating**: A candidate model is rejected if any critical slice degrades, regardless of aggregate score.
+
+### Pillar 4: Cryptographic Model Registry
+- **SHA-256 Digesting**: Every candidate artifact is digested and recorded in `service/ml-service/models/registry_manifest.json`.
+- **Fail-Closed Loading Guard (`CODE-02`)**: The serving container verifies the artifact's SHA-256 checksum before execution:
+  ```python
+  computed_sha = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
+  if computed_sha != expected_manifest_sha:
+      raise ValueError(f"Integrity check failed for {model_name}!")
+  model = joblib.load(artifact_path)
+  ```
+
+### Pillar 5: Zero-Downtime Serving & Hot-Reloading
+- **Dual Transport**:
+  - **gRPC (`:8091`)**: High-throughput protobuf stream for live Go server pipeline processing ($\le 2\text{ms}$ latency).
+  - **REST (`:8090`)**: Administrative queries, drift health reports, and CT triggers.
+- **Atomic Hot-Reload**: Live model pointers are swapped in-memory under mutex lock via `POST /api/models/reload`, eliminating 502/503 windows during weights refreshment.
+
+### Pillar 6: Real-Time Drift Detection & Event-Driven CT Loop
+- **Statistical Tests**:
+  - **Population Stability Index (PSI)**: $PSI \ge 0.20$ signals severe distributional shift.
+  - **Kolmogorov-Smirnov (KS) Test**: Two-sample test rejecting identical distributions when $p\text{-value} < 0.01$.
+- **Cooldown-Throttled Automated Retraining**:
+  - Critical drift triggers the background dispatcher (`remediation_cooldown_seconds=1800`).
+  - Calls `POST /drift/remediate/{domain}` to launch an asynchronous continuous training cycle (`mlops/pipeline/orchestrator.py`), automatically validating and promoting the replacement champion model.
+
+---
+
+## 4. Production MLOps Execution Runbook
+
+```bash
+# 1. Verify cryptographic integrity of all 9 registered models
+python3 scripts/model_registry.py verify
+
+# 2. Extract features and train with Optuna Bayesian optimization
+python3 mlops/pipeline/train_and_evaluate.py vessel
+
+# 3. Train the semi-supervised corridor autoencoder
+python3 mlops/pipeline/train_autoencoder.py
+
+# 4. Run fine-grained slice evaluation
+python3 mlops/models/evaluations/slice_evaluator.py
+
+# 5. Evaluate real-time statistical drift per domain
+curl -s http://localhost:8090/drift/evaluate/vessel | jq .
+
+# 6. Manually trigger an event-driven continuous training remediation cycle
+curl -X POST http://localhost:8090/drift/remediate/vessel | jq .
+```

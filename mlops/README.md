@@ -78,3 +78,27 @@ bash mlops/pipeline/zenml/setup_zenml_stack.sh
 # Execute end-to-end continuous training DAG
 python3 mlops/pipeline/zenml/run.py
 ```
+
+### 5. Production Execution & Drift Remediation Runbook
+Detailed architecture specification: [01_mlops_fundamentals_and_architecture.md](file:///home/yahya/SHARED/Projects/HormuzWatch/docs/study/01_mlops_fundamentals_and_architecture.md).
+
+```bash
+# Verify cryptographic integrity of all 9 registered ML models
+python3 scripts/model_registry.py verify
+
+# Train maritime vessel ensemble with Optuna HPO & MLflow logging
+python3 mlops/pipeline/train_and_evaluate.py vessel
+
+# Train deep learning corridor reconstruction autoencoder
+python3 mlops/pipeline/train_autoencoder.py
+
+# Execute fine-grained slice evaluation (vessel types, geofences, diurnal cycles)
+python3 mlops/models/evaluations/slice_evaluator.py
+
+# Query live statistical drift (PSI & KS p-value)
+curl -s http://localhost:8090/drift/evaluate/vessel | jq .
+
+# Trigger event-driven continuous training remediation cycle
+curl -X POST http://localhost:8090/drift/remediate/vessel | jq .
+```
+
