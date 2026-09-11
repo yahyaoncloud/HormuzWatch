@@ -461,9 +461,65 @@ async def health():
     }
 
 
+# ── Intelligence & Content Analysis Endpoints (with Logic Rollback) ────────
+from lib.intelligence import global_intelligence_engine
+
+
+class AnomalyEventPayload(BaseModel):
+    event_id: Optional[str] = None
+    domain: str = "vessel"
+    mmsi: Optional[str] = None
+    vessel_name: Optional[str] = None
+    vessel_type: Optional[str] = None
+    flag_state: Optional[str] = None
+    latitude: float = 26.4
+    longitude: float = 56.3
+    speed_knots: float = 0.0
+    course_delta_deg: float = 0.0
+    speed_delta_knots: float = 0.0
+    ais_gap_minutes: float = 0.0
+    dist_restricted_zone_nm: float = 999.0
+    anomaly_score: float = 0.5
+    anomaly_reasons: List[str] = Field(default_factory=list)
+
+
+class SitrepDigestPayload(BaseModel):
+    reporting_period: str = "Past 24 Hours"
+    active_vessel_tracks: int = 0
+    strait_transits_24h: int = 0
+    transit_flow_rate_vs_30d_baseline: str = "0.0%"
+    blockade_risk_score: float = 0.0
+    active_anomalies_detected: int = 0
+    dark_fleet_suspects: int = 0
+    regional_conflict_indicators: List[str] = Field(default_factory=list)
+
+
+class ContentAnalysisPayload(BaseModel):
+    text: str
+
+
+@app.post("/api/intelligence/demarche")
+async def create_incident_demarche(payload: AnomalyEventPayload):
+    """Generate military-grade tactical incident demarche with cloud LLM and logic rollback."""
+    return global_intelligence_engine.generate_incident_demarche(payload.model_dump())
+
+
+@app.post("/api/intelligence/sitrep")
+async def create_daily_sitrep(payload: SitrepDigestPayload):
+    """Generate 24-hour maritime security SITREP with cloud LLM and logic rollback."""
+    return global_intelligence_engine.generate_sitrep(payload.model_dump())
+
+
+@app.post("/api/intelligence/analyze")
+async def analyze_osint_content(payload: ContentAnalysisPayload):
+    """Perform content threat analysis on unstructured text with logic rollback."""
+    return global_intelligence_engine.analyze_content(payload.text)
+
+
 # ── Dataset Analysis Router (admin portal charts) ──────────────────────────
 try:
     from analysis import create_router as create_analysis_router
     app.include_router(create_analysis_router())
 except ImportError:
     pass
+
