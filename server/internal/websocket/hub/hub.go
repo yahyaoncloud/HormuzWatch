@@ -118,23 +118,17 @@ func (h *Hub) Run() {
 			}
 
 		case message := <-h.Broadcast:
-			var slowClients []*Client
 			h.mu.Lock()
+			droppedForClients := 0
 			for client := range h.Clients {
 				select {
 				case client.Send <- message:
 				default:
-					slowClients = append(slowClients, client)
+					droppedForClients++
 				}
 			}
-			for _, client := range slowClients {
-				delete(h.Clients, client)
-				close(client.Send)
-			}
-			if len(slowClients) > 0 {
-				active := len(h.Clients)
-				observability.WebSocketClientsActive.Store(int64(active))
-				log.Printf("[Hub] Client send buffer full. Evicted %d slow client(s). Active: %d", len(slowClients), active)
+			if droppedForClients > 0 {
+				h.droppedCount.Add(uint64(droppedForClients))
 			}
 			h.mu.Unlock()
 		}

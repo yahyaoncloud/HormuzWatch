@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"Geospatial-harmuz-watch/server/internal/db"
 	"Geospatial-harmuz-watch/server/internal/domain/telemetry"
 	"Geospatial-harmuz-watch/server/internal/geo"
 	"Geospatial-harmuz-watch/server/internal/intelligence"
@@ -92,40 +93,64 @@ func NewAISClient(p *intelligence.Pipeline, cache *VesselCache) *AISClient {
 
 // Start launches the chosen AIS provider and processing pipelines.
 func (c *AISClient) Start(ctx context.Context) {
-	// 1. Always run continuous Gulf maritime baseline engine in background.
-	// This ensures the Strait of Hormuz immediately has authentic commercial & security
-	// traffic in the cache, on the map, and in the telemetry pipeline from t=0.
-	go StartMockAISStream(ctx, c.cache, func(v *NormalizedVesselState) {
-		atomic.AddUint64(&c.totalMessages, 1)
-		c.healthMu.Lock()
-		c.health.LastMessageAt = time.Now().UTC()
-		c.healthMu.Unlock()
-		c.dispatchToPipeline(v)
-	})
-
-	mockOnly := os.Getenv("AIS_MOCK_ENABLED") == "true"
-	if mockOnly {
-		c.healthMu.Lock()
-		c.health.Status = "mock_active"
-		c.health.IsMock = true
-		c.health.IsConnected = true
-		c.healthMu.Unlock()
-		log.Printf("[AISManager] Running pure simulation mode (AIS_MOCK_ENABLED=true)")
-		return
-	}
+	// 1. Hydrate in-memory vessel cache from real database tracks
+	c.HydrateFromDB()
 
 	log.Printf("[AISManager] Launching production maritime telemetry provider: %s", c.providerType)
 
-	// Periodic health & rate calculation routine
+	// 2. Periodic health & rate calculation routine
 	go c.healthMonitor(ctx)
 
-	// Launch active provider adapter (AISStream / OpenWaters)
+	// 3. Launch active provider adapter (AISStream / OpenWaters)
 	err := c.provider.Start(ctx, func(obs *NormalizedAISObservation) {
 		c.IngestObservation(obs)
 	})
 	if err != nil {
 		log.Printf("[AISManager] Error starting provider %s: %v", c.providerType, err)
 	}
+}
+
+// HydrateFromDB populates the in-memory cache with real vessel observations from PostgreSQL.
+func (c *AISClient) HydrateFromDB() {
+	if db.DB == nil || c.cache == nil {
+		return
+	}
+	query := `
+		SELECT track_id, asset_name, lat, lon, speed, COALESCE(heading, 0), last_updated
+		FROM tracks
+		WHERE object_type = 'vessel'
+		  AND lat >= 21.0 AND lat <= 32.5 AND lon >= 46.5 AND lon <= 62.5
+		ORDER BY last_updated DESC
+		LIMIT 2500
+	`
+	rows, err := db.DB.Query(query)
+	if err != nil || rows == nil {
+		log.Printf("[AISManager] Cache hydration query error: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	count := 0
+	for rows.Next() {
+		var mmsi, name string
+		var lat, lon, sog, heading float64
+		var lastUpdated time.Time
+		if err := rows.Scan(&mmsi, &name, &lat, &lon, &sog, &heading, &lastUpdated); err == nil {
+			c.cache.UpdatePosition(
+				mmsi, name, "",
+				lat, lon, sog, heading, heading,
+				NavStatusUnderwayEngine, 0,
+				"PositionReport", lastUpdated,
+			)
+			count++
+		}
+	}
+	c.healthMu.Lock()
+	c.health.Status = "connected"
+	c.health.IsConnected = true
+	c.health.ActiveVesselsCount = count
+	c.healthMu.Unlock()
+	log.Printf("[AISManager] Hydrated in-memory vessel cache with %d authentic Gulf vessels from database", count)
 }
 
 // IngestObservation normalizes, filters, caches, detects anomalies, and routes a single AIS telemetry event.

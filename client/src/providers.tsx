@@ -124,7 +124,6 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const rtSetTraces = useRealtimeStore((s) => s.setTraces);
   const rtAddConflict = useRealtimeStore((s) => s.addConflict);
   const rtSetWsStatus = useRealtimeStore((s) => s.setWsStatus);
-  const rtClearAll = useRealtimeStore((s) => s.clearAll);
 
   const connectWS = useCallback(async () => {
     // Don't attempt connection if not configured for local development
@@ -233,22 +232,25 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
               const anomPayload = message.payload as any;
               setAnomaly(anomPayload);
               rtSetAnomaly(anomPayload);
-              const id = anomPayload.trackId || anomPayload.id;
-              if (id) {
-                const existing = useRealtimeStore.getState().trackMap.get(String(id));
-                useRealtimeStore.getState().upsertTrack({
-                  trackId: String(id),
-                  assetName: anomPayload.assetName || existing?.assetName || String(id),
-                  timestamp: anomPayload.timestamp || existing?.timestamp || new Date().toISOString(),
-                  lat: anomPayload.lat ?? existing?.lat ?? 0,
-                  lon: anomPayload.lon ?? existing?.lon ?? 0,
-                  speed: anomPayload.speed ?? existing?.speed ?? 0,
-                  heading: anomPayload.heading ?? existing?.heading ?? 0,
-                  score: anomPayload.score ?? anomPayload.final_score ?? 0,
-                  severity: anomPayload.severity || 'medium',
-                  reasons: Array.isArray(anomPayload.reasons) ? JSON.stringify(anomPayload.reasons) : (anomPayload.reasons || '[]'),
-                  updatedAt: new Date().toISOString(),
-                });
+              const items = Array.isArray(anomPayload) ? anomPayload : [anomPayload];
+              for (const item of items) {
+                const id = item.trackId || item.id;
+                if (id) {
+                  const existing = useRealtimeStore.getState().trackMap.get(String(id));
+                  useRealtimeStore.getState().upsertTrack({
+                    trackId: String(id),
+                    assetName: item.assetName || existing?.assetName || String(id),
+                    timestamp: item.timestamp || existing?.timestamp || new Date().toISOString(),
+                    lat: item.lat ?? existing?.lat ?? 0,
+                    lon: item.lon ?? existing?.lon ?? 0,
+                    speed: item.speed ?? existing?.speed ?? 0,
+                    heading: item.heading ?? existing?.heading ?? 0,
+                    score: item.score ?? item.final_score ?? 0,
+                    severity: item.severity || 'medium',
+                    reasons: Array.isArray(item.reasons) ? JSON.stringify(item.reasons) : (item.reasons || '[]'),
+                    updatedAt: new Date().toISOString(),
+                  });
+                }
               }
               break;
             }
@@ -278,8 +280,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       socket.onclose = () => {
         setStatus('reconnecting');
         useServerStatusStore.getState().setWsStatus('reconnecting');
-        // Clear realtime data on disconnect — no stale metrics
-        rtClearAll();
+        // Keep realtime data preserved during brief reconnects to prevent blank map flashes
         rtSetWsStatus('disconnected');
 
         // Nullify handlers to prevent duplicate events on old sockets

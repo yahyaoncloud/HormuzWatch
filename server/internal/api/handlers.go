@@ -252,7 +252,7 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 	client := &hub.Client{
 		Hub:  h.hub,
 		Conn: ws,
-		Send: make(chan hub.Message, 256),
+		Send: make(chan hub.Message, 1024),
 	}
 	h.hub.Register <- client
 
@@ -260,23 +260,25 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 	go client.ReadPump()
 	go client.WritePump()
 
-	// Register a cleanup callback to cancel context when client unregisters
-	// We do this by wrapping the original Unregister to also cancel our context
+	// Hydrate the dashboard from Database in batched chunks (async to prevent blocking the HTTP handler)
 	go func() {
-		// Wait for the client to be unregistered by watching the hub's unregister channel
-		// Actually, the simplest approach: when ReadPump finishes, it sends to Unregister
-		// We can't easily hook into that without modifying hub, so we'll use a different approach
-	}()
+		var telemetryBatch []TelemetryPayload
+		flushTelemetry := func() bool {
+			if len(telemetryBatch) == 0 {
+				return true
+			}
+			msg := hub.Message{Type: "telemetry", Data: telemetryBatch}
+			telemetryBatch = nil
+			return safeSendNonBlocking(client.Send, msg)
+		}
 
-	// Hydrate the dashboard from Database (async to prevent blocking the HTTP handler)
-	go func() {
 		// Fetch tracks updated in the last 24 hours (with fallback to latest recorded tracks)
 		query := `
 			SELECT track_id, asset_name, timestamp, lat, lon, speed, previous_speed, heading, course_delta, ais_age_minutes, hot_zone_distance_nm 
 			FROM tracks 
 			WHERE last_updated >= NOW() - INTERVAL '24 hours'
 			ORDER BY last_updated DESC
-			LIMIT 2000
+			LIMIT 2500
 		`
 		rows, err := db.Query(query)
 		trackCount := 0
@@ -291,12 +293,9 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 				var p TelemetryPayload
 				if err := rows.Scan(&p.TrackID, &p.AssetName, &p.Timestamp, &p.Lat, &p.Lon, &p.Speed, &p.PreviousSpeed, &p.Heading, &p.CourseDelta, &p.AisAgeMinutes, &p.HotZoneDistanceNm); err == nil {
 					trackCount++
-					select {
-					case <-ctx.Done():
-						rows.Close()
-						return
-					default:
-						if !safeSendNonBlocking(client.Send, hub.Message{Type: "telemetry", Data: p}) {
+					telemetryBatch = append(telemetryBatch, p)
+					if len(telemetryBatch) >= 50 {
+						if !flushTelemetry() {
 							rows.Close()
 							return
 						}
@@ -304,6 +303,9 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 				}
 			}
 			rows.Close()
+			if !flushTelemetry() {
+				return
+			}
 		}
 
 		// Fallback if 24h window had 0 tracks
@@ -312,7 +314,7 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 				SELECT track_id, asset_name, timestamp, lat, lon, speed, previous_speed, heading, course_delta, ais_age_minutes, hot_zone_distance_nm 
 				FROM tracks 
 				ORDER BY last_updated DESC
-				LIMIT 2000
+				LIMIT 2500
 			`
 			fbRows, fbErr := db.Query(fallbackQuery)
 			if fbErr == nil && fbRows != nil {
@@ -325,12 +327,9 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 					}
 					var p TelemetryPayload
 					if err := fbRows.Scan(&p.TrackID, &p.AssetName, &p.Timestamp, &p.Lat, &p.Lon, &p.Speed, &p.PreviousSpeed, &p.Heading, &p.CourseDelta, &p.AisAgeMinutes, &p.HotZoneDistanceNm); err == nil {
-						select {
-						case <-ctx.Done():
-							fbRows.Close()
-							return
-						default:
-							if !safeSendNonBlocking(client.Send, hub.Message{Type: "telemetry", Data: p}) {
+						telemetryBatch = append(telemetryBatch, p)
+						if len(telemetryBatch) >= 50 {
+							if !flushTelemetry() {
 								fbRows.Close()
 								return
 							}
@@ -338,7 +337,20 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 					}
 				}
 				fbRows.Close()
+				if !flushTelemetry() {
+					return
+				}
 			}
+		}
+
+		var anomalyBatch []anomaly.Result
+		flushAnomaly := func() bool {
+			if len(anomalyBatch) == 0 {
+				return true
+			}
+			msg := hub.Message{Type: "anomaly", Data: anomalyBatch}
+			anomalyBatch = nil
+			return safeSendNonBlocking(client.Send, msg)
 		}
 
 		// Fetch anomalies updated in the last 24 hours (with fallback to latest)
@@ -347,7 +359,7 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 			FROM anomalies 
 			WHERE last_updated >= NOW() - INTERVAL '24 hours'
 			ORDER BY last_updated DESC
-			LIMIT 500
+			LIMIT 1000
 		`
 		aRows, aErr := db.Query(anomalyQuery)
 		anomalyCount := 0
@@ -365,12 +377,9 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 					anomalyCount++
 					json.Unmarshal([]byte(reasonsJSON), &res.Reasons)
 					json.Unmarshal([]byte(actionsJSON), &res.Actions)
-					select {
-					case <-ctx.Done():
-						aRows.Close()
-						return
-					default:
-						if !safeSendNonBlocking(client.Send, hub.Message{Type: "anomaly", Data: res}) {
+					anomalyBatch = append(anomalyBatch, res)
+					if len(anomalyBatch) >= 50 {
+						if !flushAnomaly() {
 							aRows.Close()
 							return
 						}
@@ -378,6 +387,9 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 				}
 			}
 			aRows.Close()
+			if !flushAnomaly() {
+				return
+			}
 		}
 
 		if anomalyCount == 0 {
@@ -385,7 +397,7 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 				SELECT track_id, score, severity, reasons, actions 
 				FROM anomalies 
 				ORDER BY last_updated DESC
-				LIMIT 500
+				LIMIT 1000
 			`
 			fbARows, fbAErr := db.Query(fbAnomalyQuery)
 			if fbAErr == nil && fbARows != nil {
@@ -401,12 +413,9 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 					if err := fbARows.Scan(&res.ID, &res.Score, &res.Severity, &reasonsJSON, &actionsJSON); err == nil {
 						json.Unmarshal([]byte(reasonsJSON), &res.Reasons)
 						json.Unmarshal([]byte(actionsJSON), &res.Actions)
-						select {
-						case <-ctx.Done():
-							fbARows.Close()
-							return
-						default:
-							if !safeSendNonBlocking(client.Send, hub.Message{Type: "anomaly", Data: res}) {
+						anomalyBatch = append(anomalyBatch, res)
+						if len(anomalyBatch) >= 50 {
+							if !flushAnomaly() {
 								fbARows.Close()
 								return
 							}
@@ -414,6 +423,7 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 					}
 				}
 				fbARows.Close()
+				flushAnomaly()
 			}
 		}
 	}()

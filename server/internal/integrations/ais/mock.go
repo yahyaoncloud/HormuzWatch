@@ -3,9 +3,6 @@ package ais
 import (
 	"context"
 	"log"
-	"math"
-	"math/rand"
-	"time"
 )
 
 // MockVesselDefinition defines a simulated vessel archetype in the Gulf.
@@ -60,120 +57,7 @@ var DefaultMockFleet = []MockVesselDefinition{
 	{MMSI: "461223344", Name: "SULAIMAN 1", Callsign: "A4SL", ShipType: 53, BaseLat: 25.80, BaseLon: 56.70, Heading: 140.0, Speed: 18.0, Destination: "KHASAB -> SOHAR"},
 }
 
-// StartMockAISStream runs a background simulated telemetry generator.
+// StartMockAISStream is permanently disabled to enforce the architectural mandate: "never keep mocks".
 func StartMockAISStream(ctx context.Context, cache *VesselCache, onObservation func(*NormalizedVesselState)) {
-	log.Println("[MockAIS] Initializing simulated maritime telemetry engine for Gulf waters...")
-
-	type simulatedVessel struct {
-		def  MockVesselDefinition
-		lat  float64
-		lon  float64
-		sog  float64
-		cog  float64
-		hdg  float64
-		last time.Time
-	}
-
-	simulated := make([]simulatedVessel, len(DefaultMockFleet))
-	for i, f := range DefaultMockFleet {
-		simulated[i] = simulatedVessel{
-			def:  f,
-			lat:  f.BaseLat,
-			lon:  f.BaseLon,
-			sog:  f.Speed,
-			cog:  f.Heading,
-			hdg:  f.Heading,
-			last: time.Now().UTC(),
-		}
-		// Register initial static data
-		cache.UpdateStaticData(
-			f.MMSI, f.Name, f.Callsign,
-			9000000+i, f.ShipType,
-			180, 50, 15, 15, 12.5,
-			f.Destination, "2026-09-12 12:00",
-			"ShipStaticData",
-		)
-		// Register initial position immediately so cache is hot at t=0
-		vState := cache.UpdatePosition(
-			f.MMSI, f.Name, f.Callsign,
-			f.BaseLat, f.BaseLon, f.Speed, f.Heading, f.Heading,
-			NavStatusUnderwayEngine, 0.0,
-			"PositionReport", time.Now().UTC(),
-		)
-		if vState != nil && onObservation != nil {
-			onObservation(vState)
-		}
-	}
-
-	ticker := time.NewTicker(3 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			log.Println("[MockAIS] Context canceled, stopping mock stream.")
-			return
-		case t := <-ticker.C:
-			// Advance all fleet vessels smoothly
-			for i := range simulated {
-				sv := &simulated[i]
-
-				// Minor kinematic drift
-				driftSog := (rand.Float64() - 0.5) * 0.4
-				sv.sog = math.Max(0.2, math.Min(25.0, sv.sog+driftSog))
-
-				driftHdg := (rand.Float64() - 0.5) * 2.0
-				sv.cog = math.Mod(sv.cog+driftHdg+360.0, 360.0)
-				sv.hdg = sv.cog
-
-				// Advance position based on SOG (knots to degrees/sec: 1 knot = 1/60 NM/min = 1/3600 deg/sec approx)
-				dtSec := t.Sub(sv.last).Seconds()
-				distDeg := (sv.sog / 3600.0) * dtSec / 60.0
-
-				rad := sv.cog * math.Pi / 180.0
-				sv.lat += distDeg * math.Cos(rad)
-				sv.lon += distDeg * math.Sin(rad)
-				sv.last = t
-
-				// Boundary wrap within Gulf operational coordinates (Lat: 21.0..32.5, Lon: 46.5..62.5)
-				if sv.lat > 31.0 {
-					sv.lat = 23.5
-				} else if sv.lat < 21.5 {
-					sv.lat = 27.5
-				}
-				if sv.lon > 62.0 {
-					sv.lon = 48.0
-				} else if sv.lon < 47.0 {
-					sv.lon = 58.5
-				}
-
-				navStatus := NavStatusUnderwayEngine
-				if sv.sog < 1.0 {
-					navStatus = NavStatusAtAnchor
-				}
-
-				// Update cache
-				vState := cache.UpdatePosition(
-					sv.def.MMSI, sv.def.Name, sv.def.Callsign,
-					sv.lat, sv.lon, sv.sog, sv.cog, sv.hdg,
-					navStatus, 0.0,
-					"PositionReport", t,
-				)
-
-				// Run anomaly detector
-				if vState != nil {
-					anomalies := GlobalAnomalyDetector.Evaluate(vState, sv.sog+driftSog, sv.cog, sv.hdg, t.Add(-3*time.Second))
-					if len(anomalies) > 0 {
-						vState.ActiveAnomalies = make([]string, 0, len(anomalies))
-						for _, a := range anomalies {
-							vState.ActiveAnomalies = append(vState.ActiveAnomalies, a.Title)
-						}
-					}
-					if onObservation != nil {
-						onObservation(vState)
-					}
-				}
-			}
-		}
-	}
+	log.Println("[MockAIS] Simulated telemetry generator disabled per production mandate: only authentic feeds and persisted telemetry are allowed.")
 }
