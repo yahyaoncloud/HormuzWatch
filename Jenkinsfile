@@ -39,7 +39,7 @@ pipeline {
         COMPOSE_PROJECT_NAME = 'hormuzwatch'
         DOCKER_BUILDKIT = '1'
         PREV_COMMIT = ''
-        ACTIVE_DEPLOY_HOST = ''
+        ACTIVE_DEPLOY_HOST = '192.168.1.40'
         TRIVY_SEVERITY = 'HIGH,CRITICAL'
         DEPLOY_HOST = '192.168.1.40'
         DEPLOY_FALLBACK_HOST = '100.66.64.31'
@@ -60,28 +60,16 @@ pipeline {
                     echo " Target Host: LATE5530 (${env.DEPLOY_HOST}) "
                     echo "=========================================================="
 
-                    // Resolve active deployment route to LATE5530 (LAN primary with Tailscale fallback)
-                    def targetIp = sh(
-                        script: """
-                            if ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=3 ${env.DEPLOY_USER}@${env.DEPLOY_HOST} 'true' 2>/dev/null; then
-                                echo "${env.DEPLOY_HOST}"
-                            elif ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=3 ${env.DEPLOY_USER}@${env.DEPLOY_FALLBACK_HOST} 'true' 2>/dev/null; then
-                                echo "${env.DEPLOY_FALLBACK_HOST}"
-                            else
-                                echo "${env.DEPLOY_HOST}"
-                            fi
-                        """,
-                        returnStdout: true
-                    ).trim()
-                    env.ACTIVE_DEPLOY_HOST = targetIp
+                    // Verify edge connectivity to LATE5530
+                    sh "ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=5 ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} 'hostname' || true"
                     echo "==> Active edge communication route selected: ${env.ACTIVE_DEPLOY_HOST}"
 
                     try {
                         env.PREV_COMMIT = sh(
-                            script: "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} 'cd ${env.DEPLOY_DIR} && git rev-parse HEAD 2>/dev/null || echo \"\"'",
+                            script: "ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=5 ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} 'cd ${env.DEPLOY_DIR} && git rev-parse HEAD 2>/dev/null || echo \"\"'",
                             returnStdout: true
                         ).trim()
-                        if (!env.PREV_COMMIT || env.PREV_COMMIT == "") {
+                        if (!env.PREV_COMMIT || env.PREV_COMMIT == "" || env.PREV_COMMIT.contains(" ")) {
                             env.PREV_COMMIT = sh(script: 'git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD', returnStdout: true).trim()
                         }
                     } catch (Exception e) {
@@ -300,7 +288,7 @@ pipeline {
             steps {
                 echo "==> Executing True Zero-Downtime Blue/Green Rollout on production edge E5530 (${env.ACTIVE_DEPLOY_HOST})..."
                 sh """
-                    ssh -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} "cd ${env.DEPLOY_DIR} && git pull origin ${params.BRANCH_NAME} && chmod +x ${env.SLOT_CUTOVER_SCRIPT} && ./${env.SLOT_CUTOVER_SCRIPT} deploy ${params.DEPLOY_SLOT}"
+                    ssh -o BatchMode=yes -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} "cd ${env.DEPLOY_DIR} && git pull origin ${params.BRANCH_NAME} && chmod +x ${env.SLOT_CUTOVER_SCRIPT} && ./${env.SLOT_CUTOVER_SCRIPT} deploy ${params.DEPLOY_SLOT}"
                 """
             }
         }
@@ -334,7 +322,7 @@ pipeline {
         stage('SRE Diagnostic Audit') {
             steps {
                 echo "==> Running SRE diagnostic audit on E5530 (${env.ACTIVE_DEPLOY_HOST})..."
-                sh "ssh -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} \"cd ${env.DEPLOY_DIR} && ./service/sre/sre.sh health || true\""
+                sh "ssh -o BatchMode=yes -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} \"cd ${env.DEPLOY_DIR} && ./service/sre/sre.sh health || true\""
             }
         }
     }
@@ -344,7 +332,7 @@ pipeline {
             echo "=========================================================="
             echo " 🚀 HormuzWatch DevOps Deployment to E5530 SUCCEEDED!    "
             echo "=========================================================="
-            sh "ssh -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} \"cd ${env.DEPLOY_DIR} && ./${env.SLOT_CUTOVER_SCRIPT} status && docker compose -p ${env.COMPOSE_PROJECT_NAME} -f ${env.COMPOSE_FILE} ps\""
+            sh "ssh -o BatchMode=yes -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} \"cd ${env.DEPLOY_DIR} && ./${env.SLOT_CUTOVER_SCRIPT} status && docker compose -p ${env.COMPOSE_PROJECT_NAME} -f ${env.COMPOSE_FILE} ps\""
         }
         failure {
             echo "=========================================================="
@@ -352,9 +340,9 @@ pipeline {
             echo " Restoring baseline commit: ${env.PREV_COMMIT}             "
             echo "=========================================================="
             sh """
-                ssh -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} "cd ${env.DEPLOY_DIR} && ./${env.SLOT_CUTOVER_SCRIPT} rollback || true"
+                ssh -o BatchMode=yes -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} "cd ${env.DEPLOY_DIR} && ./${env.SLOT_CUTOVER_SCRIPT} rollback || true"
                 if [ -n "${env.PREV_COMMIT}" ] && [ "${env.PREV_COMMIT}" != "null" ]; then
-                    ssh -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} "cd ${env.DEPLOY_DIR} && git checkout ${env.PREV_COMMIT} && (go run ./server/cmd/migrate -direction=down -steps=1 || true)"
+                    ssh -o BatchMode=yes -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} "cd ${env.DEPLOY_DIR} && git checkout ${env.PREV_COMMIT} && (go run ./server/cmd/migrate -direction=down -steps=1 || true)"
                     echo "==> Rollback complete on E5530. Restored to commit: ${env.PREV_COMMIT}"
                 fi
             """
