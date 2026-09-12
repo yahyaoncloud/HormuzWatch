@@ -205,6 +205,7 @@ pipeline {
                         sh '''
                             cd client
                             if command -v npm >/dev/null 2>&1; then
+                                npm ci --prefer-offline --no-audit 2>/dev/null || npm install --no-audit
                                 npm run test:run || npx vitest run
                                 npm run build || echo "Client build verified"
                             fi
@@ -288,7 +289,7 @@ pipeline {
             steps {
                 echo "==> Executing True Zero-Downtime Blue/Green Rollout on production edge E5530 (${env.ACTIVE_DEPLOY_HOST})..."
                 sh """
-                    ssh -o BatchMode=yes -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} "cd ${env.DEPLOY_DIR} && git pull origin ${params.BRANCH_NAME} && chmod +x ${env.SLOT_CUTOVER_SCRIPT} && ./${env.SLOT_CUTOVER_SCRIPT} deploy ${params.DEPLOY_SLOT}"
+                    ssh -o BatchMode=yes -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} "cd ${env.DEPLOY_DIR} && git pull origin ${params.BRANCH_NAME} && chmod +x ${env.SLOT_CUTOVER_SCRIPT} && bash ./${env.SLOT_CUTOVER_SCRIPT} deploy ${params.DEPLOY_SLOT}"
                 """
             }
         }
@@ -332,7 +333,7 @@ pipeline {
             echo "=========================================================="
             echo " 🚀 HormuzWatch DevOps Deployment to E5530 SUCCEEDED!    "
             echo "=========================================================="
-            sh "ssh -o BatchMode=yes -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} \"cd ${env.DEPLOY_DIR} && ./${env.SLOT_CUTOVER_SCRIPT} status && docker compose -p ${env.COMPOSE_PROJECT_NAME} -f ${env.COMPOSE_FILE} ps\""
+            sh "ssh -o BatchMode=yes -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} \"cd ${env.DEPLOY_DIR} && bash ./${env.SLOT_CUTOVER_SCRIPT} status && docker compose -p ${env.COMPOSE_PROJECT_NAME} -f ${env.COMPOSE_FILE} ps\""
         }
         failure {
             echo "=========================================================="
@@ -340,7 +341,7 @@ pipeline {
             echo " Restoring baseline commit: ${env.PREV_COMMIT}             "
             echo "=========================================================="
             sh """
-                ssh -o BatchMode=yes -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} "cd ${env.DEPLOY_DIR} && ./${env.SLOT_CUTOVER_SCRIPT} rollback || true"
+                ssh -o BatchMode=yes -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} "cd ${env.DEPLOY_DIR} && bash ./${env.SLOT_CUTOVER_SCRIPT} rollback || true"
                 if [ -n "${env.PREV_COMMIT}" ] && [ "${env.PREV_COMMIT}" != "null" ]; then
                     ssh -o BatchMode=yes -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} "cd ${env.DEPLOY_DIR} && git checkout ${env.PREV_COMMIT} && (go run ./server/cmd/migrate -direction=down -steps=1 || true)"
                     echo "==> Rollback complete on E5530. Restored to commit: ${env.PREV_COMMIT}"
