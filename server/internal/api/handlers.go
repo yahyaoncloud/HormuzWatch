@@ -20,16 +20,18 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func safeSendNonBlocking(ch chan hub.Message, msg hub.Message) (sent bool) {
+func safeSend(ctx context.Context, ch chan hub.Message, msg hub.Message) (sent bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			sent = false
 		}
 	}()
 	select {
+	case <-ctx.Done():
+		return false
 	case ch <- msg:
 		return true
-	default:
+	case <-time.After(1 * time.Second):
 		return false
 	}
 }
@@ -246,8 +248,8 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 		return
 	}
 
-	// Create a context that will be cancelled when the client disconnects
-	ctx, cancel := context.WithCancel(c.Request.Context())
+	// Create an independent context that will be cancelled only when the client disconnects
+	ctx, cancel := context.WithCancel(context.Background())
 
 	client := &hub.Client{
 		Hub:  h.hub,
@@ -256,8 +258,11 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 	}
 	h.hub.Register <- client
 
-	// Start client read/write loops
-	go client.ReadPump()
+	// Start client read/write loops. ReadPump exits when client disconnects, triggering cancel().
+	go func() {
+		defer cancel()
+		client.ReadPump()
+	}()
 	go client.WritePump()
 
 	// Hydrate the dashboard from Database in batched chunks (async to prevent blocking the HTTP handler)
@@ -269,18 +274,21 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 			}
 			msg := hub.Message{Type: "telemetry", Data: telemetryBatch}
 			telemetryBatch = nil
-			return safeSendNonBlocking(client.Send, msg)
+			return safeSend(ctx, client.Send, msg)
 		}
 
 		// Fetch tracks updated in the last 24 hours (with fallback to latest recorded tracks)
 		query := `
-			SELECT track_id, asset_name, timestamp, lat, lon, speed, previous_speed, heading, course_delta, ais_age_minutes, hot_zone_distance_nm 
+			SELECT track_id, asset_name, timestamp, lat, lon, speed, previous_speed, heading, course_delta, ais_age_minutes, hot_zone_distance_nm, COALESCE(object_type, 'vessel'), COALESCE(source, 'ais') 
 			FROM tracks 
 			WHERE last_updated >= NOW() - INTERVAL '24 hours'
 			ORDER BY last_updated DESC
 			LIMIT 2500
 		`
 		rows, err := db.Query(query)
+		if err != nil {
+			log.Printf("[WebSocketStream] Error querying tracks: %v", err)
+		}
 		trackCount := 0
 		if err == nil && rows != nil {
 			for rows.Next() {
@@ -291,7 +299,7 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 				default:
 				}
 				var p TelemetryPayload
-				if err := rows.Scan(&p.TrackID, &p.AssetName, &p.Timestamp, &p.Lat, &p.Lon, &p.Speed, &p.PreviousSpeed, &p.Heading, &p.CourseDelta, &p.AisAgeMinutes, &p.HotZoneDistanceNm); err == nil {
+				if err := rows.Scan(&p.TrackID, &p.AssetName, &p.Timestamp, &p.Lat, &p.Lon, &p.Speed, &p.PreviousSpeed, &p.Heading, &p.CourseDelta, &p.AisAgeMinutes, &p.HotZoneDistanceNm, &p.ObjectType, &p.Source); err == nil {
 					trackCount++
 					telemetryBatch = append(telemetryBatch, p)
 					if len(telemetryBatch) >= 50 {
@@ -300,6 +308,8 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 							return
 						}
 					}
+				} else {
+					log.Printf("[WebSocketStream] Scan error on track: %v", err)
 				}
 			}
 			rows.Close()
@@ -307,11 +317,12 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 				return
 			}
 		}
+		log.Printf("[WebSocketStream] Hydrated %d tracks to client", trackCount)
 
 		// Fallback if 24h window had 0 tracks
 		if trackCount == 0 {
 			fallbackQuery := `
-				SELECT track_id, asset_name, timestamp, lat, lon, speed, previous_speed, heading, course_delta, ais_age_minutes, hot_zone_distance_nm 
+				SELECT track_id, asset_name, timestamp, lat, lon, speed, previous_speed, heading, course_delta, ais_age_minutes, hot_zone_distance_nm, COALESCE(object_type, 'vessel'), COALESCE(source, 'ais') 
 				FROM tracks 
 				ORDER BY last_updated DESC
 				LIMIT 2500
@@ -326,7 +337,7 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 					default:
 					}
 					var p TelemetryPayload
-					if err := fbRows.Scan(&p.TrackID, &p.AssetName, &p.Timestamp, &p.Lat, &p.Lon, &p.Speed, &p.PreviousSpeed, &p.Heading, &p.CourseDelta, &p.AisAgeMinutes, &p.HotZoneDistanceNm); err == nil {
+					if err := fbRows.Scan(&p.TrackID, &p.AssetName, &p.Timestamp, &p.Lat, &p.Lon, &p.Speed, &p.PreviousSpeed, &p.Heading, &p.CourseDelta, &p.AisAgeMinutes, &p.HotZoneDistanceNm, &p.ObjectType, &p.Source); err == nil {
 						telemetryBatch = append(telemetryBatch, p)
 						if len(telemetryBatch) >= 50 {
 							if !flushTelemetry() {
@@ -350,7 +361,7 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 			}
 			msg := hub.Message{Type: "anomaly", Data: anomalyBatch}
 			anomalyBatch = nil
-			return safeSendNonBlocking(client.Send, msg)
+			return safeSend(ctx, client.Send, msg)
 		}
 
 		// Fetch anomalies updated in the last 24 hours (with fallback to latest)
@@ -426,12 +437,6 @@ func (h *Handlers) WebSocketStream(c *gin.Context) {
 				flushAnomaly()
 			}
 		}
-	}()
-
-	// Monitor for client disconnect and cancel context
-	go func() {
-		<-c.Request.Context().Done()
-		cancel()
 	}()
 }
 

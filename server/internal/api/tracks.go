@@ -5,6 +5,7 @@ import (
 	"Geospatial-harmuz-watch/server/internal/integrations/ais"
 	"Geospatial-harmuz-watch/server/internal/intelligence"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -138,7 +139,20 @@ func queryActiveTracks(filter string) []ActiveTrack {
 		}
 	}
 
-	if len(tracks) > 0 {
+	hasVessels := false
+	hasAircraft := false
+	for _, t := range tracks {
+		if t.ObjectType == "aircraft" || strings.HasPrefix(t.TrackID, "FLIGHT-") || strings.HasPrefix(t.TrackID, "ADS-") || strings.HasPrefix(t.TrackID, "ICAO-") {
+			hasAircraft = true
+		} else {
+			hasVessels = true
+		}
+	}
+
+	needMoreVessels := (filter == "" || filter == "vessel") && !hasVessels
+	needMoreAircraft := (filter == "" || filter == "aircraft") && !hasAircraft
+
+	if !needMoreVessels && !needMoreAircraft && len(tracks) > 0 {
 		return tracks
 	}
 
@@ -176,7 +190,10 @@ func queryActiveTracks(filter string) []ActiveTrack {
 			var t ActiveTrack
 			if err := rows.Scan(&t.TrackID, &t.AssetName, &t.Timestamp, &t.Lat, &t.Lon,
 				&t.Speed, &t.Heading, &t.AnomalyScore, &t.Severity, &t.LastUpdated, &t.ObjectType); err == nil {
-				tracks = append(tracks, t)
+				if !seen[t.TrackID] && isGulfCoordinate(t.Lat, t.Lon) {
+					seen[t.TrackID] = true
+					tracks = append(tracks, t)
+				}
 			}
 		}
 		rows.Close()
@@ -197,7 +214,8 @@ func queryActiveTracks(filter string) []ActiveTrack {
 				var t ActiveTrack
 				if err := fbRows.Scan(&t.TrackID, &t.AssetName, &t.Timestamp, &t.Lat, &t.Lon,
 					&t.Speed, &t.Heading, &t.AnomalyScore, &t.Severity, &t.LastUpdated, &t.ObjectType); err == nil {
-					if isGulfCoordinate(t.Lat, t.Lon) {
+					if !seen[t.TrackID] && isGulfCoordinate(t.Lat, t.Lon) {
+						seen[t.TrackID] = true
 						tracks = append(tracks, t)
 					}
 				}

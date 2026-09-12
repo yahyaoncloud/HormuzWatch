@@ -1,48 +1,44 @@
 import type { EntryContext } from 'react-router';
 import { ServerRouter } from 'react-router';
-import { renderToPipeableStream } from 'react-dom/server';
-import { PassThrough, Readable } from 'node:stream';
+import { renderToReadableStream } from 'react-dom/server';
 
-export default function handleRequest(
+export const streamTimeout = 5000;
+
+export default async function handleRequest(
   request: Request,
   responseStatusCode: number,
   responseHeaders: Headers,
   routerContext: EntryContext
 ) {
-  return new Promise((resolve, reject) => {
-    let shellRendered = false;
+  if (request.method.toUpperCase() === 'HEAD') {
+    return new Response(null, {
+      status: responseStatusCode,
+      headers: responseHeaders,
+    });
+  }
 
-    const { pipe, abort } = renderToPipeableStream(
-      <ServerRouter context={routerContext} url={request.url} />,
-      {
-        onShellReady() {
-          shellRendered = true;
-          const body = new PassThrough();
-          const stream = Readable.toWeb(body);
+  let shellRendered = false;
 
-          responseHeaders.set('Content-Type', 'text/html');
+  const body = await renderToReadableStream(
+    <ServerRouter context={routerContext} url={request.url} />,
+    {
+      signal: AbortSignal.timeout(streamTimeout + 1000),
+      onError(error: unknown) {
+        if (shellRendered) {
+          console.error('Prerender error:', error);
+        }
+      },
+    }
+  );
+  shellRendered = true;
 
-          resolve(
-            new Response(stream as unknown as BodyInit, {
-              headers: responseHeaders,
-              status: responseStatusCode,
-            })
-          );
+  if (routerContext.isSpaMode) {
+    await body.allReady;
+  }
 
-          pipe(body);
-        },
-        onShellError(error: unknown) {
-          reject(error);
-        },
-        onError(error: unknown) {
-          responseStatusCode = 500;
-          if (shellRendered) {
-            console.error(error);
-          }
-        },
-      }
-    );
-
-    setTimeout(abort, 5000);
+  responseHeaders.set('Content-Type', 'text/html');
+  return new Response(body, {
+    headers: responseHeaders,
+    status: 200,
   });
 }
