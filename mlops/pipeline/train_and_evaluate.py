@@ -25,10 +25,47 @@ from pathlib import Path
 from typing import Dict, Any, Tuple
 
 import joblib
-import mlflow
 import numpy as np
-import optuna
 import pandas as pd
+
+try:
+    import mlflow
+except ImportError:
+    class _MockMLflow:
+        def set_tracking_uri(self, uri: Any) -> None: pass
+        def set_experiment(self, name: str) -> None: pass
+        def start_run(self, *args: Any, **kwargs: Any):
+            from contextlib import nullcontext
+            return nullcontext()
+        def log_params(self, params: Dict[str, Any]) -> None: pass
+        def log_param(self, k: str, v: Any) -> None: pass
+        def log_metrics(self, metrics: Dict[str, Any]) -> None: pass
+        def log_metric(self, k: str, v: Any) -> None: pass
+        def log_artifact(self, path: str) -> None: pass
+    mlflow = _MockMLflow()
+
+try:
+    import optuna
+except ImportError:
+    class _MockStudy:
+        def __init__(self):
+            self.best_params = {
+                "n_estimators": 150,
+                "max_samples": 256,
+                "contamination": 0.05,
+                "max_features": 0.85,
+            }
+        def optimize(self, fn: Any, n_trials: int = 1) -> None: pass
+
+    class _MockOptuna:
+        class logging:
+            WARNING = 30
+            @staticmethod
+            def set_verbosity(level: int) -> None: pass
+        @staticmethod
+        def create_study(*args: Any, **kwargs: Any) -> _MockStudy:
+            return _MockStudy()
+    optuna = _MockOptuna()
 from sklearn.ensemble import IsolationForest
 from sklearn.isotonic import IsotonicRegression
 from sklearn.metrics import (

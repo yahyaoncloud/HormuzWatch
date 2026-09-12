@@ -62,13 +62,21 @@ docker compose -f docker-compose.registry.yml up -d
 # View MinIO Console at: http://localhost:9001
 ```
 
-### 4. Run ZenML Continuous Training Pipeline
+### 4. Run ZenML ETL & Continuous Training Pipelines
 ```bash
-# Initialize and activate ZenML stack
+# Initialize and activate ZenML stack (MinIO + MLflow)
 bash mlops/pipeline/zenml/setup_zenml_stack.sh
 
-# Execute end-to-end continuous training DAG
-python3 mlops/pipeline/zenml/run.py
+# 1. Execute Telemetry ETL Pipeline (Extract -> Validate Contracts -> Transform -> Load)
+python -m mlops.pipeline.zenml.run --pipeline etl --domain vessel
+# Or via ETL orchestrator directly:
+python mlops/etl/pipeline.py --domain vessel --zenml
+
+# 2. Execute Continuous Training (CT) Pipeline (Data Load -> Drift -> Train -> SLA Gates)
+python -m mlops.pipeline.zenml.run --pipeline train --domain vessel
+
+# 3. Execute Unified End-to-End Pipeline (ETL + Drift + Train + Gates + Deploy)
+python -m mlops.pipeline.zenml.run --pipeline e2e --domain vessel
 ```
 
 ### 5. Production Execution & Drift Remediation Runbook

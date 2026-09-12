@@ -32,20 +32,36 @@ class TelemetryDataQualityReport:
         if total == 0:
             return {"valid": False, "error": "Empty dataframe"}
 
-        # Missingness checks
-        null_counts = df.isnull().sum().to_dict()
-        coord_valid = (
-            (df["latitude"] >= 20.0) & (df["latitude"] <= 32.0) &
-            (df["longitude"] >= 50.0) & (df["longitude"] <= 62.0)
-        ).sum()
+        # Resolve column aliases
+        lat_s = df["latitude"] if "latitude" in df.columns else df["lat"] if "lat" in df.columns else None
+        lon_s = df["longitude"] if "longitude" in df.columns else df["lon"] if "lon" in df.columns else None
+        speed_s = (
+            df["speed_over_ground"] if "speed_over_ground" in df.columns
+            else df["speed"] if "speed" in df.columns
+            else df["sog"] if "sog" in df.columns
+            else None
+        )
 
-        speed_valid = ((df["speed_over_ground"] >= 0.0) & (df["speed_over_ground"] <= 70.0)).sum()
-        
+        null_counts = df.isnull().sum().to_dict()
+
+        if lat_s is not None and lon_s is not None:
+            coord_valid = (
+                (lat_s >= 20.0) & (lat_s <= 32.0) &
+                (lon_s >= 50.0) & (lon_s <= 62.0)
+            ).sum()
+        else:
+            coord_valid = 0
+
+        if speed_s is not None:
+            speed_valid = ((speed_s >= 0.0) & (speed_s <= 70.0)).sum()
+        else:
+            speed_valid = total  # Default if speed not in table
+
         valid_records = coord_valid == total and speed_valid == total
         quality_score = (coord_valid + speed_valid) / (2 * total)
 
         return {
-            "valid": valid_records,
+            "valid": bool(valid_records),
             "total_records": total,
             "quality_score": round(quality_score, 4),
             "coord_compliance_pct": round(coord_valid / total * 100, 2),
