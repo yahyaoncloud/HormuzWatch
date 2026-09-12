@@ -1,4 +1,3 @@
-import React, { useMemo } from 'react';
 import {
   Activity,
   Cpu,
@@ -12,11 +11,13 @@ import {
   ShieldAlert,
   Ship,
 } from 'lucide-react';
+import type React from 'react';
+import { useMemo } from 'react';
 import type { BlockadeIndicators, TransitSummary } from '@/lib/api';
+import type { SystemMetricLogs } from '@/types/health';
 import { cn } from '@/utils/cn';
 import { HudMetricBadge, type HudMetricConfig } from './HudMetricBadge';
 import { LayerToggleGroup } from './LayerToggleGroup';
-import type { SystemMetricLogs } from '@/types/health';
 
 export type HomeTabId = 'map' | 'intelligence' | 'feed' | 'docs' | 'about';
 
@@ -237,7 +238,14 @@ export const HomeTopBar: React.FC<HomeTopBarProps> = ({
                     : 'bg-[var(--color-bg-input)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:text-[var(--color-fg)] hover:bg-[var(--color-bg-hover)]'
                 )}
               >
-                <tab.icon className={cn('h-3.5 w-3.5', isActive ? 'text-[var(--color-primary-600)] dark:text-[#38bdf8]' : 'text-[var(--color-fg-subtle)]')} />
+                <tab.icon
+                  className={cn(
+                    'h-3.5 w-3.5',
+                    isActive
+                      ? 'text-[var(--color-primary-600)] dark:text-[#38bdf8]'
+                      : 'text-[var(--color-fg-subtle)]'
+                  )}
+                />
                 <span>{tab.label}</span>
               </button>
             );
@@ -373,26 +381,44 @@ export const HomeTopBar: React.FC<HomeTopBarProps> = ({
               <div
                 className={cn(
                   'px-2.5 py-1 border font-semibold flex items-center gap-1.5',
-                  blockade.strait_status === 'ACTIVE' && 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400',
-                  blockade.strait_status === 'LIMITED' && 'bg-amber-500/10 border-amber-500/30 text-amber-400',
-                  blockade.strait_status === 'NO_TRANSIT' && 'bg-red-500/10 border-red-500/30 text-red-400'
+                  blockade.strait_status === 'ACTIVE' &&
+                    'bg-emerald-500/10 border-emerald-500/30 text-emerald-400',
+                  blockade.strait_status === 'LIMITED' &&
+                    'bg-amber-500/10 border-amber-500/30 text-amber-400',
+                  blockade.strait_status === 'NO_TRANSIT' &&
+                    'bg-red-500/10 border-red-500/30 text-red-400'
                 )}
               >
                 <ShieldAlert className="h-3 w-3" />
                 {blockade.strait_status === 'NO_TRANSIT' ? 'NO TRANSIT' : blockade.strait_status}
               </div>
               <span className="text-[var(--color-fg-subtle)]">
-                Transits: <span className="font-bold text-[var(--color-fg)]">{blockade.strait_transits_24h}</span>
+                Transits:{' '}
+                <span className="font-bold text-[var(--color-fg)]">
+                  {blockade.strait_transits_24h}
+                </span>
               </span>
               <span className="text-[var(--color-fg-subtle)]">
-                Anchored: <span className="font-bold text-[var(--color-fg)]">{blockade.anchored_ratio_pct?.toFixed(0)}%</span>
+                Anchored:{' '}
+                <span className="font-bold text-[var(--color-fg)]">
+                  {blockade.anchored_ratio_pct?.toFixed(0)}%
+                </span>
               </span>
               <span className="text-[var(--color-fg-subtle)]">
-                Waiting 6h+: <span className={cn('font-bold', blockade.waiting_fleet_6h > 10 ? 'text-amber-400' : 'text-[var(--color-fg)]')}>{blockade.waiting_fleet_6h}</span>
+                Waiting 6h+:{' '}
+                <span
+                  className={cn(
+                    'font-bold',
+                    blockade.waiting_fleet_6h > 10 ? 'text-amber-400' : 'text-[var(--color-fg)]'
+                  )}
+                >
+                  {blockade.waiting_fleet_6h}
+                </span>
               </span>
               {transits?.recent_events && transits.recent_events.length > 0 && (
                 <span className="text-[var(--color-fg-muted)] ml-auto text-[10px]">
-                  Latest: {transits.recent_events[0].ship_name || `MMSI ${transits.recent_events[0].mmsi}`}
+                  Latest:{' '}
+                  {transits.recent_events[0].ship_name || `MMSI ${transits.recent_events[0].mmsi}`}
                 </span>
               )}
             </div>

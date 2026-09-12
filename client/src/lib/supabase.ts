@@ -1,17 +1,17 @@
-import { type SupabaseClient, createClient } from "@supabase/supabase-js";
-import { env } from "@/environments/environment";
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { env } from '@/environments/environment';
 
 // ── Client factory (not cached — always uses current env) ──────────
 // createClient is cheap (no network), so we build a fresh instance each
 // time. This ensures .env changes take effect immediately after restart.
 
 let _client: SupabaseClient | undefined;
-let _clientUrl = "";
+let _clientUrl = '';
 
 function getClient(): SupabaseClient {
   if (!env.supabase.url || !env.supabase.anonKey) {
     throw new Error(
-      "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env"
+      'Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env'
     );
   }
   // Recreate if URL changed (handles .env edits between dev restarts)
@@ -57,7 +57,7 @@ export async function signUp(email: string, password: string) {
 }
 
 export function onAuthStateChange(
-  callback: (event: string, session: import("@supabase/supabase-js").Session | null) => void
+  callback: (event: string, session: import('@supabase/supabase-js').Session | null) => void
 ) {
   return getClient().auth.onAuthStateChange((event, session) => {
     callback(event, session);

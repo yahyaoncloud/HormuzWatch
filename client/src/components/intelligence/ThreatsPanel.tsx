@@ -1,7 +1,7 @@
 import { AlertTriangle, Eye, LocateFixed, X } from 'lucide-react';
 import { Link } from 'react-router';
-import { cn } from '@/utils/cn';
 import type { ThreatItem } from '@/types/threats';
+import { cn } from '@/utils/cn';
 
 export type { ThreatItem };
 
@@ -41,11 +41,15 @@ export function ThreatsPanel({
           {/* Severity strip */}
           <div className="mt-2 flex gap-1">
             <div className="flex-1 bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 p-1.5 text-center">
-              <div className="font-mono text-xs font-bold text-[var(--color-danger)]">{criticalCount}</div>
+              <div className="font-mono text-xs font-bold text-[var(--color-danger)]">
+                {criticalCount}
+              </div>
               <div className="text-[9px] text-[var(--color-fg-muted)] uppercase">Critical</div>
             </div>
             <div className="flex-1 bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/20 p-1.5 text-center">
-              <div className="font-mono text-xs font-bold text-[var(--color-warning)]">{highCount}</div>
+              <div className="font-mono text-xs font-bold text-[var(--color-warning)]">
+                {highCount}
+              </div>
               <div className="text-[9px] text-[var(--color-fg-muted)] uppercase">High</div>
             </div>
             <div className="flex-1 bg-[var(--color-info)]/10 border border-[var(--color-info)]/20 p-1.5 text-center">
@@ -70,7 +74,8 @@ export function ThreatsPanel({
               tabIndex={0}
               className={cn(
                 'group flex items-start gap-2 px-3 py-2 border-b border-[var(--color-border)] transition-colors cursor-pointer',
-                threat.severity === 'critical' && 'border-l-2 border-l-[var(--color-danger)] bg-[var(--color-danger)]/[0.02]',
+                threat.severity === 'critical' &&
+                  'border-l-2 border-l-[var(--color-danger)] bg-[var(--color-danger)]/[0.02]',
                 threat.severity === 'high' && 'bg-[var(--color-warning)]/[0.02]',
                 'hover:bg-[var(--color-bg-elevated)]'
               )}
@@ -93,10 +98,18 @@ export function ThreatsPanel({
                     {threat.title}
                   </h4>
                   {threat.score > 0 && (
-                    <span className={cn(
-                      'font-mono text-[10px] font-bold shrink-0',
-                      threat.score > 80 ? 'text-[var(--color-danger)]' : threat.score > 50 ? 'text-[var(--color-warning)]' : 'text-[var(--color-fg-muted)]'
-                    )}>{threat.score.toFixed(0)}</span>
+                    <span
+                      className={cn(
+                        'font-mono text-[10px] font-bold shrink-0',
+                        threat.score > 80
+                          ? 'text-[var(--color-danger)]'
+                          : threat.score > 50
+                            ? 'text-[var(--color-warning)]'
+                            : 'text-[var(--color-fg-muted)]'
+                      )}
+                    >
+                      {threat.score.toFixed(0)}
+                    </span>
                   )}
                 </div>
 
@@ -105,9 +118,7 @@ export function ThreatsPanel({
                   <span className="text-[10px] text-[var(--color-fg-muted)] font-mono">
                     {threat.region}
                   </span>
-                  <span className="text-[10px] text-[var(--color-fg-muted)]">
-                    {threat.time}
-                  </span>
+                  <span className="text-[10px] text-[var(--color-fg-muted)]">{threat.time}</span>
                 </div>
 
                 {/* Actions */}
@@ -115,7 +126,10 @@ export function ThreatsPanel({
                   <div className="flex items-center gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); onHoverThreat?.(threat); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onHoverThreat?.(threat);
+                      }}
                       className="px-1.5 py-0.5 bg-[var(--color-bg-elevated)] hover:bg-[var(--color-primary-600)] hover:text-white border border-[var(--color-border)] text-[10px] font-medium text-[var(--color-fg-muted)] flex items-center gap-0.5 transition-colors"
                       title="Focus on Map"
                     >
@@ -124,7 +138,10 @@ export function ThreatsPanel({
                     </button>
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); setSelectedThreat(threat); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedThreat(threat);
+                      }}
                       className="px-2 py-0.5 bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] text-white text-[10px] font-medium flex items-center gap-0.5 transition-colors"
                       title="View Details"
                     >
@@ -167,7 +184,9 @@ export function ThreatDetailModal({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
       onClick={onClose}
-      onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+      }}
       role="dialog"
       aria-modal="true"
       aria-label="Threat Intelligence Detail"
@@ -180,20 +199,24 @@ export function ThreatDetailModal({
         <div className="flex items-start justify-between p-4 pb-2 border-b border-[var(--color-border)]">
           <div className="flex-1 min-w-0 mr-3">
             <div className="flex items-center gap-2 mb-1">
-              <span className={cn(
-                'h-2 w-2 rounded-full shrink-0',
-                selectedThreat.severity === 'critical' && 'bg-[var(--color-danger)]',
-                selectedThreat.severity === 'high' && 'bg-[var(--color-warning)]',
-                selectedThreat.severity === 'medium' && 'bg-[var(--color-info)]',
-                selectedThreat.severity === 'low' && 'bg-[var(--color-success)]'
-              )} />
-              <span className={cn(
-                'text-[10px] font-semibold uppercase tracking-wider',
-                selectedThreat.severity === 'critical' && 'text-[var(--color-danger)]',
-                selectedThreat.severity === 'high' && 'text-[var(--color-warning)]',
-                selectedThreat.severity === 'medium' && 'text-[var(--color-info)]',
-                selectedThreat.severity === 'low' && 'text-[var(--color-success)]'
-              )}>
+              <span
+                className={cn(
+                  'h-2 w-2 rounded-full shrink-0',
+                  selectedThreat.severity === 'critical' && 'bg-[var(--color-danger)]',
+                  selectedThreat.severity === 'high' && 'bg-[var(--color-warning)]',
+                  selectedThreat.severity === 'medium' && 'bg-[var(--color-info)]',
+                  selectedThreat.severity === 'low' && 'bg-[var(--color-success)]'
+                )}
+              />
+              <span
+                className={cn(
+                  'text-[10px] font-semibold uppercase tracking-wider',
+                  selectedThreat.severity === 'critical' && 'text-[var(--color-danger)]',
+                  selectedThreat.severity === 'high' && 'text-[var(--color-warning)]',
+                  selectedThreat.severity === 'medium' && 'text-[var(--color-info)]',
+                  selectedThreat.severity === 'low' && 'text-[var(--color-success)]'
+                )}
+              >
                 {selectedThreat.severity}
               </span>
             </div>
@@ -222,14 +245,36 @@ export function ThreatDetailModal({
               { label: 'Anomaly Score', value: `${selectedThreat.score.toFixed(0)}/100` },
               { label: 'Track ID', value: selectedThreat.trackId || 'N/A' },
               { label: 'Asset', value: selectedThreat.assetName },
-              { label: 'Domain', value: selectedThreat.domain ? selectedThreat.domain.toUpperCase() : 'TACTICAL TARGET' },
-              { label: 'Speed & Heading', value: selectedThreat.speed !== undefined ? `${selectedThreat.speed.toFixed(1)} kn @ ${selectedThreat.heading || 0}°` : 'N/A' },
-              { label: 'Coordinates', value: selectedThreat.lat && selectedThreat.lon ? `${selectedThreat.lat.toFixed(4)}°N, ${selectedThreat.lon.toFixed(4)}°E` : 'N/A' },
+              {
+                label: 'Domain',
+                value: selectedThreat.domain
+                  ? selectedThreat.domain.toUpperCase()
+                  : 'TACTICAL TARGET',
+              },
+              {
+                label: 'Speed & Heading',
+                value:
+                  selectedThreat.speed !== undefined
+                    ? `${selectedThreat.speed.toFixed(1)} kn @ ${selectedThreat.heading || 0}°`
+                    : 'N/A',
+              },
+              {
+                label: 'Coordinates',
+                value:
+                  selectedThreat.lat && selectedThreat.lon
+                    ? `${selectedThreat.lat.toFixed(4)}°N, ${selectedThreat.lon.toFixed(4)}°E`
+                    : 'N/A',
+              },
               { label: 'Detected', value: selectedThreat.time },
             ].map((f) => (
-              <div key={f.label} className="bg-[var(--color-bg)] border border-[var(--color-border)] p-2">
+              <div
+                key={f.label}
+                className="bg-[var(--color-bg)] border border-[var(--color-border)] p-2"
+              >
                 <div className="text-[10px] text-[var(--color-fg-muted)] uppercase">{f.label}</div>
-                <div className="text-[12px] font-semibold text-[var(--color-fg)] font-mono mt-0.5 truncate">{f.value}</div>
+                <div className="text-[12px] font-semibold text-[var(--color-fg)] font-mono mt-0.5 truncate">
+                  {f.value}
+                </div>
               </div>
             ))}
           </div>
@@ -251,7 +296,9 @@ export function ThreatDetailModal({
             <div className="bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/30 p-3 flex items-start gap-2">
               <AlertTriangle className="h-4 w-4 text-[var(--color-danger)] shrink-0 mt-0.5" />
               <div>
-                <div className="text-xs font-semibold text-[var(--color-danger)]">Escalation Warning</div>
+                <div className="text-xs font-semibold text-[var(--color-danger)]">
+                  Escalation Warning
+                </div>
                 <p className="text-[11px] text-[var(--color-fg-muted)] mt-0.5">
                   Anomaly score exceeds 80/100. Requires immediate attention.
                 </p>
@@ -260,7 +307,10 @@ export function ThreatDetailModal({
           )}
 
           <div className="pt-2 border-t border-[var(--color-border)] flex gap-2">
-            <button onClick={onClose} className="flex-1 border border-[var(--color-border)] px-3 py-2 text-xs font-medium text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer">
+            <button
+              onClick={onClose}
+              className="flex-1 border border-[var(--color-border)] px-3 py-2 text-xs font-medium text-[var(--color-fg-muted)] hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
+            >
               Close
             </button>
             {onOpenIntelligence ? (
@@ -274,7 +324,11 @@ export function ThreatDetailModal({
                 Open Intelligence →
               </button>
             ) : (
-              <Link to="/intelligence" onClick={onClose} className="flex-1 bg-[var(--color-primary-600)] px-3 py-2 text-xs font-medium text-white text-center hover:bg-[var(--color-primary-700)] transition-colors">
+              <Link
+                to="/intelligence"
+                onClick={onClose}
+                className="flex-1 bg-[var(--color-primary-600)] px-3 py-2 text-xs font-medium text-white text-center hover:bg-[var(--color-primary-700)] transition-colors"
+              >
                 Open Intelligence →
               </Link>
             )}

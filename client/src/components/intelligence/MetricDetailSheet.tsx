@@ -1,9 +1,9 @@
+import { METRIC_META, type MetricKey } from '@/components/data/LiveStatStrip';
 import {
   LiveAviationMetrics,
   LiveMaritimeMetrics,
   LivePlatformMetrics,
 } from '@/components/data/MetricGrid';
-import { METRIC_META, type MetricKey } from '@/components/data/LiveStatStrip';
 import { BottomSheet } from '@/components/ui/sheet';
 import type { PublicMetricsResponse } from '@/lib/api';
 import { formatCompact } from '@/utils/cn';
@@ -148,9 +148,7 @@ export function MetricDetailSheet({ selectedMetric, onClose, metrics }: MetricDe
                       </div>
 
                       <div className="mt-2 pt-2 border-t border-[var(--color-border)] flex items-center justify-between text-sm">
-                        <span className="text-[var(--color-fg-muted)]">
-                          Total Combined Tracks
-                        </span>
+                        <span className="text-[var(--color-fg-muted)]">Total Combined Tracks</span>
                         <span className="font-data font-semibold text-[var(--color-fg)]">
                           {metrics.totalTracks}
                         </span>
@@ -204,9 +202,7 @@ export function MetricDetailSheet({ selectedMetric, onClose, metrics }: MetricDe
                       </div>
 
                       <div className="mt-2 pt-2 border-t border-[var(--color-border)] flex items-center justify-between text-sm">
-                        <span className="text-[var(--color-fg-muted)]">
-                          Total Combined Tracks
-                        </span>
+                        <span className="text-[var(--color-fg-muted)]">Total Combined Tracks</span>
                         <span className="font-data font-semibold text-[var(--color-fg)]">
                           {metrics.totalTracks}
                         </span>

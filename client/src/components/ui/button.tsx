@@ -7,8 +7,7 @@ const VARIANTS: Record<string, string> = {
     'bg-[#0284c7] text-white hover:bg-[#0369a1] border-t border-l border-white/20 border-r border-b border-black/50 shadow-sm active:translate-y-px',
   outline:
     'border border-[#1f2c40] bg-[#0c1322] text-slate-200 hover:bg-[#162134] hover:border-[#38bdf8]/60 active:translate-y-px',
-  ghost:
-    'text-slate-400 hover:bg-[#131d2c] hover:text-slate-200',
+  ghost: 'text-slate-400 hover:bg-[#131d2c] hover:text-slate-200',
   secondary:
     'bg-[#131d2c] text-slate-200 hover:bg-[#1c293d] border border-[#1f2c40] active:translate-y-px',
   link: 'text-[#38bdf8] underline-offset-4 hover:underline',

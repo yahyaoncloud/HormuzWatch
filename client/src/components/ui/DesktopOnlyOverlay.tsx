@@ -1,4 +1,4 @@
-import { Monitor, BookOpen, Info, ShieldAlert, ArrowRight } from 'lucide-react';
+import { ArrowRight, BookOpen, Info, Monitor, ShieldAlert } from 'lucide-react';
 import { Link } from 'react-router';
 
 export function DesktopOnlyOverlay({
@@ -37,7 +37,9 @@ export function DesktopOnlyOverlay({
 
         {/* Description */}
         <p className="font-ui text-xs leading-relaxed text-[var(--color-fg-muted)] mb-6 bg-[var(--color-bg-elevated)] p-3 border border-[var(--color-border)] text-left rounded-none">
-          The interactive map telemetry, multi-panel analytics, and live radar operations require a desktop display for optimal command oversight. Please access this page from a desktop browser.
+          The interactive map telemetry, multi-panel analytics, and live radar operations require a
+          desktop display for optimal command oversight. Please access this page from a desktop
+          browser.
         </p>
 
         {/* Navigation options for mobile */}

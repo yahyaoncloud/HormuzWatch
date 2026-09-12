@@ -7,8 +7,8 @@
  */
 
 import L from 'leaflet';
+import { overlayEmergency, overlaySelected } from './overlays';
 import { TACTICAL_ICON_REGISTRY } from './registry';
-import { overlaySelected, overlayEmergency } from './overlays';
 
 export interface LeafletIconOptions {
   /** Icon registry ID or fall back to generic classifier */
@@ -73,7 +73,9 @@ export function createTacticalLeafletIcon(opts: LeafletIconOptions): L.DivIcon {
 
   const isRotating = iconMeta?.rotatable ?? true;
   const strokeW = selected ? 2.2 : 1.5;
-  const innerSvg = iconMeta ? iconMeta.render({ size: size - 4, color: severityColor, strokeWidth: strokeW }) : '';
+  const innerSvg = iconMeta
+    ? iconMeta.render({ size: size - 4, color: severityColor, strokeWidth: strokeW })
+    : '';
 
   // Optional status overlay frame
   let overlayHtml = '';

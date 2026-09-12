@@ -407,7 +407,7 @@ function transformAviationMetrics(data: Awaited<ReturnType<typeof getPublicMetri
       change: 0,
       sparkline: [],
       realtime: true,
-      format: (v) => formatNumber(v) + ' ft',
+      format: (v) => `${formatNumber(v)} ft`,
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -460,7 +460,7 @@ function transformPlatformMetrics(data: Awaited<ReturnType<typeof getPublicMetri
       change: 3.1,
       sparkline: [],
       realtime: true,
-      format: (v) => v.toFixed(1) + ' MB/s',
+      format: (v) => `${v.toFixed(1)} MB/s`,
     },
     {
       id: 'detection_latency',
@@ -473,7 +473,7 @@ function transformPlatformMetrics(data: Awaited<ReturnType<typeof getPublicMetri
       sparkline: [],
       realtime: true,
       threshold: { warn: 500, critical: 1000 },
-      format: (v) => v.toFixed(0) + ' ms',
+      format: (v) => `${v.toFixed(0)} ms`,
     },
   ];
 }
@@ -677,7 +677,12 @@ export function LiveMetricsRibbon({
               {metric.label}
             </span>
             <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className={cn('font-mono text-sm font-bold', metric.color && colorClasses[metric.color])}>
+              <span
+                className={cn(
+                  'font-mono text-sm font-bold',
+                  metric.color && colorClasses[metric.color]
+                )}
+              >
                 {typeof metric.value === 'number' ? formatNumber(metric.value) : metric.value}
               </span>
               {metric.unit && (

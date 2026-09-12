@@ -21,6 +21,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import {
   approveUser,
+  type BlockadeIndicators,
   blacklistUser,
   getBlockadeIndicators,
   getDataQuality,
@@ -29,7 +30,6 @@ import {
   getTransits,
   getUsers,
   getVesselStates,
-  type BlockadeIndicators,
   type PendingUser,
   type SiteUser,
 } from '@/lib/api';
@@ -155,20 +155,23 @@ export default function AdminDashboard() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-400" />
                 </span>
-                ROOT ADMIN COMMAND // CLEARANCE LEVEL-4
+                ROOT ADMIN COMMAND {'//'} CLEARANCE LEVEL-4
               </span>
 
               {straitStatus && (
                 <span
                   className={cn(
                     'px-3 py-1 rounded-full text-[10px] font-mono font-bold border flex items-center gap-1.5 shadow-sm',
-                    straitStatus === 'ACTIVE' && 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-                    straitStatus === 'LIMITED' && 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+                    straitStatus === 'ACTIVE' &&
+                      'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+                    straitStatus === 'LIMITED' &&
+                      'bg-amber-500/15 text-amber-400 border-amber-500/30',
                     straitStatus === 'NO_TRANSIT' && 'bg-red-500/15 text-red-400 border-red-500/30'
                   )}
                 >
                   <ShieldAlert className="h-3 w-3" />
-                  STRAIT STATUS: {straitStatus === 'NO_TRANSIT' ? 'CLOSED / NO TRANSIT' : straitStatus}
+                  STRAIT STATUS:{' '}
+                  {straitStatus === 'NO_TRANSIT' ? 'CLOSED / NO TRANSIT' : straitStatus}
                 </span>
               )}
 
@@ -181,7 +184,8 @@ export default function AdminDashboard() {
               System Control & Intelligence Center
             </h1>
             <p className="font-ui text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl leading-relaxed">
-              Autonomous telemetry ingestion, user authorization controls, calibrated ML ensemble governance, and Strait of Hormuz chokepoint monitoring.
+              Autonomous telemetry ingestion, user authorization controls, calibrated ML ensemble
+              governance, and Strait of Hormuz chokepoint monitoring.
             </p>
           </div>
 
@@ -216,7 +220,9 @@ export default function AdminDashboard() {
         {/* Card 1: Users */}
         <div className="rounded-2xl border border-indigo-500/20 bg-[#0b111e]/90 p-5 shadow-sm backdrop-blur-md transition-all hover:border-indigo-500/40 hover:shadow-[0_0_25px_-8px_rgba(99,102,241,0.2)]">
           <div className="flex items-center justify-between">
-            <span className="font-ui text-xs font-medium text-slate-400 uppercase tracking-wider">Access Roster</span>
+            <span className="font-ui text-xs font-medium text-slate-400 uppercase tracking-wider">
+              Access Roster
+            </span>
             <div className="p-2 rounded-xl bg-indigo-500/15 text-indigo-400 border border-indigo-500/20">
               <Users className="h-4 w-4" />
             </div>
@@ -225,7 +231,9 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-2 mt-1.5 text-[11px]">
             <span className="text-emerald-400 font-medium">{activeUsers} active</span>
             <span className="text-slate-600">·</span>
-            <span className={cn(pendingCount > 0 ? 'text-amber-400 font-semibold' : 'text-slate-500')}>
+            <span
+              className={cn(pendingCount > 0 ? 'text-amber-400 font-semibold' : 'text-slate-500')}
+            >
               {pendingCount} pending
             </span>
           </div>
@@ -234,7 +242,9 @@ export default function AdminDashboard() {
         {/* Card 2: Maritime Vessels */}
         <div className="rounded-2xl border border-indigo-500/20 bg-[#0b111e]/90 p-5 shadow-sm backdrop-blur-md transition-all hover:border-indigo-500/40 hover:shadow-[0_0_25px_-8px_rgba(99,102,241,0.2)]">
           <div className="flex items-center justify-between">
-            <span className="font-ui text-xs font-medium text-slate-400 uppercase tracking-wider">Tracked Fleet</span>
+            <span className="font-ui text-xs font-medium text-slate-400 uppercase tracking-wider">
+              Tracked Fleet
+            </span>
             <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
               <Ship className="h-4 w-4" />
             </div>
@@ -248,7 +258,10 @@ export default function AdminDashboard() {
               <span className="font-mono text-indigo-300">{transitingPct}%</span>
             </div>
             <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-indigo-500 h-full rounded-full transition-all" style={{ width: `${Math.min(100, transitingPct)}%` }} />
+              <div
+                className="bg-indigo-500 h-full rounded-full transition-all"
+                style={{ width: `${Math.min(100, transitingPct)}%` }}
+              />
             </div>
           </div>
         </div>
@@ -256,21 +269,27 @@ export default function AdminDashboard() {
         {/* Card 3: Strait Transits */}
         <div className="rounded-2xl border border-indigo-500/20 bg-[#0b111e]/90 p-5 shadow-sm backdrop-blur-md transition-all hover:border-indigo-500/40 hover:shadow-[0_0_25px_-8px_rgba(99,102,241,0.2)]">
           <div className="flex items-center justify-between">
-            <span className="font-ui text-xs font-medium text-slate-400 uppercase tracking-wider">24h Transits</span>
+            <span className="font-ui text-xs font-medium text-slate-400 uppercase tracking-wider">
+              24h Transits
+            </span>
             <div className="p-2 rounded-xl bg-indigo-500/15 text-indigo-300 border border-indigo-500/20">
               <Waves className="h-4 w-4" />
             </div>
           </div>
           <div className="font-mono text-2xl font-bold text-white mt-3">
             {transits !== undefined ? (
-              <span className={cn(
-                straitStatus === 'NO_TRANSIT' && 'text-red-400',
-                straitStatus === 'LIMITED' && 'text-amber-400',
-                straitStatus === 'ACTIVE' && 'text-emerald-400'
-              )}>
+              <span
+                className={cn(
+                  straitStatus === 'NO_TRANSIT' && 'text-red-400',
+                  straitStatus === 'LIMITED' && 'text-amber-400',
+                  straitStatus === 'ACTIVE' && 'text-emerald-400'
+                )}
+              >
                 {transitCount}
               </span>
-            ) : '—'}
+            ) : (
+              '—'
+            )}
           </div>
           <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1.5">
             <span>Inbound Gate Rate</span>
@@ -281,7 +300,9 @@ export default function AdminDashboard() {
         {/* Card 4: ML Anomaly Core */}
         <div className="rounded-2xl border border-indigo-500/20 bg-[#0b111e]/90 p-5 shadow-sm backdrop-blur-md transition-all hover:border-indigo-500/40 hover:shadow-[0_0_25px_-8px_rgba(99,102,241,0.2)]">
           <div className="flex items-center justify-between">
-            <span className="font-ui text-xs font-medium text-slate-400 uppercase tracking-wider">ML Calibration</span>
+            <span className="font-ui text-xs font-medium text-slate-400 uppercase tracking-wider">
+              ML Calibration
+            </span>
             <div className="p-2 rounded-xl bg-indigo-500/15 text-indigo-400 border border-indigo-500/20">
               <Sparkles className="h-4 w-4" />
             </div>
@@ -296,7 +317,9 @@ export default function AdminDashboard() {
         {/* Card 5: AIS Signal Quality */}
         <div className="rounded-2xl border border-indigo-500/20 bg-[#0b111e]/90 p-5 shadow-sm backdrop-blur-md transition-all hover:border-indigo-500/40 hover:shadow-[0_0_25px_-8px_rgba(99,102,241,0.2)]">
           <div className="flex items-center justify-between">
-            <span className="font-ui text-xs font-medium text-slate-400 uppercase tracking-wider">Signal Health</span>
+            <span className="font-ui text-xs font-medium text-slate-400 uppercase tracking-wider">
+              Signal Health
+            </span>
             <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
               <Database className="h-4 w-4" />
             </div>
@@ -305,7 +328,11 @@ export default function AdminDashboard() {
             {dataQuality ? `${cleanPct.toFixed(1)}%` : '99.8%'}
           </div>
           <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1.5">
-            <span>{dataQuality ? `${(dataQuality.total_positions ?? 0).toLocaleString()} pings` : 'Telemetry stream'}</span>
+            <span>
+              {dataQuality
+                ? `${(dataQuality.total_positions ?? 0).toLocaleString()} pings`
+                : 'Telemetry stream'}
+            </span>
             <span className="text-slate-500 font-mono text-[10px]">0 DROPS</span>
           </div>
         </div>
@@ -323,13 +350,16 @@ export default function AdminDashboard() {
             </h2>
           </div>
           <div className="text-[11px] font-mono text-indigo-300">
-            Active Champion: <span className="text-white font-bold">vessel_ensemble.joblib</span> (gRPC :8091)
+            Active Champion: <span className="text-white font-bold">vessel_ensemble.joblib</span>{' '}
+            (gRPC :8091)
           </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-4">
           <div className="rounded-xl border border-slate-800/90 bg-[#070b14]/70 p-3.5 text-center">
-            <div className="text-[10px] text-slate-400 uppercase font-mono mb-1.5">AIS Telemetry Stream</div>
+            <div className="text-[10px] text-slate-400 uppercase font-mono mb-1.5">
+              AIS Telemetry Stream
+            </div>
             <div className="flex items-center justify-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="font-mono text-xs font-bold text-emerald-400">ONLINE</span>
@@ -338,7 +368,9 @@ export default function AdminDashboard() {
           </div>
 
           <div className="rounded-xl border border-slate-800/90 bg-[#070b14]/70 p-3.5 text-center">
-            <div className="text-[10px] text-slate-400 uppercase font-mono mb-1.5">ADS-B Air Feed</div>
+            <div className="text-[10px] text-slate-400 uppercase font-mono mb-1.5">
+              ADS-B Air Feed
+            </div>
             <div className="flex items-center justify-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" />
               <span className="font-mono text-xs font-bold text-indigo-300">ACTIVE</span>
@@ -347,7 +379,9 @@ export default function AdminDashboard() {
           </div>
 
           <div className="rounded-xl border border-slate-800/90 bg-[#070b14]/70 p-3.5 text-center">
-            <div className="text-[10px] text-slate-400 uppercase font-mono mb-1.5">ML Inference Core</div>
+            <div className="text-[10px] text-slate-400 uppercase font-mono mb-1.5">
+              ML Inference Core
+            </div>
             <div className="flex items-center justify-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" />
               <span className="font-mono text-xs font-bold text-indigo-300">
@@ -358,7 +392,9 @@ export default function AdminDashboard() {
           </div>
 
           <div className="rounded-xl border border-slate-800/90 bg-[#070b14]/70 p-3.5 text-center">
-            <div className="text-[10px] text-slate-400 uppercase font-mono mb-1.5">News NLP Intelligence</div>
+            <div className="text-[10px] text-slate-400 uppercase font-mono mb-1.5">
+              News NLP Intelligence
+            </div>
             <div className="flex items-center justify-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="font-mono text-xs font-bold text-emerald-400">INGESTING</span>
@@ -367,17 +403,23 @@ export default function AdminDashboard() {
           </div>
 
           <div className="rounded-xl border border-slate-800/90 bg-[#070b14]/70 p-3.5 text-center col-span-2 sm:col-span-1">
-            <div className="text-[10px] text-slate-400 uppercase font-mono mb-1.5">Queue Integrity</div>
+            <div className="text-[10px] text-slate-400 uppercase font-mono mb-1.5">
+              Queue Integrity
+            </div>
             <div className="flex items-center justify-center gap-1.5">
               <Cpu className="h-3 w-3 text-slate-400" />
-              <span className={cn(
-                'font-mono text-xs font-bold',
-                (m?.queueDropped ?? 0) > 0 ? 'text-red-400' : 'text-emerald-400'
-              )}>
+              <span
+                className={cn(
+                  'font-mono text-xs font-bold',
+                  (m?.queueDropped ?? 0) > 0 ? 'text-red-400' : 'text-emerald-400'
+                )}
+              >
                 {(m?.queueDropped ?? 0) > 0 ? `${m?.queueDropped} DROPPED` : '0 DROPPED'}
               </span>
             </div>
-            <div className="text-[10px] text-slate-500 font-mono mt-1">Ring Buffer Latency: &lt;2ms</div>
+            <div className="text-[10px] text-slate-500 font-mono mt-1">
+              Ring Buffer Latency: &lt;2ms
+            </div>
           </div>
         </div>
       </div>
@@ -396,12 +438,14 @@ export default function AdminDashboard() {
                   Operator Authorization Queue
                 </h2>
               </div>
-              <span className={cn(
-                'px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border',
-                pendingCount > 0
-                  ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
-                  : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-              )}>
+              <span
+                className={cn(
+                  'px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border',
+                  pendingCount > 0
+                    ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                    : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                )}
+              >
                 {pendingCount} PENDING
               </span>
             </div>
@@ -422,7 +466,9 @@ export default function AdminDashboard() {
                         <div className="font-mono text-[11px] text-slate-400">{req.email}</div>
                         <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
                           <Clock className="h-3 w-3 text-slate-500" />
-                          {req.createdAt ? new Date(req.createdAt).toLocaleString() : 'Recent application'}
+                          {req.createdAt
+                            ? new Date(req.createdAt).toLocaleString()
+                            : 'Recent application'}
                         </div>
                       </div>
                     </div>
@@ -461,15 +507,23 @@ export default function AdminDashboard() {
                     <CheckCircle2 className="h-5 w-5" />
                   </div>
                   <div className="font-semibold text-slate-300">All Operator Requests Cleared</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">No pending registration approvals awaiting verification.</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">
+                    No pending registration approvals awaiting verification.
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
           <div className="pt-4 border-t border-slate-800/80 mt-4 flex items-center justify-between text-[11px] text-slate-400">
-            <span>Roster Management: <strong className="text-white">{activeUsers}</strong> approved operators</span>
-            <Link to="/admin/users" className="text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1">
+            <span>
+              Roster Management: <strong className="text-white">{activeUsers}</strong> approved
+              operators
+            </span>
+            <Link
+              to="/admin/users"
+              className="text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1"
+            >
               <span>View Roster</span>
               <ArrowUpRight className="h-3 w-3" />
             </Link>
@@ -494,18 +548,26 @@ export default function AdminDashboard() {
             <div className="space-y-3 pt-4 text-xs">
               {/* Situation Banner */}
               {blockade?.situation && (
-                <div className={cn(
-                  'p-3.5 rounded-xl border text-xs',
-                  blockade.situation.level === 'normal' && 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
-                  blockade.situation.level === 'elevated' && 'bg-amber-500/10 border-amber-500/20 text-amber-400',
-                  blockade.situation.level === 'critical' && 'bg-red-500/10 border-red-500/20 text-red-400',
-                  blockade.situation.level === 'high' && 'bg-orange-500/10 border-orange-500/20 text-orange-400'
-                )}>
+                <div
+                  className={cn(
+                    'p-3.5 rounded-xl border text-xs',
+                    blockade.situation.level === 'normal' &&
+                      'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+                    blockade.situation.level === 'elevated' &&
+                      'bg-amber-500/10 border-amber-500/20 text-amber-400',
+                    blockade.situation.level === 'critical' &&
+                      'bg-red-500/10 border-red-500/20 text-red-400',
+                    blockade.situation.level === 'high' &&
+                      'bg-orange-500/10 border-orange-500/20 text-orange-400'
+                  )}
+                >
                   <div className="font-semibold text-white flex items-center gap-1.5">
                     <ShieldAlert className="h-3.5 w-3.5 text-amber-400" />
                     {blockade.situation.title}
                   </div>
-                  <div className="mt-1 text-[11px] text-slate-300 leading-relaxed">{blockade.situation.text}</div>
+                  <div className="mt-1 text-[11px] text-slate-300 leading-relaxed">
+                    {blockade.situation.text}
+                  </div>
                 </div>
               )}
 
@@ -565,7 +627,9 @@ export default function AdminDashboard() {
                         <span
                           className={cn(
                             'px-1.5 py-0.5 rounded text-[9px] font-mono font-bold',
-                            evt.direction === 'INBOUND' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                            evt.direction === 'INBOUND'
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                              : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
                           )}
                         >
                           {evt.direction}
@@ -582,8 +646,14 @@ export default function AdminDashboard() {
           </div>
 
           <div className="pt-4 border-t border-slate-800/80 mt-4 flex items-center justify-between text-[11px] text-slate-400">
-            <span>Maritime Traffic Lanes: <strong className="text-emerald-400">TSS Inbound & Outbound Normal</strong></span>
-            <Link to="/admin/tracking" className="text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1">
+            <span>
+              Maritime Traffic Lanes:{' '}
+              <strong className="text-emerald-400">TSS Inbound & Outbound Normal</strong>
+            </span>
+            <Link
+              to="/admin/tracking"
+              className="text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1"
+            >
               <span>Live Tracking Map</span>
               <ArrowUpRight className="h-3 w-3" />
             </Link>

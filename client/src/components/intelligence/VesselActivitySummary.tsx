@@ -1,5 +1,5 @@
-import React from 'react';
-import { Ship, Anchor, Navigation, Clock } from 'lucide-react';
+import { Anchor, Clock, Navigation, Ship } from 'lucide-react';
+import type React from 'react';
 import { cn } from '@/utils/cn';
 
 export interface VesselActivitySummaryProps {
@@ -45,9 +45,21 @@ export const VesselActivitySummary: React.FC<VesselActivitySummaryProps> = ({
 
       {/* Progress Bar Distribution */}
       <div className="w-full h-2 bg-[var(--color-bg-input)] border border-[var(--color-border)] flex overflow-hidden mb-3">
-        <div style={{ width: `${transitingPct}%` }} className="bg-emerald-500 transition-all" title={`Transiting: ${transitingPct}%`} />
-        <div style={{ width: `${maneuveringPct}%` }} className="bg-cyan-500 transition-all" title={`Maneuvering: ${maneuveringPct}%`} />
-        <div style={{ width: `${anchoredPct}%` }} className="bg-amber-500 transition-all" title={`Anchored: ${anchoredPct}%`} />
+        <div
+          style={{ width: `${transitingPct}%` }}
+          className="bg-emerald-500 transition-all"
+          title={`Transiting: ${transitingPct}%`}
+        />
+        <div
+          style={{ width: `${maneuveringPct}%` }}
+          className="bg-cyan-500 transition-all"
+          title={`Maneuvering: ${maneuveringPct}%`}
+        />
+        <div
+          style={{ width: `${anchoredPct}%` }}
+          className="bg-amber-500 transition-all"
+          title={`Anchored: ${anchoredPct}%`}
+        />
       </div>
 
       {/* Breakdown Grid */}
@@ -55,32 +67,51 @@ export const VesselActivitySummary: React.FC<VesselActivitySummaryProps> = ({
         <div className="p-2 border border-[var(--color-border)] bg-[var(--color-bg-input)] tactical-beveled flex items-center gap-2">
           <Navigation className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <div>
-            <div className="font-mono text-[9px] text-[var(--color-fg-muted)] uppercase font-bold">TRANSITING</div>
-            <div className="font-mono text-sm font-bold text-[var(--color-fg)]">{transitingCount} <span className="text-[10px] text-[var(--color-fg-subtle)]">({transitingPct}%)</span></div>
+            <div className="font-mono text-[9px] text-[var(--color-fg-muted)] uppercase font-bold">
+              TRANSITING
+            </div>
+            <div className="font-mono text-sm font-bold text-[var(--color-fg)]">
+              {transitingCount}{' '}
+              <span className="text-[10px] text-[var(--color-fg-subtle)]">({transitingPct}%)</span>
+            </div>
           </div>
         </div>
 
         <div className="p-2 border border-[var(--color-border)] bg-[var(--color-bg-input)] tactical-beveled flex items-center gap-2">
           <Ship className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
           <div>
-            <div className="font-mono text-[9px] text-[var(--color-fg-muted)] uppercase font-bold">MANEUVERING</div>
-            <div className="font-mono text-sm font-bold text-[var(--color-fg)]">{maneuveringCount} <span className="text-[10px] text-[var(--color-fg-subtle)]">({maneuveringPct}%)</span></div>
+            <div className="font-mono text-[9px] text-[var(--color-fg-muted)] uppercase font-bold">
+              MANEUVERING
+            </div>
+            <div className="font-mono text-sm font-bold text-[var(--color-fg)]">
+              {maneuveringCount}{' '}
+              <span className="text-[10px] text-[var(--color-fg-subtle)]">({maneuveringPct}%)</span>
+            </div>
           </div>
         </div>
 
         <div className="p-2 border border-[var(--color-border)] bg-[var(--color-bg-input)] tactical-beveled flex items-center gap-2">
           <Anchor className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
           <div>
-            <div className="font-mono text-[9px] text-[var(--color-fg-muted)] uppercase font-bold">ANCHORED</div>
-            <div className="font-mono text-sm font-bold text-[var(--color-fg)]">{anchoredCount} <span className="text-[10px] text-[var(--color-fg-subtle)]">({anchoredPct}%)</span></div>
+            <div className="font-mono text-[9px] text-[var(--color-fg-muted)] uppercase font-bold">
+              ANCHORED
+            </div>
+            <div className="font-mono text-sm font-bold text-[var(--color-fg)]">
+              {anchoredCount}{' '}
+              <span className="text-[10px] text-[var(--color-fg-subtle)]">({anchoredPct}%)</span>
+            </div>
           </div>
         </div>
 
         <div className="p-2 border border-[var(--color-border)] bg-[var(--color-bg-input)] tactical-beveled flex items-center gap-2">
           <Clock className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
           <div>
-            <div className="font-mono text-[9px] text-[var(--color-fg-muted)] uppercase font-bold">WAITING 6H+</div>
-            <div className="font-mono text-sm font-bold text-rose-600 dark:text-rose-400">{waiting6hCount}</div>
+            <div className="font-mono text-[9px] text-[var(--color-fg-muted)] uppercase font-bold">
+              WAITING 6H+
+            </div>
+            <div className="font-mono text-sm font-bold text-rose-600 dark:text-rose-400">
+              {waiting6hCount}
+            </div>
           </div>
         </div>
       </div>

@@ -1,30 +1,34 @@
-import React from 'react';
 import { AlertTriangle, ExternalLink } from 'lucide-react';
+import type React from 'react';
+import type { AnomalyEventData } from '@/components/intelligence/AnomalyEventRow';
 import { FeedEvent } from './FeedEvent';
 import { FeedEventMeta } from './FeedEventMeta';
-import type { AnomalyEventData } from '@/components/intelligence/AnomalyEventRow';
 
 export interface AnomalyFeedEventProps {
   anomaly: AnomalyEventData;
   onViewOnMap?: (trackId: string, lat?: number, lon?: number) => void;
 }
 
-export const AnomalyFeedEvent: React.FC<AnomalyFeedEventProps> = ({
-  anomaly,
-  onViewOnMap,
-}) => {
+export const AnomalyFeedEvent: React.FC<AnomalyFeedEventProps> = ({ anomaly, onViewOnMap }) => {
   const isAir = anomaly.domain === 'aviation' || anomaly.trackId.startsWith('FLIGHT-');
   const reasonsList = Array.isArray(anomaly.reasons)
     ? anomaly.reasons
     : typeof anomaly.reasons === 'string' && anomaly.reasons.trim()
-    ? anomaly.reasons.split(';').map((s) => s.trim()).filter(Boolean)
-    : [];
+      ? anomaly.reasons
+          .split(';')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
 
   return (
     <FeedEvent
       id={anomaly.id}
       typeBadge={isAir ? 'ADS-B AIR ANOMALY' : 'AIS MARITIME DEVIATION'}
-      typeColor={isAir ? 'text-cyan-600 dark:text-cyan-400 border-cyan-600/40 bg-cyan-500/10 dark:bg-cyan-950/40' : 'text-amber-600 dark:text-amber-400 border-amber-600/40 bg-amber-500/10 dark:bg-amber-950/40'}
+      typeColor={
+        isAir
+          ? 'text-cyan-600 dark:text-cyan-400 border-cyan-600/40 bg-cyan-500/10 dark:bg-cyan-950/40'
+          : 'text-amber-600 dark:text-amber-400 border-amber-600/40 bg-amber-500/10 dark:bg-amber-950/40'
+      }
       severity={anomaly.severity}
       score={anomaly.score}
       timestamp={anomaly.timestamp}

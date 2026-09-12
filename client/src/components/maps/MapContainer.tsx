@@ -1,12 +1,12 @@
 import maplibregl, {
   type LayerSpecification,
   type LngLatBoundsLike,
-  type Map,
+  type Map as MapLibreMap,
   type SourceSpecification,
 } from 'maplibre-gl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { env } from "@/environments/environment";
+import { env } from '@/environments/environment';
 import { useMapStore } from '@/stores';
 import { cn } from '@/utils/cn';
 
@@ -40,11 +40,11 @@ interface MapContainerProps {
   failIfMajorPerformanceCaveat?: boolean;
   className?: string;
   style?: React.CSSProperties;
-  onLoad?: (map: Map) => void;
+  onLoad?: (map: MapLibreMap) => void;
   onError?: (error: Error) => void;
-  onMove?: (map: Map) => void;
-  onMoveEnd?: (map: Map) => void;
-  onZoom?: (map: Map) => void;
+  onMove?: (map: MapLibreMap) => void;
+  onMoveEnd?: (map: MapLibreMap) => void;
+  onZoom?: (map: MapLibreMap) => void;
   onClick?: (event: maplibregl.MapMouseEvent) => void;
   onContextMenu?: (event: maplibregl.MapMouseEvent) => void;
   children?: React.ReactNode;
@@ -81,7 +81,7 @@ export function MapContainer({
   children,
 }: MapContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<Map | null>(null);
+  const mapRef = useRef<MapLibreMap | null>(null);
   const initializedRef = useRef(false);
   const { setMapInstance, viewport, setViewport } = useMapStore();
 
@@ -268,12 +268,12 @@ export function MapContainer({
 import { createContext, useContext } from 'react';
 
 interface MapContextValue {
-  map: Map;
+  map: MapLibreMap;
 }
 
 const MapContext = createContext<MapContextValue | null>(null);
 
-function MapContextProvider({ map, children }: { map: Map; children: React.ReactNode }) {
+function MapContextProvider({ map, children }: { map: MapLibreMap; children: React.ReactNode }) {
   return <MapContext.Provider value={{ map }}>{children}</MapContext.Provider>;
 }
 
@@ -477,41 +477,44 @@ export function useMapHover(
 
 export function useMapViewport() {
   const { viewport, setViewport, flyTo } = useMapStore();
+  const map = useMapLibre();
 
   const fitBounds = useCallback(
     (bounds: LngLatBoundsLike, options?: maplibregl.FitBoundsOptions) => {
-      const map = useMapLibre();
       if (map) {
         map.fitBounds(bounds, { padding: 50, maxZoom: 15, ...options });
       }
     },
-    []
+    [map]
   );
 
-  const jumpTo = useCallback((center: [number, number], zoom?: number) => {
-    const map = useMapLibre();
-    if (map) {
-      map.jumpTo({ center, zoom: zoom ?? map.getZoom() });
-    }
-  }, []);
+  const jumpTo = useCallback(
+    (center: [number, number], zoom?: number) => {
+      if (map) {
+        map.jumpTo({ center, zoom: zoom ?? map.getZoom() });
+      }
+    },
+    [map]
+  );
 
   const flyToLocation = useCallback(
     (center: [number, number], zoom: number, options?: { duration?: number }) => {
-      const map = useMapLibre();
       if (map) {
         map.flyTo({ center, zoom, duration: options?.duration ?? 2000 });
       }
     },
-    []
+    [map]
   );
 
-  const rotateTo = useCallback((bearing: number, pitch?: number) => {
-    const map = useMapLibre();
-    if (map) {
-      map.rotateTo(bearing, { duration: 1000 });
-      if (pitch !== undefined) map.easeTo({ pitch, duration: 1000 });
-    }
-  }, []);
+  const rotateTo = useCallback(
+    (bearing: number, pitch?: number) => {
+      if (map) {
+        map.rotateTo(bearing, { duration: 1000 });
+        if (pitch !== undefined) map.easeTo({ pitch, duration: 1000 });
+      }
+    },
+    [map]
+  );
 
   return {
     viewport,

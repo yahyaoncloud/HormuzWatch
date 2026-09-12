@@ -1,9 +1,9 @@
-import React from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { cn } from '@/utils/cn';
-import { StatusIndicator, type StatusColor } from '@/components/common/StatusIndicator';
+import type React from 'react';
 import { HoverLogCard } from '@/components/common/HoverLogCard';
+import { type StatusColor, StatusIndicator } from '@/components/common/StatusIndicator';
 import type { MetricLogEntry } from '@/types/health';
+import { cn } from '@/utils/cn';
 
 export interface HudMetricConfig {
   id: string;

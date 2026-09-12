@@ -1,11 +1,11 @@
 // API Client for HormuzWatch REST endpoints
 // Matches server/internal/api/* handlers
 
-import { getSupabase, isSupabaseAvailable } from './supabase';
-import { getAdminSessionCookie } from './session';
+import { env } from '@/environments/environment';
 import { useAdminStore } from '@/stores';
 import type { ConflictFeedResponse } from '@/types/websocket';
-import { env } from "@/environments/environment";
+import { getAdminSessionCookie } from './session';
+import { getSupabase, isSupabaseAvailable } from './supabase';
 
 // ============================================================
 // Types
@@ -207,7 +207,10 @@ const API_BASE = env.api.baseUrl;
 
 const DEFAULT_TIMEOUT_MS = env.api.timeoutMs;
 
-function createTimeoutSignal(timeoutMs: number = DEFAULT_TIMEOUT_MS): { signal: AbortSignal; cleanup: () => void } {
+function createTimeoutSignal(timeoutMs: number = DEFAULT_TIMEOUT_MS): {
+  signal: AbortSignal;
+  cleanup: () => void;
+} {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   return {
@@ -222,7 +225,9 @@ async function fetchWithAuth<T>(path: string, options: RequestInit = {}): Promis
   // 1. Try Supabase Session
   if (isSupabaseAvailable()) {
     try {
-      const { data: { session } } = await getSupabase().auth.getSession();
+      const {
+        data: { session },
+      } = await getSupabase().auth.getSession();
       token = session?.access_token;
     } catch {
       // Ignore Supabase resolution error
@@ -359,7 +364,6 @@ export async function getPublicAircraft(): Promise<TracksResponse> {
 export async function getPublicTracks(): Promise<TracksResponse> {
   return fetchPublic<TracksResponse>('/public/tracks/active');
 }
-
 
 /** Get heatmap data (public) */
 export async function getHeatmap(
@@ -762,14 +766,12 @@ export interface Threat {
   reportedAt: string;
 }
 
-export async function getLatestNews(
-  params?: {
-    limit?: number;
-    offset?: number;
-    category?: string;
-    country?: string;
-  }
-): Promise<{ data: NewsArticle[]; total: number }> {
+export async function getLatestNews(params?: {
+  limit?: number;
+  offset?: number;
+  category?: string;
+  country?: string;
+}): Promise<{ data: NewsArticle[]; total: number }> {
   const searchParams = new URLSearchParams();
   if (params?.limit) searchParams.set('limit', String(params.limit));
   if (params?.offset) searchParams.set('offset', String(params.offset));
@@ -809,14 +811,12 @@ export async function getSources(): Promise<{ data: Source[]; total: number }> {
   );
 }
 
-export async function getEvents(
-  params?: {
-    limit?: number;
-    offset?: number;
-    type?: string;
-    severity?: string;
-  }
-): Promise<{ data: IntelligenceEvent[]; total: number }> {
+export async function getEvents(params?: {
+  limit?: number;
+  offset?: number;
+  type?: string;
+  severity?: string;
+}): Promise<{ data: IntelligenceEvent[]; total: number }> {
   const searchParams = new URLSearchParams();
   if (params?.limit) searchParams.set('limit', String(params.limit));
   if (params?.offset) searchParams.set('offset', String(params.offset));
@@ -844,16 +844,14 @@ export async function getThreats(limit?: number): Promise<{ data: Threat[] }> {
 // News Map / Heatmap
 // ============================================================
 
-export async function getNewsHeatmap(
-  params?: {
-    north?: number;
-    south?: number;
-    east?: number;
-    west?: number;
-    min_score?: number;
-    limit?: number;
-  }
-): Promise<{ type: string; features: NewsMapFeature[]; count: number }> {
+export async function getNewsHeatmap(params?: {
+  north?: number;
+  south?: number;
+  east?: number;
+  west?: number;
+  min_score?: number;
+  limit?: number;
+}): Promise<{ type: string; features: NewsMapFeature[]; count: number }> {
   const sp = new URLSearchParams();
   if (params?.north) sp.set('north', String(params.north));
   if (params?.south) sp.set('south', String(params.south));
@@ -922,7 +920,7 @@ export interface ServerSettings {
   cache_telemetry_findings: boolean;
 
   // Multi-Provider LLM Integration
-  llm_provider?: "openrouter" | "deepseek" | "gemini" | "openai" | "ollama";
+  llm_provider?: 'openrouter' | 'deepseek' | 'gemini' | 'openai' | 'ollama';
   openrouter_api_key?: string;
   openrouter_model?: string;
   openrouter_fallback_model?: string;
@@ -1003,7 +1001,7 @@ export async function getTransits(hours?: number, gate?: string): Promise<Transi
   if (hours) params.set('hours', String(hours));
   if (gate) params.set('gate', gate);
   const qs = params.toString();
-  return fetchPublic<TransitSummary>(`/public/analytics/transits${qs ? '?' + qs : ''}`);
+  return fetchPublic<TransitSummary>(`/public/analytics/transits${qs ? `?${qs}` : ''}`);
 }
 
 export async function getVesselStates(): Promise<VesselStateCounts> {
@@ -1014,7 +1012,10 @@ export async function getBlockadeIndicators(): Promise<BlockadeIndicators> {
   return fetchPublic<BlockadeIndicators>('/public/analytics/blockade');
 }
 
-export async function getFlagDistribution(hours?: number): Promise<{ hours: number; data: Array<{ flag: string; vessels: number; display_name: string }> }> {
+export async function getFlagDistribution(hours?: number): Promise<{
+  hours: number;
+  data: Array<{ flag: string; vessels: number; display_name: string }>;
+}> {
   const params = hours ? `?hours=${hours}` : '';
   return fetchPublic(`/public/analytics/flags${params}`);
 }
@@ -1085,4 +1086,3 @@ export async function deleteExport(filename: string): Promise<{ status: string; 
     { method: 'DELETE' }
   );
 }
-

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useWebSocket } from '@/providers';
 import { useHealthStore } from '@/stores/slices/health.store';
 import type { BaseTrack } from '@/types/telemetry';
@@ -56,7 +56,8 @@ export function useLiveTelemetry(initialTraces: any[] = []) {
 
       if (items.length > 0) {
         const lastItem = items[items.length - 1];
-        const isAir = String(lastItem.trackId || '').startsWith('FLIGHT') || lastItem.altitude !== undefined;
+        const isAir =
+          String(lastItem.trackId || '').startsWith('FLIGHT') || lastItem.altitude !== undefined;
 
         if (isAir && nowMs - (lastLogTimeRef.current['adsb'] || 0) > 1500) {
           lastLogTimeRef.current['adsb'] = nowMs;
@@ -65,7 +66,12 @@ export function useLiveTelemetry(initialTraces: any[] = []) {
             category: 'adsb',
             message: `ADS-B FLIGHT [${lastItem.trackId || 'AIR'}] — Alt: ${lastItem.altitude || 31000}ft Spd: ${lastItem.speed || 450}kt`,
             details: `Coords: ${Number(lastItem.lat).toFixed(3)}°N, ${Number(lastItem.lon).toFixed(3)}°E | Squawk: ${lastItem.squawk || '2104'} | Severity: ${lastItem.severity || 'low'}`,
-            status: lastItem.severity === 'critical' ? 'error' : lastItem.severity === 'high' ? 'warn' : 'ok',
+            status:
+              lastItem.severity === 'critical'
+                ? 'error'
+                : lastItem.severity === 'high'
+                  ? 'warn'
+                  : 'ok',
           });
         } else if (!isAir && nowMs - (lastLogTimeRef.current['ais'] || 0) > 1500) {
           lastLogTimeRef.current['ais'] = nowMs;
@@ -74,7 +80,12 @@ export function useLiveTelemetry(initialTraces: any[] = []) {
             category: 'ais',
             message: `AIS VESSEL [${lastItem.assetName || lastItem.trackId || 'MMSI'}] — SOG: ${lastItem.speed || 0}kt COG: ${lastItem.heading || 0}°`,
             details: `Coords: ${Number(lastItem.lat).toFixed(3)}°N, ${Number(lastItem.lon).toFixed(3)}°E | Score: ${lastItem.anomalyScore || 0}/100 | Severity: ${lastItem.severity || 'low'}`,
-            status: lastItem.severity === 'critical' ? 'error' : lastItem.severity === 'high' ? 'warn' : 'ok',
+            status:
+              lastItem.severity === 'critical'
+                ? 'error'
+                : lastItem.severity === 'high'
+                  ? 'warn'
+                  : 'ok',
           });
         }
       }
@@ -113,7 +124,8 @@ export function useLiveTelemetry(initialTraces: any[] = []) {
           category: 'ml',
           message: `ML ANOMALY EVAL [Track: ${lastA.trackId}] — Score: ${lastA.score || lastA.final_score || 0}/100 (${(lastA.severity || 'medium').toUpperCase()})`,
           details: `Ensemble Inference: gRPC (:8091) | Reason: ${Array.isArray(lastA.reasons) ? lastA.reasons.join('; ') : lastA.reasons || 'Kinematic deviation'}`,
-          status: lastA.severity === 'critical' ? 'error' : lastA.severity === 'high' ? 'warn' : 'ok',
+          status:
+            lastA.severity === 'critical' ? 'error' : lastA.severity === 'high' ? 'warn' : 'ok',
         });
       }
 
@@ -126,7 +138,9 @@ export function useLiveTelemetry(initialTraces: any[] = []) {
           trackId: id,
           score: a.score ?? a.final_score ?? existing.score ?? 0,
           severity: a.severity || existing.severity || 'medium',
-          reasons: Array.isArray(a.reasons) ? JSON.stringify(a.reasons) : a.reasons || existing.reasons || '[]',
+          reasons: Array.isArray(a.reasons)
+            ? JSON.stringify(a.reasons)
+            : a.reasons || existing.reasons || '[]',
           updatedAt: new Date().toISOString(),
         });
         hasPendingUpdatesRef.current = true;

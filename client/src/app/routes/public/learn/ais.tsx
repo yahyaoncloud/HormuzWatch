@@ -1,4 +1,3 @@
-import { Section } from '@/components/layout/Section';
 import { LiveMaritimeMetrics } from '@/components/data/MetricGrid';
 import { APIExampleBlock } from '@/components/docs/APIExampleBlock';
 import {
@@ -7,6 +6,7 @@ import {
   DocParagraph,
   DocumentationBlock,
 } from '@/components/docs/DocumentationBlock';
+import { Section } from '@/components/layout/Section';
 import { EditorialMap } from '@/components/maps';
 import { cn } from '@/utils/cn';
 

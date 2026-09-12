@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { checkHealth, type HealthResponse } from '@/lib/api';
 import { useHealthStore } from '@/stores/slices/health.store';
 import { useServerStatusStore } from '@/stores/slices/serverStatus.store';
@@ -30,7 +30,8 @@ export function useSystemHealth(pollIntervalMs = 10000) {
         },
       });
 
-      const isHealthy = data.status === 'healthy' || data.status === 'ok' || data.status === 'ready';
+      const isHealthy =
+        data.status === 'healthy' || data.status === 'ok' || data.status === 'ready';
       useServerStatusStore.getState().setHttpHealth(isHealthy, data);
 
       const db = data.components?.database;

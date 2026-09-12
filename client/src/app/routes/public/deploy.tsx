@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
+import { LivePlatformMetrics } from '@/components/data/MetricGrid';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { Section } from '@/components/layout/Section';
-import { LivePlatformMetrics } from '@/components/data/MetricGrid';
 import { cn } from '@/utils/cn';
 
 const deployOptions = [

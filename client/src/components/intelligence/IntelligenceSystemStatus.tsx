@@ -1,7 +1,7 @@
-import React from 'react';
-import { Cpu, Database, Radio, Server, ShieldCheck, Layers } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import { Cpu, Database, Layers, Radio, Server, ShieldCheck } from 'lucide-react';
+import type React from 'react';
 import { useServerStatusStore } from '@/stores/slices/serverStatus.store';
+import { cn } from '@/utils/cn';
 
 export interface SystemStatusProps {
   systemHealth?: any;
@@ -53,7 +53,8 @@ export const IntelligenceSystemStatus: React.FC<SystemStatusProps> = ({
     {
       id: 'ml',
       name: 'ML ANOMALY ENSEMBLE',
-      status: mlHealth?.healthy || stages.mlEnsemble.status === 'ready' ? '6/6 MODELS READY' : 'ONLINE',
+      status:
+        mlHealth?.healthy || stages.mlEnsemble.status === 'ready' ? '6/6 MODELS READY' : 'ONLINE',
       details: 'ISOLATION FOREST + LOF (ISOTONIC)',
       isLive: true,
       icon: Cpu,
@@ -78,7 +79,9 @@ export const IntelligenceSystemStatus: React.FC<SystemStatusProps> = ({
       id: 'db',
       name: 'MEMORY TSM & SUPABASE POOL',
       status: dbHealth?.healthy ? 'HEALTHY' : isHealthy ? 'HEALTHY' : 'DEGRADED',
-      details: dbHealth?.ping_ms ? `TRANSACTION POOL (${dbHealth.ping_ms}ms)` : 'ZERO-EGRESS IN-MEMORY TSM LAYER',
+      details: dbHealth?.ping_ms
+        ? `TRANSACTION POOL (${dbHealth.ping_ms}ms)`
+        : 'ZERO-EGRESS IN-MEMORY TSM LAYER',
       isLive: dbHealth?.healthy ?? true,
       icon: Database,
     },
@@ -125,7 +128,9 @@ export const IntelligenceSystemStatus: React.FC<SystemStatusProps> = ({
                   <span
                     className={cn(
                       'font-mono text-[9px] font-bold uppercase shrink-0',
-                      sub.isLive ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
+                      sub.isLive
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-amber-600 dark:text-amber-400'
                     )}
                   >
                     ● {sub.status}

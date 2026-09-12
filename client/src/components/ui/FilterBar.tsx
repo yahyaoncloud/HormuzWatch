@@ -1,5 +1,5 @@
+import { ChevronDown, Filter, Search, X } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Search, Filter, X, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/utils/cn';
 
@@ -93,7 +93,9 @@ export function SearchFilter({
         >
           <Filter className="h-3.5 w-3.5" />
           {expanded ? 'Hide Filters' : `Filters (${filterCount ?? filters.length})`}
-          <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', expanded && 'rotate-180')} />
+          <ChevronDown
+            className={cn('h-3.5 w-3.5 transition-transform', expanded && 'rotate-180')}
+          />
         </button>
       )}
 
@@ -126,7 +128,14 @@ interface FilterSelectProps {
   showLabel?: boolean;
 }
 
-function FilterSelect({ label, options, value, onChange, placeholder, showLabel = true }: FilterSelectProps) {
+function FilterSelect({
+  label,
+  options,
+  value,
+  onChange,
+  placeholder,
+  showLabel = true,
+}: FilterSelectProps) {
   return (
     <div className="flex flex-col gap-1 min-w-[140px]">
       {showLabel && (
@@ -138,9 +147,17 @@ function FilterSelect({ label, options, value, onChange, placeholder, showLabel 
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 py-2 text-xs font-ui text-[var(--color-fg)] focus:border-[var(--color-primary-600)] focus:outline-none appearance-none bg-no-repeat bg-right"
-        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundPosition: 'right 8px center', backgroundSize: '12px' }}
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
+          backgroundPosition: 'right 8px center',
+          backgroundSize: '12px',
+        }}
       >
-        {placeholder && <option value="" disabled>{placeholder}</option>}
+        {placeholder && (
+          <option value="" disabled>
+            {placeholder}
+          </option>
+        )}
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
             {opt.label}
@@ -209,7 +226,9 @@ export function QuickFilterChips({
               <span
                 className={cn(
                   'px-1.5 py-0.5 rounded text-[10px] font-mono font-bold',
-                  isActive ? 'bg-white/20 text-white' : 'bg-[var(--color-bg-elevated)] text-[var(--color-fg-muted)]'
+                  isActive
+                    ? 'bg-white/20 text-white'
+                    : 'bg-[var(--color-bg-elevated)] text-[var(--color-fg-muted)]'
                 )}
               >
                 {chip.count}

@@ -1,5 +1,5 @@
-import React from 'react';
 import { Filter, Search } from 'lucide-react';
+import type React from 'react';
 import { cn } from '@/utils/cn';
 
 export type FeedEventType = 'all' | 'anomaly' | 'conflict' | 'news' | 'ais' | 'aviation';

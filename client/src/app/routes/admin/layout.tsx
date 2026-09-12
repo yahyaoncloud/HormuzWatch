@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { Navigate } from "react-router";
-import { useAdminStore } from "@/stores";
-import { getAdminSession } from "@/lib/auth";
-import { AdminDashboardLayout } from "@/components/layout/AdminDashboardLayout";
+import { useEffect, useState } from 'react';
+import { Navigate } from 'react-router';
+import { AdminDashboardLayout } from '@/components/layout/AdminDashboardLayout';
+import { getAdminSession } from '@/lib/auth';
+import { useAdminStore } from '@/stores';
 
 export default function AdminRouteGuard() {
   const { isAuthenticated, setSession } = useAdminStore();
@@ -19,7 +19,7 @@ export default function AdminRouteGuard() {
           }
         }
       } catch (err) {
-        console.error("Admin session initialization error:", err);
+        console.error('Admin session initialization error:', err);
       } finally {
         if (isMounted) setInitializing(false);
       }

@@ -83,11 +83,7 @@ export function SideSheet({
         className={cn(
           'fixed inset-y-0 flex max-w-full transition-transform duration-300 ease-in-out',
           side === 'right' ? 'right-0' : 'left-0',
-          visible
-            ? 'translate-x-0'
-            : side === 'right'
-              ? 'translate-x-full'
-              : '-translate-x-full'
+          visible ? 'translate-x-0' : side === 'right' ? 'translate-x-full' : '-translate-x-full'
         )}
       >
         <div

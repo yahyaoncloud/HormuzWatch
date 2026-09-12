@@ -1,5 +1,5 @@
-import { cn } from '@/utils/cn';
 import type { ReactNode } from 'react';
+import { cn } from '@/utils/cn';
 
 // ============================================================
 // Prose — theme-consistent typography wrapper for MD content.
@@ -304,7 +304,7 @@ export function ProseBarChart({
   data: ChartBar[];
   height?: number;
 }) {
-  const max = Math.max(...data.map(d => d.value), 1);
+  const max = Math.max(...data.map((d) => d.value), 1);
   const w = data.length * 48 + 48;
   const h = height;
   const pad = { l: 36, r: 14, t: 20, b: 28 };
@@ -316,14 +316,34 @@ export function ProseBarChart({
           {title}
         </div>
       )}
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-auto overflow-visible" preserveAspectRatio="xMidYMid meet">
-        {[0, 0.5, 1].map(p => {
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="w-full h-auto overflow-visible"
+        preserveAspectRatio="xMidYMid meet"
+      >
+        {[0, 0.5, 1].map((p) => {
           const y = pad.t + (1 - p) * (h - pad.t - pad.b);
           const val = Math.round(max * p);
           return (
             <g key={p}>
-              <line x1={pad.l} y1={y} x2={w - pad.r} y2={y} stroke="var(--color-border)" strokeWidth="1" strokeDasharray="3 3" opacity="0.5" />
-              <text x={pad.l - 4} y={y + 3.5} textAnchor="end" className="fill-[var(--color-fg-muted)]" fontSize="10" fontFamily="var(--font-data)">
+              <line
+                x1={pad.l}
+                y1={y}
+                x2={w - pad.r}
+                y2={y}
+                stroke="var(--color-border)"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+                opacity="0.5"
+              />
+              <text
+                x={pad.l - 4}
+                y={y + 3.5}
+                textAnchor="end"
+                className="fill-[var(--color-fg-muted)]"
+                fontSize="10"
+                fontFamily="var(--font-data)"
+              >
                 {val}
               </text>
             </g>
@@ -345,10 +365,26 @@ export function ProseBarChart({
                 fill={d.color || 'var(--color-primary-600)'}
                 className="transition-all duration-150 opacity-90 group-hover:opacity-100"
               />
-              <text x={x + bw / 2} y={h - 8} textAnchor="middle" className="fill-[var(--color-fg-muted)]" fontSize="11" fontFamily="var(--font-ui)" fontWeight="500">
+              <text
+                x={x + bw / 2}
+                y={h - 8}
+                textAnchor="middle"
+                className="fill-[var(--color-fg-muted)]"
+                fontSize="11"
+                fontFamily="var(--font-ui)"
+                fontWeight="500"
+              >
                 {d.label}
               </text>
-              <text x={x + bw / 2} y={y - 5} textAnchor="middle" className="fill-[var(--color-fg)]" fontSize="11" fontFamily="var(--font-data)" fontWeight="700">
+              <text
+                x={x + bw / 2}
+                y={y - 5}
+                textAnchor="middle"
+                className="fill-[var(--color-fg)]"
+                fontSize="11"
+                fontFamily="var(--font-data)"
+                fontWeight="700"
+              >
                 {d.value}
               </text>
             </g>
@@ -363,17 +399,11 @@ export function ProseBarChart({
 
 interface HBData {
   label: string;
-  value: number;  // 0-100 percentage-like
+  value: number; // 0-100 percentage-like
   color?: string;
 }
 
-export function ProseHorizontalBarChart({
-  title,
-  data,
-}: {
-  title?: string;
-  data: HBData[];
-}) {
+export function ProseHorizontalBarChart({ title, data }: { title?: string; data: HBData[] }) {
   return (
     <div className="prose-chart border border-[var(--color-border)] bg-[var(--color-bg-card)] p-3 my-3 rounded-none">
       {title && (
@@ -384,7 +414,10 @@ export function ProseHorizontalBarChart({
       <div className="space-y-2">
         {data.map((d, i) => (
           <div key={i} className="flex items-center gap-2.5 text-xs">
-            <span className="w-32 shrink-0 font-ui text-[11px] font-medium text-[var(--color-fg-muted)] text-right truncate" title={d.label}>
+            <span
+              className="w-32 shrink-0 font-ui text-[11px] font-medium text-[var(--color-fg-muted)] text-right truncate"
+              title={d.label}
+            >
               {d.label}
             </span>
             <div className="flex-1 h-3 bg-[var(--color-bg-elevated)] border border-[var(--color-border)]/50 rounded-none overflow-hidden">
@@ -396,7 +429,9 @@ export function ProseHorizontalBarChart({
                 }}
               />
             </div>
-            <span className="w-10 shrink-0 font-mono text-[11px] font-bold text-[var(--color-fg)] text-right">{d.value}%</span>
+            <span className="w-10 shrink-0 font-mono text-[11px] font-bold text-[var(--color-fg)] text-right">
+              {d.value}%
+            </span>
           </div>
         ))}
       </div>

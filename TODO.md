@@ -171,3 +171,36 @@ Reference: [`docs/study/14_codebase_architectural_and_security_audit_report.md`]
 - [x] **CODE-07 (Bounded LRU Cache & Rate Limiting):** In [`server/internal/api/middleware.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/api/middleware.go), capped `cacheMap` (2,000 items) and `visitors` (10,000 items) with background eviction to prevent memory exhaustion DoS.
 - [x] **CODE-08 (Telemetry Bulk Micro-Batching):** Implemented `PersistTelemetryBatch` in [`server/internal/db/telemetry.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/db/telemetry.go) and asynchronous non-blocking `persistenceBatcher` in [`server/internal/intelligence/pipeline.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/intelligence/pipeline.go) (500ms / 100-record flushes).
 - [x] **CODE-09 (Global React Error Boundary):** Implemented tactical cyber `<ErrorBoundary>` component in [`client/src/components/common/ErrorBoundary.tsx`](file:///home/yahya/SHARED/Projects/HormuzWatch/client/src/components/common/ErrorBoundary.tsx) and wrapped root application in [`client/src/main.tsx`](file:///home/yahya/SHARED/Projects/HormuzWatch/client/src/main.tsx).
+
+---
+
+## Client: Performance, Build Speed & Runtime Optimization
+
+### Constraints & Invariants
+- **Auth Fallback Invariant**: Preserve three-stage fallback (`supabase.auth` -> Go `/auth/login` session cookie -> Zustand persisted store).
+- **Real-Time Stream Invariant**: Preserve 2 Hz telemetry buffer flush, 1–1.5s HUD log rate-limit, and non-persistence of active WebSocket track state.
+- **Dual Map Invariant**: Keep Leaflet lazy-loaded for operational HUD and MapLibre GL isolated to vector/editorial routes.
+- **Simplicity & Standard Patterns**: Zero unnecessary dependencies, minimal abstractions, readable configuration.
+
+### Assumptions
+- System runtime uses `bun` (v1.4.2) or `node` where available. The build script should run reliably in standard CI/local environments.
+- SPA mode (`ssr: false`) is active under React Router 8 / Vite 7.
+- Vitest is the designated test runner for unit tests (`package.json`).
+
+### Acceptance Criteria
+- [x] Root `TODO.md` maintained as a living checklist across all workstreams.
+- [x] Baseline metrics recorded for build time, bundle sizes, largest chunks, TypeScript, and Biome.
+- [x] Production build succeeds and `tsc --noEmit` reports 0 errors.
+- [x] MapLibre GL is completely isolated from initial route bundles via dynamic imports.
+- [x] Biome check passes cleanly on `src/` with `.react-router` ignored (0 errors across 157 files).
+- [x] Core unit tests added with Vitest covering state stores and auth utilities (10/10 passing).
+- [x] Measurable improvement in bundle sizes and build times without any functional regressions (`entry.client` dropped 99.8%, `auth` dropped 98.5%).
+
+### Tasks Checklist
+- [x] **CLIENT-01 (Baseline Measurement):** Run and record baseline cold build time (10.35s), largest chunks (`vendor-maplibre`: 1052.9 kB, `auth`: 216 kB, `entry.client`: 184 kB), `tsc` (0 errors), and Biome diagnostics (360+ errors before fixes).
+- [x] **CLIENT-02 (Tooling & Biome Config):** Excluded `.react-router/**` in `biome.json`, fixed `build.mjs` execution, fixed rules of hooks in `MapContainer.tsx`, resolved all Biome lint/format errors across `src/` (down to 0 errors).
+- [x] **CLIENT-03 (MapLibre Code-Splitting):** Verified MapLibre GL is isolated to editorial/learn routes and not preloaded on root SPA index; removed shadowed `Map` types.
+- [x] **CLIENT-04 (Vite Chunking & Build Optimization):** Optimized `manualChunks` in `vite.config.ts` into `vendor-react` (React, React-DOM, React Router), `vendor-supabase`, `vendor-leaflet`, `vendor-uplot`, `vendor-tanstack`, and calibrated `chunkSizeWarningLimit: 1200` to eliminate Rollup warnings. Reduced `entry.client` from 184.55 kB to 0.21 kB and `auth` from 216.09 kB to 3.23 kB.
+- [x] **CLIENT-05 (Runtime Performance & Zustand Auditing):** Audited Zustand selectors across `FeedPage.tsx` and `IntelligenceDashboard.tsx`; optimized full-telemetry subscriptions to `telemetry?.timestamp` to eliminate unnecessary re-render churn during high-frequency WebSocket streams; verified uPlot ResizeObserver chart reuse in `ModelChart.tsx`.
+- [x] **CLIENT-06 (Unit Testing & Quality Gate):** Authored 3 unit test suites using Vitest for `src/lib/auth.test.ts`, `src/stores/slices/health.store.test.ts`, and `src/stores/slices/serverStatus.store.test.ts`. 10/10 tests passing in 359ms.
+- [x] **CLIENT-07 (Post-Optimization Verification & Reporting):** Verified production build succeeds in 8.76s (SPA mode, 0 errors, 0 warnings), `tsc --noEmit` passes with 0 errors, `vitest run` passes 10/10, Biome passes with 0 errors. Compiled before/after comparison table.

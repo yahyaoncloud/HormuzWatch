@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HormuzWatch — System Offline / Maintenance Mode</title>
+  <style>
+    :root {
+      --bg: #070b14;
+      --card-bg: rgba(13, 20, 36, 0.88);
+      --border: #1e2e4a;
+      --border-accent: rgba(0, 242, 254, 0.3);
+      --text: #c8d6e5;
+      --text-muted: #627289;
+      --cyan: #00f2fe;
+      --cyan-glow: rgba(0, 242, 254, 0.35);
+      --amber: #f59e0b;
+      --amber-glow: rgba(245, 158, 11, 0.3);
+      --red: #ef4444;
+      --green: #10b981;
+      --mono: 'JetBrains Mono', 'SF Mono', Consolas, Menlo, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      position: relative;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 50% 35%, rgba(245, 158, 11, 0.06) 0%, transparent 60%),
+        radial-gradient(circle at 80% 80%, rgba(0, 242, 254, 0.04) 0%, transparent 45%),
+        linear-gradient(rgba(30, 46, 74, 0.18) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30, 46, 74, 0.18) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+    }
+
+    /* Radar sweep animation background */
+    .radar-backdrop {
+      position: absolute;
+      width: 440px;
+      height: 440px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 242, 254, 0.12);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .radar-backdrop::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 260px;
+      height: 260px;
+      margin-top: -130px;
+      margin-left: -130px;
+      border-radius: 50%;
+      border: 1px dashed rgba(0, 242, 254, 0.15);
+    }
+
+    .radar-backdrop::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 100px;
+      height: 100px;
+      margin-top: -50px;
+      margin-left: -50px;
+      border-radius: 50%;
+      border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    /* Main Container */
+    .offline-container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 620px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 36px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55), 0 0 24px rgba(245, 158, 11, 0.08);
+      backdrop-filter: blur(16px);
+      text-align: center;
+    }
+
+    /* Pulsing Warning Shield */
+    .icon-wrapper {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 20px;
+      border-radius: 50%;
+      background: rgba(245, 158, 11, 0.12);
+      border: 2px solid var(--amber);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px var(--amber-glow);
+      position: relative;
+    }
+
+    .icon-wrapper svg {
+      width: 34px;
+      height: 34px;
+      stroke: var(--amber);
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .pulse-ring {
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      border: 1px solid var(--amber);
+      opacity: 0;
+      animation: ripple 2.2s infinite cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    /* Header */
+    h1 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .alert-tag {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--amber);
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      padding: 3px 10px;
+      border-radius: 4px;
+      margin-bottom: 14px;
+      letter-spacing: 0.5px;
+    }
+
+    .desc {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    /* Subsystem Status Matrix */
+    .status-matrix {
+      background: #040810;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      text-align: left;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .matrix-title {
+      font-size: 10.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      letter-spacing: 0.8px;
+      border-bottom: 1px solid rgba(30, 46, 74, 0.6);
+      padding-bottom: 4px;
+    }
+
+    .matrix-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .matrix-row:last-child {
+      border-bottom: none;
+    }
+
+    .matrix-label {
+      color: var(--text);
+    }
+
+    .matrix-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+    .dot-amber { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+    .dot-green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .dot-red { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+    /* Auto-Retry Timer */
+    .reconnect-box {
+      margin-bottom: 24px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .countdown-circle {
+      font-weight: 700;
+      color: var(--cyan);
+      background: rgba(0, 242, 254, 0.1);
+      border: 1px solid var(--border-accent);
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+    }
+
+    /* Actions */
+    .actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 9px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: rgba(0, 242, 254, 0.15);
+      border: 1px solid var(--cyan);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: rgba(0, 242, 254, 0.3);
+      box-shadow: 0 0 14px var(--cyan-glow);
+    }
+
+    .btn-secondary {
+      background: rgba(30, 46, 74, 0.6);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+
+    /* Success State */
+    .restored-banner {
+      display: none;
+      background: rgba(16, 185, 129, 0.18);
+      border: 1px solid var(--green);
+      color: #fff;
+      padding: 12px;
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 12px;
+      margin-bottom: 20px;
+    }
+
+    /* Diagnostic Footer */
+    .diagnostic-info {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      border-top: 1px solid rgba(30, 46, 74, 0.6);
+      padding-top: 16px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    @keyframes ripple {
+      0% { transform: scale(1); opacity: 0.8; }
+      100% { transform: scale(1.6); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="radar-backdrop"></div>
+
+  <div class="offline-container">
+    
+    <!-- Pulse Warning Icon -->
+    <div class="icon-wrapper">
+      <div class="pulse-ring"></div>
+      <svg viewBox="0 0 24 24">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    </div>
+
+    <!-- Alert Header -->
+    <div class="alert-tag">GATEWAY STANDBY // 502 / 503</div>
+    <h1>System Temporarily Offline</h1>
+    <p class="desc">
+      The HormuzWatch surveillance network is undergoing scheduled container deployment, 
+      database migration, or an automated edge server restart.
+    </p>
+
+    <!-- Success Restored Banner (hidden initially) -->
+    <div class="restored-banner" id="restoredBanner">
+      ✔ Backend connection re-established! Redirecting to live system...
+    </div>
+
+    <!-- Subsystem Status Matrix -->
+    <div class="status-matrix">
+      <div class="matrix-title">Edge Subsystem Health Status</div>
+      <div class="matrix-row">
+        <span class="matrix-label">Core Go Server (:10020)</span>
+        <span class="matrix-status" style="color: var(--amber);">
+          <span class="dot dot-amber" id="dotApi"></span>
+          <span id="txtApi">STANDBY / REBOOTING</span>
+        </span>
+      </div>
+      <div class="matrix-row">
+        <span class="matrix-label">Python ML Engine (:8090)</span>
+        <span class="matrix-status" style="color: var(--amber);">
+          <span class="dot dot-amber" id="dotMl"></span>
+          <span id="txtMl">STANDBY</span>
+        </span>
+      </div>
+      <div class="matrix-row">
+        <span class="matrix-label">AIS / OpenSky Telemetry</span>
+        <span class="matrix-status" style="color: var(--text-muted);">
+          <span class="dot" style="background:#64748b;"></span>
+          <span>BUFFERED</span>
+        </span>
+      </div>
+      <div class="matrix-row">
+        <span class="matrix-label">Nginx Failover Ingress</span>
+        <span class="matrix-status" style="color: var(--green);">
+          <span class="dot dot-green"></span>
+          <span>ONLINE (STATIC CACHE)</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Countdown & Reconnect -->
+    <div class="reconnect-box">
+      <span>Auto-checking connection in</span>
+      <span class="countdown-circle" id="countdown">5</span>
+      <span>seconds</span>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="actions">
+      <button class="btn btn-primary" onclick="checkConnectionNow()">⚡ Retry Connection</button>
+      <a href="/boot_log.html" class="btn btn-secondary">📜 View Boot Logs</a>
+      <a href="https://github.com/Yahya-al-Hajji/HormuzWatch" target="_blank" rel="noopener" class="btn btn-secondary">GitHub CI/CD</a>
+    </div>
+
+    <!-- Diagnostic Details -->
+    <div class="diagnostic-info">
+      <span>NODE: tunkstun / E5530</span>
+      <span>SLOT: BLUE/GREEN CUTOVER</span>
+      <span>INGRESS: Cloudflare Tunnel</span>
+    </div>
+
+  </div>
+
+  <script>
+    let secondsLeft = 5;
+    let isChecking = false;
+
+    async function testBackend() {
+      if (isChecking) return;
+      isChecking = true;
+
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+        // Probe backend health endpoint
+        const res = await fetch('/health/live', { 
+          method: 'GET', 
+          signal: controller.signal,
+          cache: 'no-store' 
+        });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          // Backend is online!
+          document.getElementById('dotApi').className = 'dot dot-green';
+          document.getElementById('txtApi').innerText = 'RESTORED';
+          document.getElementById('txtApi').style.color = 'var(--green)';
+
+          document.getElementById('restoredBanner').style.display = 'block';
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1500);
+          return true;
+        }
+      } catch (err) {
+        // Still down
+      } finally {
+        isChecking = false;
+      }
+      return false;
+    }
+
+    function checkConnectionNow() {
+      secondsLeft = 5;
+      document.getElementById('countdown').innerText = '...';
+      testBackend().then(online => {
+        if (!online) {
+          document.getElementById('countdown').innerText = secondsLeft;
+        }
+      });
+    }
+
+    // Interval countdown
+    setInterval(() => {
+      secondsLeft--;
+      if (secondsLeft <= 0) {
+        secondsLeft = 5;
+        testBackend();
+      }
+      document.getElementById('countdown').innerText = secondsLeft;
+    }, 1000);
+  </script>
+</body>
+</html>

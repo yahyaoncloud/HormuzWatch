@@ -1,5 +1,5 @@
-import React from 'react';
 import { ExternalLink } from 'lucide-react';
+import type React from 'react';
 import { FeedEvent } from './FeedEvent';
 import { FeedEventMeta } from './FeedEventMeta';
 
@@ -29,7 +29,8 @@ export const NewsFeedEvent: React.FC<NewsFeedEventProps> = ({ article }) => {
   const description = article.summary || article.description || '';
   const url = article.url || article.link || '#';
   const sourceName = article.source_name || article.source || 'OSINT NEWS';
-  const timestamp = article.published_at || article.created_at || article.timestamp || new Date().toISOString();
+  const timestamp =
+    article.published_at || article.created_at || article.timestamp || new Date().toISOString();
 
   return (
     <FeedEvent

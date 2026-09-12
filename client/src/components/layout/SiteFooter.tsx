@@ -7,7 +7,11 @@ export const Wordmark = ({ className }: { className?: string }) => (
     className={cn('flex items-center gap-2 shrink-0', className)}
     aria-label="HormuzWatch Home"
   >
-    <img src="/apple-touch-icon.png" alt="HormuzWatch Logo" className="w-7 h-7 rounded-md object-contain" />
+    <img
+      src="/apple-touch-icon.png"
+      alt="HormuzWatch Logo"
+      className="w-7 h-7 rounded-md object-contain"
+    />
     <span className="font-display text-xl font-semibold tracking-tight text-[var(--color-fg)]">
       HormuzWatch
     </span>

@@ -1,5 +1,5 @@
+import { AlertTriangle, Database, Inbox, Loader2, Search, Shield, WifiOff } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Loader2, AlertTriangle, Inbox, Search, Database, WifiOff, Shield } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 interface LoadingStateProps {
@@ -119,8 +119,10 @@ export function EmptyState({
   variant = 'default',
 }: EmptyStateProps) {
   const variants = {
-    default: 'text-center py-12 text-[var(--color-fg-muted)] font-mono text-xs border border-dashed border-[var(--color-border)] rounded-md',
-    dashed: 'text-center py-12 text-[var(--color-fg-muted)] font-mono text-xs border border-dashed border-[var(--color-border)] rounded-md',
+    default:
+      'text-center py-12 text-[var(--color-fg-muted)] font-mono text-xs border border-dashed border-[var(--color-border)] rounded-md',
+    dashed:
+      'text-center py-12 text-[var(--color-fg-muted)] font-mono text-xs border border-dashed border-[var(--color-border)] rounded-md',
     card: 'text-center py-8 text-[var(--color-fg-muted)]',
   };
 

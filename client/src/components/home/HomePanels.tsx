@@ -1,8 +1,8 @@
-import { lazy, Suspense, type MutableRefObject } from 'react';
 import { AlertTriangle, Loader2, Newspaper, ShieldAlert, Ship } from 'lucide-react';
-import { IntelligenceConsole } from '@/components/intelligence/IntelligenceConsole';
-import { ThreatsPanel, type ThreatItem } from '@/components/intelligence/ThreatsPanel';
+import { lazy, type MutableRefObject, Suspense } from 'react';
 import type { MetricKey } from '@/components/data/LiveStatStrip';
+import { IntelligenceConsole } from '@/components/intelligence/IntelligenceConsole';
+import { type ThreatItem, ThreatsPanel } from '@/components/intelligence/ThreatsPanel';
 import type { BlockadeIndicators, TransitSummary } from '@/lib/api';
 import { cn } from '@/utils/cn';
 
@@ -199,18 +199,22 @@ export function HomeFeedView({ topThreats, newsItems, blockade, transits }: Home
                     t.severity === 'critical'
                       ? 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.7)]'
                       : t.severity === 'high'
-                      ? 'bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.6)]'
-                      : 'bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.5)]'
+                        ? 'bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.6)]'
+                        : 'bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.5)]'
                   )}
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="truncate font-semibold text-xs text-[var(--color-fg)]">{t.title}</span>
+                    <span className="truncate font-semibold text-xs text-[var(--color-fg)]">
+                      {t.title}
+                    </span>
                     {t.score > 0 && (
-                      <span className={cn(
-                        'font-mono text-[10px] font-bold shrink-0',
-                        t.score > 80 ? 'text-red-400' : 'text-amber-400'
-                      )}>
+                      <span
+                        className={cn(
+                          'font-mono text-[10px] font-bold shrink-0',
+                          t.score > 80 ? 'text-red-400' : 'text-amber-400'
+                        )}
+                      >
                         SCORE {t.score.toFixed(0)}/100
                       </span>
                     )}
@@ -219,7 +223,9 @@ export function HomeFeedView({ topThreats, newsItems, blockade, transits }: Home
                     {t.description}
                   </div>
                 </div>
-                <span className="text-[var(--color-fg-muted)] shrink-0 text-[10px] font-mono">{t.time}</span>
+                <span className="text-[var(--color-fg-muted)] shrink-0 text-[10px] font-mono">
+                  {t.time}
+                </span>
               </div>
             ))}
             {topThreats.length === 0 && (
@@ -263,7 +269,9 @@ export function HomeFeedView({ topThreats, newsItems, blockade, transits }: Home
                     {a.published_at ? new Date(a.published_at).toLocaleString() : ''}
                   </span>
                 </div>
-                <div className="text-xs font-semibold text-[var(--color-fg)] leading-snug">{a.title}</div>
+                <div className="text-xs font-semibold text-[var(--color-fg)] leading-snug">
+                  {a.title}
+                </div>
                 <div className="text-[11px] text-[var(--color-fg-muted)] line-clamp-2 mt-1 leading-relaxed">
                   {a.summary || a.description || a.body?.substring(0, 250) || ''}
                 </div>
@@ -271,7 +279,8 @@ export function HomeFeedView({ topThreats, newsItems, blockade, transits }: Home
             ))}
             {newsItems.length === 0 && (
               <div className="text-center text-xs text-[var(--color-fg-muted)] py-6">
-                <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" /> Ingesting real-time intelligence feeds...
+                <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" /> Ingesting real-time
+                intelligence feeds...
               </div>
             )}
           </div>
@@ -315,15 +324,22 @@ export function HomeFeedView({ topThreats, newsItems, blockade, transits }: Home
               {[
                 { l: 'Waiting 6h', v: blockade.waiting_fleet_6h ?? 0 },
                 { l: 'Waiting 24h', v: blockade.waiting_fleet_24h ?? 0 },
-                { l: 'Anchored Fleet', v: `${blockade.anchored_vessels ?? 0} (${blockade.anchored_ratio_pct?.toFixed(0) ?? 0}%)` },
+                {
+                  l: 'Anchored Fleet',
+                  v: `${blockade.anchored_vessels ?? 0} (${blockade.anchored_ratio_pct?.toFixed(0) ?? 0}%)`,
+                },
                 { l: 'Active Fleet', v: blockade.active_vessels ?? 0 },
               ].map((r) => (
                 <div
                   key={r.l}
                   className="p-2 border border-[var(--color-border)] bg-[var(--color-bg)] text-center rounded-none"
                 >
-                  <div className="text-[9px] text-[var(--color-fg-muted)] uppercase tracking-wider">{r.l}</div>
-                  <div className="font-mono text-xs font-bold text-[var(--color-fg)] mt-0.5">{r.v}</div>
+                  <div className="text-[9px] text-[var(--color-fg-muted)] uppercase tracking-wider">
+                    {r.l}
+                  </div>
+                  <div className="font-mono text-xs font-bold text-[var(--color-fg)] mt-0.5">
+                    {r.v}
+                  </div>
                 </div>
               ))}
             </div>
@@ -347,7 +363,10 @@ export function HomeFeedView({ topThreats, newsItems, blockade, transits }: Home
             </div>
             <div className="space-y-0 overflow-y-auto flex-1 divide-y divide-[var(--color-border)] pr-1">
               {(transits.recent_events ?? []).slice(0, 20).map((evt, i) => (
-                <div key={i} className="flex items-center gap-2 text-[11px] py-2 first:pt-0 last:pb-0 hover:bg-[var(--color-bg-elevated)]/30 transition-colors px-1">
+                <div
+                  key={i}
+                  className="flex items-center gap-2 text-[11px] py-2 first:pt-0 last:pb-0 hover:bg-[var(--color-bg-elevated)]/30 transition-colors px-1"
+                >
                   <span
                     className={cn(
                       'px-1.5 py-0.5 text-[9px] font-bold border rounded-none shrink-0 font-mono',

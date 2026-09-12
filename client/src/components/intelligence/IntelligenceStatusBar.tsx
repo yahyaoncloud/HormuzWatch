@@ -1,8 +1,18 @@
-import React from 'react';
-import { AlertTriangle, Flame, ShieldAlert, Clock, Activity, Server, Radio, Cpu, Layers } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import {
+  Activity,
+  AlertTriangle,
+  Clock,
+  Cpu,
+  Flame,
+  Layers,
+  Radio,
+  Server,
+  ShieldAlert,
+} from 'lucide-react';
+import type React from 'react';
 import { DataFreshnessIndicator } from '@/components/common/DataFreshnessIndicator';
 import { useServerStatusStore } from '@/stores/slices/serverStatus.store';
+import { cn } from '@/utils/cn';
 
 export interface IntelligenceStatusBarProps {
   activeAnomalies: number;
@@ -48,7 +58,8 @@ export const IntelligenceStatusBar: React.FC<IntelligenceStatusBarProps> = ({
               ACTIVE ANOMALIES
             </div>
             <div className="font-mono text-sm font-bold text-[var(--color-fg)]">
-              {activeAnomalies} <span className="text-[10px] text-[var(--color-fg-subtle)] font-normal">TRACKS</span>
+              {activeAnomalies}{' '}
+              <span className="text-[10px] text-[var(--color-fg-subtle)] font-normal">TRACKS</span>
             </div>
           </div>
         </div>
@@ -116,7 +127,10 @@ export const IntelligenceStatusBar: React.FC<IntelligenceStatusBarProps> = ({
                   AVG RISK INDEX
                 </div>
                 <div className="font-mono text-sm font-bold text-[var(--color-fg)]">
-                  {avgScore.toFixed(0)} <span className="text-[10px] text-[var(--color-fg-subtle)] font-normal">/ 100</span>
+                  {avgScore.toFixed(0)}{' '}
+                  <span className="text-[10px] text-[var(--color-fg-subtle)] font-normal">
+                    / 100
+                  </span>
                 </div>
               </div>
             </div>

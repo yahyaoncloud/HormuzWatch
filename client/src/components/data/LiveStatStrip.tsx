@@ -1,6 +1,6 @@
-import React from 'react';
-import type { PublicMetricsResponse } from '@/lib/api';
+import type React from 'react';
 import { MetricCard } from '@/components/molecules/MetricCard';
+import type { PublicMetricsResponse } from '@/lib/api';
 
 export type MetricKey = 'vessels' | 'aircraft' | 'regions' | 'risk';
 
@@ -43,7 +43,13 @@ export const LiveStatStrip: React.FC<{
   isLoading: boolean;
   onMetricClick: (key: MetricKey) => void;
 }> = ({ metrics, isLoading, onMetricClick }) => {
-  const stats: Array<{ key: MetricKey; label: string; value: number | null | undefined; suffix: string; accent: string }> = [
+  const stats: Array<{
+    key: MetricKey;
+    label: string;
+    value: number | null | undefined;
+    suffix: string;
+    accent: string;
+  }> = [
     {
       key: 'vessels',
       label: METRIC_META.vessels.label,

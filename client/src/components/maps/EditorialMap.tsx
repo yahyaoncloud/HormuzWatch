@@ -1,4 +1,8 @@
-import maplibregl, { type LngLatBoundsLike, type Map, type MapMouseEvent } from 'maplibre-gl';
+import maplibregl, {
+  type LngLatBoundsLike,
+  type Map as MapLibreMap,
+  type MapMouseEvent,
+} from 'maplibre-gl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { LiveMetricsRibbon } from '@/components/data/MetricGrid';
@@ -18,7 +22,9 @@ export const HORMUZ_DARK_STYLE: maplibregl.StyleSpecification = {
   sources: {
     'esri-dark': {
       type: 'raster',
-      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'],
+      tiles: [
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+      ],
       tileSize: 256,
       attribution: '&copy; Esri &mdash; National Geographic, DeLorme, NAVTEQ',
       minzoom: 0,
@@ -319,7 +325,7 @@ interface EditorialMapProps {
   layers?: IntelligenceLayer[];
   showLayerControls?: boolean;
   showMetricsRibbon?: boolean;
-  onLoad?: (map: Map) => void;
+  onLoad?: (map: MapLibreMap) => void;
   onEntityClick?: (feature: GeoJSON.Feature, event: MapMouseEvent) => void;
   entityLayerIds?: string[];
   height?: string;
@@ -341,7 +347,7 @@ export function EditorialMap({
   height = '500px',
 }: EditorialMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<Map | null>(null);
+  const mapRef = useRef<MapLibreMap | null>(null);
   const initializedRef = useRef(false);
   const { setMapInstance, viewport, setViewport } = useMapStore();
 

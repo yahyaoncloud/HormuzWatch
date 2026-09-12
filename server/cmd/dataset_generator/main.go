@@ -114,9 +114,17 @@ func main() {
 	idFlag := flag.String("id", "", "Custom dataset ID")
 	presetFlag := flag.String("preset", "", "Quick preset: 'daily', 'short', '7days'")
 	daemonFlag := flag.Bool("daemon", false, "Run as continuous 24/7 dataset generation daemon")
+	flag.BoolVar(daemonFlag, "continuous", false, "Alias for -daemon")
 	intervalFlag := flag.Duration("interval", 6*time.Hour, "Interval between dataset snapshot cycles in daemon mode (e.g. 6h, 12h, 24h)")
+	var intervalHours int
+	flag.IntVar(&intervalHours, "interval-hours", 0, "Interval in hours (alias for -interval)")
+	flag.StringVar(outDir, "out-dir", "./datasets", "Alias for -out")
 	retentionFlag := flag.Int("retention", 14, "Number of recent datasets to retain per domain in daemon mode")
 	flag.Parse()
+
+	if intervalHours > 0 {
+		*intervalFlag = time.Duration(intervalHours) * time.Hour
+	}
 
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {

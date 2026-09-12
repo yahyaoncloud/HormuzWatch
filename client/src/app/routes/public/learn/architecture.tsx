@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
-import { Section } from '@/components/layout/Section';
 import { LivePlatformMetrics } from '@/components/data/MetricGrid';
+import { Section } from '@/components/layout/Section';
 
 const architectureLayers = [
   {

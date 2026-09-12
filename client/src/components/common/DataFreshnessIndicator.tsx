@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import type React from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/utils/cn';
 
 export interface DataFreshnessIndicatorProps {
@@ -56,7 +57,12 @@ export const DataFreshnessIndicator: React.FC<DataFreshnessIndicatorProps> = ({
     // If stream is in playback buffer (e.g. 90s delay), calculate age relative to buffer delay
     const effectiveAge = playbackDelaySec > 0 ? Math.max(0, ageSec - playbackDelaySec) : ageSec;
     if (playbackDelaySec > 0 && isStreaming) {
-      state = effectiveAge <= recentThresholdSec ? 'buffered' : effectiveAge <= staleThresholdSec ? 'stale' : 'offline';
+      state =
+        effectiveAge <= recentThresholdSec
+          ? 'buffered'
+          : effectiveAge <= staleThresholdSec
+            ? 'stale'
+            : 'offline';
     } else if (isStreaming && ageSec <= staleThresholdSec) {
       state = ageSec <= liveThresholdSec ? 'live' : 'buffered';
     } else if (effectiveAge <= liveThresholdSec) {
@@ -122,7 +128,9 @@ export const DataFreshnessIndicator: React.FC<DataFreshnessIndicatorProps> = ({
         'inline-flex items-center gap-1.5 px-2 py-0.5 border border-[var(--color-border)] bg-[var(--color-bg-input)] font-mono text-[10px] select-none',
         className
       )}
-      title={timestamp ? `Last updated: ${new Date(timestamp).toISOString()}` : 'No timestamp available'}
+      title={
+        timestamp ? `Last updated: ${new Date(timestamp).toISOString()}` : 'No timestamp available'
+      }
     >
       <span
         className={cn(
@@ -131,7 +139,9 @@ export const DataFreshnessIndicator: React.FC<DataFreshnessIndicatorProps> = ({
           conf.pulse && 'animate-pulse'
         )}
       />
-      {showLabel && <span className={cn('font-bold tracking-wider uppercase', conf.text)}>{conf.label}</span>}
+      {showLabel && (
+        <span className={cn('font-bold tracking-wider uppercase', conf.text)}>{conf.label}</span>
+      )}
       <span className="text-[var(--color-fg-muted)]">[{formatAge(ageSec)}]</span>
     </div>
   );

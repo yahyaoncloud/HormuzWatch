@@ -1,7 +1,7 @@
-import React from 'react';
-import { cn } from '@/utils/cn';
+import type React from 'react';
 import { SeverityIndicator } from '@/components/common/SeverityIndicator';
 import { TimestampDisplay } from '@/components/common/TimestampDisplay';
+import { cn } from '@/utils/cn';
 
 export interface FeedEventProps {
   id?: string;
@@ -36,14 +36,17 @@ export const FeedEvent: React.FC<FeedEventProps> = ({
       <div className="flex items-center justify-between gap-2 border-b border-[var(--color-border)] pb-1.5 flex-wrap">
         <div className="flex items-center gap-2">
           {/* Type Badge */}
-          <span className={cn('px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase border', typeColor)}>
+          <span
+            className={cn(
+              'px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase border',
+              typeColor
+            )}
+          >
             {typeBadge}
           </span>
 
           {/* Severity Indicator */}
-          {severity && (
-            <SeverityIndicator severity={severity} score={score} showScore size="sm" />
-          )}
+          {severity && <SeverityIndicator severity={severity} score={score} showScore size="sm" />}
         </div>
 
         {/* Timestamp & Actions */}

@@ -1,8 +1,8 @@
+import { Shield } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { Link, useNavigation } from 'react-router';
 import { cn } from '@/utils/cn';
 import { ThemeToggle } from './ThemeToggle';
-import { Shield } from 'lucide-react';
 
 interface NavbarProps {
   transparent?: boolean;
@@ -17,7 +17,7 @@ export function Navbar({ transparent = false, children }: NavbarProps) {
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      setUtcTime(now.toISOString().substring(11, 19) + 'Z');
+      setUtcTime(`${now.toISOString().substring(11, 19)}Z`);
     };
     updateTime();
     const interval = setInterval(updateTime, 1000);
@@ -55,7 +55,7 @@ export function Navbar({ transparent = false, children }: NavbarProps) {
 
         <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 border border-[var(--color-border)] bg-[var(--color-bg-input)] text-[10px] font-mono font-semibold tracking-wider text-[var(--color-fg-muted)]">
           <Shield className="w-3 h-3 text-[var(--color-primary-600)] dark:text-[#38bdf8]" />
-          <span>TAC-INTEL CONSOLE // SECTOR 56-59°E</span>
+          <span>TAC-INTEL CONSOLE {'//'} SECTOR 56-59°E</span>
         </div>
       </div>
 
@@ -68,7 +68,9 @@ export function Navbar({ transparent = false, children }: NavbarProps) {
         <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 border border-[var(--color-border)] bg-[var(--color-bg-card)] font-mono text-[11px] text-[var(--color-fg-muted)] shrink-0 select-none shadow-xs">
           <span className="inline-block w-1.5 h-1.5 rounded-none bg-emerald-500 shadow-[0_0_4px_#22c55e] animate-pulse"></span>
           <span className="text-[var(--color-fg-subtle)] font-semibold text-[10px]">SYS.TIME:</span>
-          <span className="text-[var(--color-primary-600)] dark:text-[#38bdf8] font-bold tracking-wider font-mono">{utcTime || '00:00:00Z'}</span>
+          <span className="text-[var(--color-primary-600)] dark:text-[#38bdf8] font-bold tracking-wider font-mono">
+            {utcTime || '00:00:00Z'}
+          </span>
         </div>
       </div>
 

@@ -1,7 +1,7 @@
-import React from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import type React from 'react';
 import type { MetricLogEntry } from '@/types/health';
+import { cn } from '@/utils/cn';
 
 export interface HoverLogCardProps {
   title: string;
@@ -84,7 +84,12 @@ export const HoverLogCard: React.FC<HoverLogCardProps> = ({
 
         <div className="flex items-center gap-1.5">
           {/* Status Badge */}
-          <span className={cn('px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase border flex items-center gap-1', statusStyles.badge)}>
+          <span
+            className={cn(
+              'px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase border flex items-center gap-1',
+              statusStyles.badge
+            )}
+          >
             <span className={cn('h-1.5 w-1.5 rounded-full animate-pulse', statusStyles.dot)} />
             {statusStyles.label}
           </span>
@@ -106,4 +111,3 @@ export const HoverLogCard: React.FC<HoverLogCardProps> = ({
     </div>
   );
 };
-

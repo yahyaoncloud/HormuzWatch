@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { SystemHealthState, SystemMetricLogs, MetricLogEntry } from '@/types/health';
+import type { MetricLogEntry, SystemHealthState, SystemMetricLogs } from '@/types/health';
 
 export interface HealthSliceState {
   systemHealth: SystemHealthState | null;

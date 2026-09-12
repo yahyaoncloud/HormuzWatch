@@ -1,10 +1,10 @@
+import { ArrowRight, Loader2, Lock, Mail, ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { Lock, Mail, ShieldAlert, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SpinningWireframeGlobe } from '@/components/ui/SpinningWireframeGlobe';
 import { adminLogin } from '@/lib/auth';
 import { useAdminStore } from '@/stores';
-import { SpinningWireframeGlobe } from '@/components/ui/SpinningWireframeGlobe';
 
 export default function LoginRoute() {
   const navigate = useNavigate();
@@ -80,7 +80,8 @@ export default function LoginRoute() {
             Command Sign In
           </h1>
           <p className="font-ui text-xs text-slate-400 mt-1 max-w-xs leading-relaxed">
-            Authorized administrator credentials required for geospatial and ML surveillance controls.
+            Authorized administrator credentials required for geospatial and ML surveillance
+            controls.
           </p>
         </div>
 

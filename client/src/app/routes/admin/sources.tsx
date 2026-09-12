@@ -1,33 +1,33 @@
-import { useQuery } from "@tanstack/react-query";
-import { getSources } from "@/lib/api";
-import type { Source } from "@/lib/api";
-import { useState, useMemo } from "react";
+import { useQuery } from '@tanstack/react-query';
 import {
-  Rss,
-  RefreshCw,
-  Plus,
-  CheckCircle2,
-  AlertTriangle,
-  ExternalLink,
   Activity,
-  Play,
+  AlertTriangle,
+  CheckCircle2,
   Database,
-} from "lucide-react";
+  ExternalLink,
+  Play,
+  Plus,
+  RefreshCw,
+  Rss,
+} from 'lucide-react';
+import { useMemo, useState } from 'react';
 import {
+  Drawer,
+  EmptyState,
+  ErrorState,
+  KPICardGrid,
+  LoadingState,
+  Modal,
   PageHeader,
   PageHeaderAction,
-  KPICardGrid,
   SearchFilter,
-  LoadingState,
-  ErrorState,
-  EmptyState,
-  Modal,
-  Drawer,
-} from "@/components/ui";
+} from '@/components/ui';
+import type { Source } from '@/lib/api';
+import { getSources } from '@/lib/api';
 
 export default function AdminSources() {
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
-    queryKey: ["admin", "sources"],
+    queryKey: ['admin', 'sources'],
     queryFn: () => getSources(),
     refetchInterval: 30_000,
   });
@@ -36,12 +36,12 @@ export default function AdminSources() {
   const [activeDetailSource, setActiveDetailSource] = useState<Source | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newSource, setNewSource] = useState({
-    name: "",
-    url: "",
-    type: "RSS Feed",
+    name: '',
+    url: '',
+    type: 'RSS Feed',
     reliability: 85,
-    country: "IR",
-    language: "en",
+    country: 'IR',
+    language: 'en',
   });
 
   const rawSources = data?.data ?? [];
@@ -62,12 +62,35 @@ export default function AdminSources() {
     refetch();
   };
 
-  const kpiCards = useMemo(() => [
-    { icon: Database, value: rawSources.length, label: "Total Sources", iconColor: "var(--color-primary-600)" },
-    { icon: CheckCircle2, value: rawSources.filter((s: Source) => s.enabled !== false).length, label: "Active Feeds", iconColor: "var(--color-success)" },
-    { icon: Activity, value: "89.4%", label: "Avg Reliability", iconColor: "var(--color-warning)" },
-    { icon: AlertTriangle, value: "0.8%", label: "Fetch Error Rate", iconColor: "var(--color-success)" },
-  ], [rawSources]);
+  const kpiCards = useMemo(
+    () => [
+      {
+        icon: Database,
+        value: rawSources.length,
+        label: 'Total Sources',
+        iconColor: 'var(--color-primary-600)',
+      },
+      {
+        icon: CheckCircle2,
+        value: rawSources.filter((s: Source) => s.enabled !== false).length,
+        label: 'Active Feeds',
+        iconColor: 'var(--color-success)',
+      },
+      {
+        icon: Activity,
+        value: '89.4%',
+        label: 'Avg Reliability',
+        iconColor: 'var(--color-warning)',
+      },
+      {
+        icon: AlertTriangle,
+        value: '0.8%',
+        label: 'Fetch Error Rate',
+        iconColor: 'var(--color-success)',
+      },
+    ],
+    [rawSources]
+  );
 
   if (isLoading) {
     return <LoadingState message="Loading intelligence sources registry..." size="md" />;
@@ -77,23 +100,23 @@ export default function AdminSources() {
     return (
       <ErrorState
         title="Failed to Load Intelligence Sources"
-        message={error instanceof Error ? error.message : "Unknown error"}
+        message={error instanceof Error ? error.message : 'Unknown error'}
         onRetry={() => refetch()}
       />
     );
   }
 
   const SOURCE_TYPES = [
-    { value: "all", label: "All Source Types" },
-    { value: "RSS Feed", label: "RSS Feed" },
-    { value: "REST API", label: "REST API" },
-    { value: "Web Scraper", label: "Web Scraper" },
+    { value: 'all', label: 'All Source Types' },
+    { value: 'RSS Feed', label: 'RSS Feed' },
+    { value: 'REST API', label: 'REST API' },
+    { value: 'Web Scraper', label: 'Web Scraper' },
   ] as const;
 
   const STATUS_FILTERS = [
-    { value: "all", label: "All Statuses" },
-    { value: "active", label: "Active Only" },
-    { value: "disabled", label: "Disabled Only" },
+    { value: 'all', label: 'All Statuses' },
+    { value: 'active', label: 'Active Only' },
+    { value: 'disabled', label: 'Disabled Only' },
   ] as const;
 
   return (
@@ -111,7 +134,9 @@ export default function AdminSources() {
               aria-label="Refresh sources"
               variant="ghost"
             >
-              <RefreshCw className={`h-4 w-4 ${isRefetching ? "animate-spin text-[var(--color-primary-600)]" : ""}`} />
+              <RefreshCw
+                className={`h-4 w-4 ${isRefetching ? 'animate-spin text-[var(--color-primary-600)]' : ''}`}
+              />
             </PageHeaderAction>
             <PageHeaderAction
               variant="primary"
@@ -133,8 +158,14 @@ export default function AdminSources() {
         onSearchChange={() => {}}
         searchPlaceholder="Search sources by name or URL..."
         filters={[
-          { key: "type", label: "Type", value: "", onChange: () => {}, options: SOURCE_TYPES },
-          { key: "status", label: "Status", value: "", onChange: () => {}, options: STATUS_FILTERS },
+          { key: 'type', label: 'Type', value: '', onChange: () => {}, options: SOURCE_TYPES },
+          {
+            key: 'status',
+            label: 'Status',
+            value: '',
+            onChange: () => {},
+            options: STATUS_FILTERS,
+          },
         ]}
       />
 
@@ -177,8 +208,10 @@ export default function AdminSources() {
                     >
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         <span className="flex items-center gap-1.5 font-mono text-[10px]">
-                          <span className={`h-2.5 w-2.5 rounded-full ${isEnabled ? "bg-[var(--color-success)] animate-pulse" : "bg-[var(--color-danger)]"}`} />
-                          {isEnabled ? "ACTIVE" : "DISABLED"}
+                          <span
+                            className={`h-2.5 w-2.5 rounded-full ${isEnabled ? 'bg-[var(--color-success)] animate-pulse' : 'bg-[var(--color-danger)]'}`}
+                          />
+                          {isEnabled ? 'ACTIVE' : 'DISABLED'}
                         </span>
                       </td>
 
@@ -188,7 +221,7 @@ export default function AdminSources() {
 
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         <span className="px-2 py-0.5 rounded bg-[var(--color-primary-600)]/15 text-[var(--color-primary-600)] border border-[var(--color-primary-600)]/30 font-mono text-[10px]">
-                          {s.type || "RSS Feed"}
+                          {s.type || 'RSS Feed'}
                         </span>
                       </td>
 
@@ -200,7 +233,7 @@ export default function AdminSources() {
                           onClick={(e) => e.stopPropagation()}
                           className="hover:text-[var(--color-primary-600)] hover:underline flex items-center gap-1"
                         >
-                          {s.url.length > 40 ? s.url.slice(0, 40) + "..." : s.url}
+                          {s.url.length > 40 ? `${s.url.slice(0, 40)}...` : s.url}
                           <ExternalLink className="h-3 w-3 inline" />
                         </a>
                       </td>
@@ -215,15 +248,18 @@ export default function AdminSources() {
                         {s.article_count ?? Math.floor(Math.abs(s.name.length * 13) % 400) + 20}
                       </td>
 
-                      <td className="px-4 py-3.5 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <td
+                        className="px-4 py-3.5 text-right whitespace-nowrap"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <button
                           type="button"
                           onClick={() => handleManualFetch(s.id, s.name)}
                           disabled={isFetching}
                           className="px-2.5 py-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] hover:bg-[var(--color-primary-600)] hover:text-white font-mono text-[10px] transition-all inline-flex items-center gap-1"
                         >
-                          <Play className={`h-3 w-3 ${isFetching ? "animate-spin" : ""}`} />
-                          {isFetching ? "Fetching..." : "Fetch Now"}
+                          <Play className={`h-3 w-3 ${isFetching ? 'animate-spin' : ''}`} />
+                          {isFetching ? 'Fetching...' : 'Fetch Now'}
                         </button>
                       </td>
                     </tr>
@@ -254,12 +290,20 @@ export default function AdminSources() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-xl bg-[var(--color-bg)] border border-[var(--color-border)]">
-                <span className="text-[var(--color-fg-muted)] block text-[10px]">Reliability Score</span>
-                <span className="font-bold text-sm text-[var(--color-fg)]">{activeDetailSource.reliability ?? 85}/100</span>
+                <span className="text-[var(--color-fg-muted)] block text-[10px]">
+                  Reliability Score
+                </span>
+                <span className="font-bold text-sm text-[var(--color-fg)]">
+                  {activeDetailSource.reliability ?? 85}/100
+                </span>
               </div>
               <div className="p-3 rounded-xl bg-[var(--color-bg)] border border-[var(--color-border)]">
-                <span className="text-[var(--color-fg-muted)] block text-[10px]">Ingested Articles</span>
-                <span className="font-bold text-sm text-[var(--color-fg)]">{activeDetailSource.article_count ?? 142}</span>
+                <span className="text-[var(--color-fg-muted)] block text-[10px]">
+                  Ingested Articles
+                </span>
+                <span className="font-bold text-sm text-[var(--color-fg)]">
+                  {activeDetailSource.article_count ?? 142}
+                </span>
               </div>
             </div>
 
@@ -331,13 +375,17 @@ export default function AdminSources() {
               </div>
 
               <div>
-                <label className="block text-[var(--color-fg-muted)] mb-1">Reliability Baseline (0-100)</label>
+                <label className="block text-[var(--color-fg-muted)] mb-1">
+                  Reliability Baseline (0-100)
+                </label>
                 <input
                   type="number"
                   min="1"
                   max="100"
                   value={newSource.reliability}
-                  onChange={(e) => setNewSource({ ...newSource, reliability: parseInt(e.target.value, 10) })}
+                  onChange={(e) =>
+                    setNewSource({ ...newSource, reliability: parseInt(e.target.value, 10) })
+                  }
                   className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2 text-xs font-mono text-[var(--color-fg)] focus:border-[var(--color-primary-600)] focus:outline-none"
                 />
               </div>

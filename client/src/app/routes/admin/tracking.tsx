@@ -1,45 +1,71 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  getAllActiveTracks,
-  getWatchlist,
-  addToWatchlist,
-  removeFromWatchlist,
-  type ActiveTrack,
-} from "@/lib/api";
-import { useState, useMemo, useEffect, lazy, Suspense } from "react";
-import { PageTodoList, type TodoItem } from "@/components/ui/PageTodoList";
-import {
-  Radio,
-  Ship,
-  Plane,
+  Compass,
   Eye,
   EyeOff,
-  Play,
-  Pause,
-  RotateCcw,
-  Search,
-  Compass,
   Gauge,
   MapPin,
+  Pause,
+  Plane,
+  Play,
+  Radio,
+  RotateCcw,
+  Search,
+  Ship,
   Sparkles,
-} from "lucide-react";
+} from 'lucide-react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { PageTodoList, type TodoItem } from '@/components/ui/PageTodoList';
+import {
+  type ActiveTrack,
+  addToWatchlist,
+  getAllActiveTracks,
+  getWatchlist,
+  removeFromWatchlist,
+} from '@/lib/api';
 
 const LeafletMap = lazy(() =>
-  import("@/components/maps/LeafletMap").then((m) => ({ default: m.LeafletMap }))
+  import('@/components/maps/LeafletMap').then((m) => ({ default: m.LeafletMap }))
 );
 
 const TRACKING_TODOS: TodoItem[] = [
-  { id: "t1", title: "MapLibre / Leaflet Vector Map Layer", category: "UI & UX", completed: true, notes: "Tactical map container initialized with lat/lon coordinates and dark/light basemap switching" },
-  { id: "t2", title: "WebSocket Live Track Stream", category: "API & Data", completed: true, notes: "Connected /tracks/active live feed polling and telemetry stream" },
-  { id: "t3", title: "Target Trajectory Playback", category: "ML & Anomaly", completed: true, notes: "Historical path replay with interactive timeline scrubber and speed multiplier controls" },
-  { id: "t4", title: "Watchlist Radial Pulsing Ring Overlay", category: "UI & UX", completed: true, notes: "Highlights watchlisted targets with pulsing red aura on map and target roster" },
+  {
+    id: 't1',
+    title: 'MapLibre / Leaflet Vector Map Layer',
+    category: 'UI & UX',
+    completed: true,
+    notes:
+      'Tactical map container initialized with lat/lon coordinates and dark/light basemap switching',
+  },
+  {
+    id: 't2',
+    title: 'WebSocket Live Track Stream',
+    category: 'API & Data',
+    completed: true,
+    notes: 'Connected /tracks/active live feed polling and telemetry stream',
+  },
+  {
+    id: 't3',
+    title: 'Target Trajectory Playback',
+    category: 'ML & Anomaly',
+    completed: true,
+    notes:
+      'Historical path replay with interactive timeline scrubber and speed multiplier controls',
+  },
+  {
+    id: 't4',
+    title: 'Watchlist Radial Pulsing Ring Overlay',
+    category: 'UI & UX',
+    completed: true,
+    notes: 'Highlights watchlisted targets with pulsing red aura on map and target roster',
+  },
 ];
 
 export default function AdminTracking() {
   const queryClient = useQueryClient();
 
-  const [filterType, setFilterType] = useState<"all" | "vessel" | "aircraft">("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState<'all' | 'vessel' | 'aircraft'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedTrack, setSelectedTrack] = useState<ActiveTrack | null>(null);
 
   // Trajectory Playback States
@@ -49,14 +75,14 @@ export default function AdminTracking() {
 
   // Fetch active tracks
   const { data: tracksData } = useQuery({
-    queryKey: ["admin", "tracks", "active"],
+    queryKey: ['admin', 'tracks', 'active'],
     queryFn: () => getAllActiveTracks(),
     refetchInterval: 5000,
   });
 
   // Fetch watchlist
   const { data: watchlistData } = useQuery({
-    queryKey: ["admin", "watchlist"],
+    queryKey: ['admin', 'watchlist'],
     queryFn: () => getWatchlist(),
     refetchInterval: 10000,
   });
@@ -93,14 +119,14 @@ export default function AdminTracking() {
   const addWatchlistMutation = useMutation({
     mutationFn: (trackId: string) => addToWatchlist(trackId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "watchlist"] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'watchlist'] });
     },
   });
 
   const removeWatchlistMutation = useMutation({
     mutationFn: (trackId: string) => removeFromWatchlist(trackId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "watchlist"] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'watchlist'] });
     },
   });
 
@@ -115,13 +141,13 @@ export default function AdminTracking() {
   const filteredTracks = useMemo(() => {
     return tracksList.filter((t) => {
       const isAircraft =
-        t.objectType === "aircraft" ||
-        t.trackId.startsWith("ICAO-") ||
-        t.trackId.startsWith("FLIGHT-") ||
-        t.trackId.startsWith("ADS-");
-      const targetType = isAircraft ? "aircraft" : "vessel";
+        t.objectType === 'aircraft' ||
+        t.trackId.startsWith('ICAO-') ||
+        t.trackId.startsWith('FLIGHT-') ||
+        t.trackId.startsWith('ADS-');
+      const targetType = isAircraft ? 'aircraft' : 'vessel';
 
-      const matchesType = filterType === "all" || targetType === filterType;
+      const matchesType = filterType === 'all' || targetType === filterType;
       const matchesSearch =
         !searchQuery ||
         t.assetName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -132,13 +158,13 @@ export default function AdminTracking() {
   }, [tracksList, filterType, searchQuery]);
 
   const currentSelected = selectedTrack || filteredTracks[0] || null;
-  const isSelectedWatchlisted = watchlistSet.has(currentSelected?.trackId ?? "");
+  const isSelectedWatchlisted = watchlistSet.has(currentSelected?.trackId ?? '');
 
   const isCurrentAircraft =
-    currentSelected?.objectType === "aircraft" ||
-    currentSelected?.trackId.startsWith("ICAO-") ||
-    currentSelected?.trackId.startsWith("FLIGHT-") ||
-    currentSelected?.trackId.startsWith("ADS-");
+    currentSelected?.objectType === 'aircraft' ||
+    currentSelected?.trackId.startsWith('ICAO-') ||
+    currentSelected?.trackId.startsWith('FLIGHT-') ||
+    currentSelected?.trackId.startsWith('ADS-');
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto font-ui pb-12">
@@ -147,10 +173,13 @@ export default function AdminTracking() {
         <div>
           <div className="flex items-center gap-2">
             <Radio className="h-6 w-6 text-[var(--color-primary-600)]" />
-            <h1 className="font-display text-2xl font-bold text-[var(--color-fg)]">Live Tactical Tracking</h1>
+            <h1 className="font-display text-2xl font-bold text-[var(--color-fg)]">
+              Live Tactical Tracking
+            </h1>
           </div>
           <p className="font-ui text-sm text-[var(--color-fg-muted)] mt-1">
-            Real-time AIS & ADS-B vector surveillance for Strait of Hormuz maritime and aviation assets.
+            Real-time AIS & ADS-B vector surveillance for Strait of Hormuz maritime and aviation
+            assets.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -177,7 +206,9 @@ export default function AdminTracking() {
               </div>
               <div className="flex items-center gap-2 font-mono text-xs">
                 <span className="px-2 py-0.5 rounded bg-[var(--color-bg-elevated)] text-[var(--color-fg-muted)] border border-[var(--color-border)]">
-                  {currentSelected ? `${currentSelected.lat.toFixed(2)}° N, ${currentSelected.lon.toFixed(2)}° E` : "26.56° N, 56.25° E"}
+                  {currentSelected
+                    ? `${currentSelected.lat.toFixed(2)}° N, ${currentSelected.lon.toFixed(2)}° E`
+                    : '26.56° N, 56.25° E'}
                 </span>
                 {isSelectedWatchlisted && (
                   <span className="px-2 py-0.5 rounded bg-red-500/20 text-red-400 font-bold border border-red-500/30 flex items-center gap-1 animate-pulse">
@@ -239,12 +270,12 @@ export default function AdminTracking() {
                 onClick={() => setIsPlaying(!isPlaying)}
                 className={`p-2 rounded-lg border font-mono text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
                   isPlaying
-                    ? "bg-amber-500/20 text-amber-400 border-amber-500/40"
-                    : "bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)]"
+                    ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+                    : 'bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)]'
                 }`}
               >
                 {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                {isPlaying ? "Pause Track" : "Play Trajectory"}
+                {isPlaying ? 'Pause Track' : 'Play Trajectory'}
               </button>
 
               <button
@@ -275,7 +306,9 @@ export default function AdminTracking() {
                     type="button"
                     onClick={() => setPlaybackSpeed(spd)}
                     className={`px-2 py-0.5 rounded cursor-pointer ${
-                      playbackSpeed === spd ? "bg-[var(--color-primary-600)] text-white font-bold" : "text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]"
+                      playbackSpeed === spd
+                        ? 'bg-[var(--color-primary-600)] text-white font-bold'
+                        : 'text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]'
                     }`}
                   >
                     {spd}x
@@ -293,7 +326,11 @@ export default function AdminTracking() {
             <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 space-y-4 ">
               <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-3">
                 <div className="flex items-center gap-2">
-                  {isCurrentAircraft ? <Plane className="h-5 w-5 text-emerald-400" /> : <Ship className="h-5 w-5 text-sky-400" />}
+                  {isCurrentAircraft ? (
+                    <Plane className="h-5 w-5 text-emerald-400" />
+                  ) : (
+                    <Ship className="h-5 w-5 text-sky-400" />
+                  )}
                   <div>
                     <h3 className="font-display text-sm font-bold text-[var(--color-fg)]">
                       {currentSelected.assetName}
@@ -306,11 +343,11 @@ export default function AdminTracking() {
 
                 <span
                   className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border uppercase ${
-                    currentSelected.severity?.toLowerCase() === "critical"
-                      ? "bg-red-500/20 text-red-400 border-red-500/30"
-                      : currentSelected.severity?.toLowerCase() === "high"
-                      ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
-                      : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                    currentSelected.severity?.toLowerCase() === 'critical'
+                      ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                      : currentSelected.severity?.toLowerCase() === 'high'
+                        ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                        : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
                   }`}
                 >
                   SCORE {currentSelected.anomalyScore}/100
@@ -322,20 +359,26 @@ export default function AdminTracking() {
                   <div className="text-[10px] text-[var(--color-fg-muted)] flex items-center gap-1">
                     <Gauge className="h-3 w-3 text-sky-400" /> Speed
                   </div>
-                  <div className="font-bold text-[var(--color-fg)] mt-0.5">{currentSelected.speed} kn</div>
+                  <div className="font-bold text-[var(--color-fg)] mt-0.5">
+                    {currentSelected.speed} kn
+                  </div>
                 </div>
 
                 <div className="p-2.5 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)]">
                   <div className="text-[10px] text-[var(--color-fg-muted)] flex items-center gap-1">
                     <Compass className="h-3 w-3 text-amber-400" /> Heading
                   </div>
-                  <div className="font-bold text-[var(--color-fg)] mt-0.5">{currentSelected.heading}°</div>
+                  <div className="font-bold text-[var(--color-fg)] mt-0.5">
+                    {currentSelected.heading}°
+                  </div>
                 </div>
 
                 {isCurrentAircraft && currentSelected.altitude !== undefined && (
                   <div className="p-2.5 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)]">
                     <div className="text-[10px] text-[var(--color-fg-muted)]">Altitude</div>
-                    <div className="font-bold text-[var(--color-fg)] mt-0.5">{currentSelected.altitude} ft</div>
+                    <div className="font-bold text-[var(--color-fg)] mt-0.5">
+                      {currentSelected.altitude} ft
+                    </div>
                   </div>
                 )}
 
@@ -355,12 +398,18 @@ export default function AdminTracking() {
                 onClick={() => toggleWatchlist(currentSelected.trackId)}
                 className={`w-full py-2 px-3 rounded-xl font-mono text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer border ${
                   isSelectedWatchlisted
-                    ? "bg-red-500/15 text-red-400 border-red-500/40 hover:bg-red-500/25"
-                    : "bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] "
+                    ? 'bg-red-500/15 text-red-400 border-red-500/40 hover:bg-red-500/25'
+                    : 'bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] '
                 }`}
               >
-                {isSelectedWatchlisted ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                {isSelectedWatchlisted ? "Remove Target From Watchlist" : "Add Target To Surveillance Watchlist"}
+                {isSelectedWatchlisted ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+                {isSelectedWatchlisted
+                  ? 'Remove Target From Watchlist'
+                  : 'Add Target To Surveillance Watchlist'}
               </button>
             </div>
           )}
@@ -372,13 +421,15 @@ export default function AdminTracking() {
                 Active Target Roster ({filteredTracks.length})
               </h3>
               <div className="flex gap-1">
-                {(["all", "vessel", "aircraft"] as const).map((typeKey) => (
+                {(['all', 'vessel', 'aircraft'] as const).map((typeKey) => (
                   <button
                     key={typeKey}
                     type="button"
                     onClick={() => setFilterType(typeKey)}
                     className={`px-2 py-1 text-[10px] font-mono rounded uppercase cursor-pointer ${
-                      filterType === typeKey ? "bg-[var(--color-primary-600)] text-white font-bold" : "bg-[var(--color-bg)] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]"
+                      filterType === typeKey
+                        ? 'bg-[var(--color-primary-600)] text-white font-bold'
+                        : 'bg-[var(--color-bg)] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]'
                     }`}
                   >
                     {typeKey}
@@ -405,10 +456,10 @@ export default function AdminTracking() {
                 const isTargetSelected = currentSelected?.trackId === t.trackId;
                 const isWatchlisted = watchlistSet.has(t.trackId);
                 const isAircraft =
-                  t.objectType === "aircraft" ||
-                  t.trackId.startsWith("ICAO-") ||
-                  t.trackId.startsWith("FLIGHT-") ||
-                  t.trackId.startsWith("ADS-");
+                  t.objectType === 'aircraft' ||
+                  t.trackId.startsWith('ICAO-') ||
+                  t.trackId.startsWith('FLIGHT-') ||
+                  t.trackId.startsWith('ADS-');
 
                 return (
                   <div
@@ -416,27 +467,34 @@ export default function AdminTracking() {
                     onClick={() => setSelectedTrack(t)}
                     className={`p-3 rounded-xl border cursor-pointer transition-all ${
                       isTargetSelected
-                        ? "border-[var(--color-primary-600)] bg-[var(--color-primary-600)]/10 ring-1 ring-[var(--color-primary-600)]"
-                        : "border-[var(--color-border)] bg-[var(--color-bg)] hover:border-[var(--color-fg-muted)]/40"
+                        ? 'border-[var(--color-primary-600)] bg-[var(--color-primary-600)]/10 ring-1 ring-[var(--color-primary-600)]'
+                        : 'border-[var(--color-border)] bg-[var(--color-bg)] hover:border-[var(--color-fg-muted)]/40'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 min-w-0">
-                        {isAircraft ? <Plane className="h-4 w-4 text-emerald-400 shrink-0" /> : <Ship className="h-4 w-4 text-sky-400 shrink-0" />}
+                        {isAircraft ? (
+                          <Plane className="h-4 w-4 text-emerald-400 shrink-0" />
+                        ) : (
+                          <Ship className="h-4 w-4 text-sky-400 shrink-0" />
+                        )}
                         <span className="font-semibold text-xs text-[var(--color-fg)] truncate">
                           {t.assetName}
                         </span>
                         {isWatchlisted && (
-                          <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse shrink-0" title="Watchlisted Target" />
+                          <span
+                            className="h-2 w-2 rounded-full bg-red-500 animate-pulse shrink-0"
+                            title="Watchlisted Target"
+                          />
                         )}
                       </div>
                       <span
                         className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                          t.severity?.toLowerCase() === "critical"
-                            ? "bg-red-500/20 text-red-400"
-                            : t.severity?.toLowerCase() === "high"
-                            ? "bg-amber-500/20 text-amber-400"
-                            : "bg-emerald-500/20 text-emerald-400"
+                          t.severity?.toLowerCase() === 'critical'
+                            ? 'bg-red-500/20 text-red-400'
+                            : t.severity?.toLowerCase() === 'high'
+                              ? 'bg-amber-500/20 text-amber-400'
+                              : 'bg-emerald-500/20 text-emerald-400'
                         }`}
                       >
                         SCORE {t.anomalyScore}
@@ -444,7 +502,9 @@ export default function AdminTracking() {
                     </div>
                     <div className="flex items-center justify-between text-[10px] font-mono text-[var(--color-fg-muted)] mt-2">
                       <span>{t.trackId}</span>
-                      <span>{t.speed} kn &bull; {t.heading}°</span>
+                      <span>
+                        {t.speed} kn &bull; {t.heading}°
+                      </span>
                     </div>
                   </div>
                 );

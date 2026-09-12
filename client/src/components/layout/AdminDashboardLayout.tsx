@@ -20,8 +20,8 @@ import { useState } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router';
 import { Sidebar } from '@/components/ui/sidebar';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { env } from '@/environments/environment';
 import { useAdminStore } from '@/stores';
-import { env } from "@/environments/environment";
 
 const ADMIN_NAV = [
   { label: 'Admin Overview', href: '/admin', icon: LayoutDashboard, exact: true },
@@ -31,7 +31,13 @@ const ADMIN_NAV = [
   { label: 'Live Tracking', href: '/admin/tracking', icon: Radio },
   { label: 'Data Sources', href: '/admin/sources', icon: Rss },
   { label: 'Surveillance Watchlist', href: '/admin/watchlist', icon: Eye },
-  { label: 'User Roster', href: '/admin/users', icon: Users, badge: 'Pending', badgeColor: 'danger' as const },
+  {
+    label: 'User Roster',
+    href: '/admin/users',
+    icon: Users,
+    badge: 'Pending',
+    badgeColor: 'danger' as const,
+  },
   { label: 'Dataset Pipeline', href: '/admin/datasets', icon: Database },
   { label: 'Analytics & Reports', href: '/admin/analytics', icon: BarChart3 },
   { label: 'Dataset Analysis', href: '/admin/analysis', icon: BarChart3 },
@@ -60,7 +66,11 @@ export function AdminDashboardLayout() {
         </div>
         <h1 className="font-display text-2xl font-bold">Admin Portal Access Restricted</h1>
         <p className="font-ui text-sm text-[var(--color-fg-muted)] max-w-md">
-          This secure command area is strictly reserved for the designated root administrator (<code className="font-mono text-[var(--color-primary-600)]">{env.auth.adminDisplayEmail}</code>).
+          This secure command area is strictly reserved for the designated root administrator (
+          <code className="font-mono text-[var(--color-primary-600)]">
+            {env.auth.adminDisplayEmail}
+          </code>
+          ).
         </p>
         <button
           type="button"
@@ -82,7 +92,11 @@ export function AdminDashboardLayout() {
         </div>
         <h1 className="font-display text-2xl font-bold">Admin Verification Required</h1>
         <p className="font-ui text-sm text-[var(--color-fg-muted)] max-w-md">
-          Administrator login for <code className="font-mono text-[var(--color-primary-600)]">{env.auth.adminDisplayEmail}</code> requires dual-factor email verification. Please verify your session on the login page.
+          Administrator login for{' '}
+          <code className="font-mono text-[var(--color-primary-600)]">
+            {env.auth.adminDisplayEmail}
+          </code>{' '}
+          requires dual-factor email verification. Please verify your session on the login page.
         </p>
         <button
           type="button"

@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
-import { Section } from '@/components/layout/Section';
 import { LivePlatformMetrics } from '@/components/data/MetricGrid';
+import { Section } from '@/components/layout/Section';
 import { EditorialMap } from '@/components/maps';
 import { cn } from '@/utils/cn';
 
@@ -192,8 +192,8 @@ export default function LearnDetection() {
         </div>
         <div className="mt-4 glass-card rounded-xl p-4 border border-border/50 text-center">
           <p className="font-ui text-body text-fg-muted">
-            Real-time detection statistics are computed live from the anomaly pipeline.
-            Connect your dashboard for current metrics.
+            Real-time detection statistics are computed live from the anomaly pipeline. Connect your
+            dashboard for current metrics.
           </p>
         </div>
       </Section>

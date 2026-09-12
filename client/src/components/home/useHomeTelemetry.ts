@@ -1,24 +1,24 @@
-import { useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo } from 'react';
+import { useLiveTelemetry } from '@/hooks/useLiveTelemetry';
+import { useSystemHealth } from '@/hooks/useSystemHealth';
 import {
-  getTopTraces,
-  getPublicTracks,
-  getNews,
-  getBlockadeIndicators,
-  getTransits,
-  getPublicMetrics,
-  type PublicMetricsResponse,
-  type TracksResponse,
-  type TopTracesResponse,
-  type NewsResponse,
   type BlockadeIndicators,
+  getBlockadeIndicators,
+  getNews,
+  getPublicMetrics,
+  getPublicTracks,
+  getTopTraces,
+  getTransits,
+  type NewsResponse,
+  type PublicMetricsResponse,
+  type TopTracesResponse,
+  type TracksResponse,
   type TransitSummary,
 } from '@/lib/api';
 import { useRealtimeStore } from '@/stores';
 import { useHealthStore } from '@/stores/slices/health.store';
 import { useMapStateStore } from '@/stores/slices/map.store';
-import { useSystemHealth } from '@/hooks/useSystemHealth';
-import { useLiveTelemetry } from '@/hooks/useLiveTelemetry';
 import type { ThreatItem } from '@/types/threats';
 
 export interface UseHomeTelemetryProps {
@@ -149,7 +149,10 @@ export function useHomeTelemetry({
   // Dynamically filter active traces based on show toggles & region filters
   const activeVisibleTraces = useMemo(() => {
     return allLiveTraces.filter((t) => {
-      const isAir = String(t.trackId || '').startsWith('FLIGHT') || (t as any).altitude !== undefined || (t as any).domain === 'aviation';
+      const isAir =
+        String(t.trackId || '').startsWith('FLIGHT') ||
+        (t as any).altitude !== undefined ||
+        (t as any).domain === 'aviation';
       if (isAir && !showAircraft) return false;
       if (!isAir && !showVessels) return false;
       return true;
@@ -161,30 +164,42 @@ export function useHomeTelemetry({
     const rawMetrics = metricsData?.metrics;
 
     const liveVesselTraces = allLiveTraces.filter((t) => {
-      const isAir = String(t.trackId || '').startsWith('FLIGHT') || String(t.trackId || '').startsWith('ADS-') || String(t.trackId || '').startsWith('ICAO-') || (t as any).objectType === 'aircraft' || (t as any).altitude !== undefined || (t as any).domain === 'aviation';
+      const isAir =
+        String(t.trackId || '').startsWith('FLIGHT') ||
+        String(t.trackId || '').startsWith('ADS-') ||
+        String(t.trackId || '').startsWith('ICAO-') ||
+        (t as any).objectType === 'aircraft' ||
+        (t as any).altitude !== undefined ||
+        (t as any).domain === 'aviation';
       return !isAir;
     }).length;
 
     const liveAircraftTraces = allLiveTraces.filter((t) => {
-      const isAir = String(t.trackId || '').startsWith('FLIGHT') || String(t.trackId || '').startsWith('ADS-') || String(t.trackId || '').startsWith('ICAO-') || (t as any).objectType === 'aircraft' || (t as any).altitude !== undefined || (t as any).domain === 'aviation';
+      const isAir =
+        String(t.trackId || '').startsWith('FLIGHT') ||
+        String(t.trackId || '').startsWith('ADS-') ||
+        String(t.trackId || '').startsWith('ICAO-') ||
+        (t as any).objectType === 'aircraft' ||
+        (t as any).altitude !== undefined ||
+        (t as any).domain === 'aviation';
       return isAir;
     }).length;
 
     const baseVesselCount =
-      (liveStats?.maritimeCount && liveStats.maritimeCount > 0)
+      liveStats?.maritimeCount && liveStats.maritimeCount > 0
         ? liveStats.maritimeCount
         : liveVesselTraces > 0
           ? liveVesselTraces
-          : (rawMetrics?.maritimeCount && rawMetrics.maritimeCount > 0)
+          : rawMetrics?.maritimeCount && rawMetrics.maritimeCount > 0
             ? rawMetrics.maritimeCount
             : 0;
 
     const baseAircraftCount =
-      (liveStats?.aviationCount && liveStats.aviationCount > 0)
+      liveStats?.aviationCount && liveStats.aviationCount > 0
         ? liveStats.aviationCount
         : liveAircraftTraces > 0
           ? liveAircraftTraces
-          : (rawMetrics?.aviationCount && rawMetrics.aviationCount > 0)
+          : rawMetrics?.aviationCount && rawMetrics.aviationCount > 0
             ? rawMetrics.aviationCount
             : 0;
 
@@ -193,38 +208,58 @@ export function useHomeTelemetry({
     const effectiveTotal = effectiveVessels + effectiveAircraft;
 
     const critical = showConflicts
-      ? (activeVisibleTraces.filter((t) => t.severity === 'critical').length ||
-        (liveStats?.highAnomalyCount && liveStats.highAnomalyCount > 0 ? Math.floor(liveStats.highAnomalyCount / 2) : 0) ||
+      ? activeVisibleTraces.filter((t) => t.severity === 'critical').length ||
+        (liveStats?.highAnomalyCount && liveStats.highAnomalyCount > 0
+          ? Math.floor(liveStats.highAnomalyCount / 2)
+          : 0) ||
         rawMetrics?.criticalCount ||
-        0)
+        0
       : 0;
     const high = showConflicts
-      ? (activeVisibleTraces.filter((t) => t.severity === 'high').length ||
-        (liveStats?.highAnomalyCount && liveStats.highAnomalyCount > 0 ? liveStats.highAnomalyCount : 0) ||
+      ? activeVisibleTraces.filter((t) => t.severity === 'high').length ||
+        (liveStats?.highAnomalyCount && liveStats.highAnomalyCount > 0
+          ? liveStats.highAnomalyCount
+          : 0) ||
         rawMetrics?.highCount ||
-        0)
+        0
       : 0;
-    const medium = activeVisibleTraces.filter((t) => t.severity === 'medium').length || (rawMetrics?.mediumCount ?? 0);
-    const low = activeVisibleTraces.filter((t) => t.severity === 'low' || !t.severity).length || (rawMetrics?.lowCount ?? 0);
+    const medium =
+      activeVisibleTraces.filter((t) => t.severity === 'medium').length ||
+      (rawMetrics?.mediumCount ?? 0);
+    const low =
+      activeVisibleTraces.filter((t) => t.severity === 'low' || !t.severity).length ||
+      (rawMetrics?.lowCount ?? 0);
 
     // Dynamically calculate active regions from live traces across Gulf sectors
     const activeZonesSet = new Set<string>();
     for (const t of activeVisibleTraces) {
       if (t.lat && t.lon) {
-        if (t.lat >= 25.8 && t.lat <= 27.3 && t.lon >= 55.5 && t.lon <= 57.1) activeZonesSet.add('HORMUZ');
-        else if (t.lat >= 24.8 && t.lat <= 25.6 && t.lon >= 56.2 && t.lon <= 56.8) activeZonesSet.add('FUJAIRAH');
-        else if (t.lat >= 24.0 && t.lat <= 30.5 && t.lon >= 48.0 && t.lon <= 56.0) activeZonesSet.add('PGULF');
-        else if (t.lat >= 22.5 && t.lat <= 26.5 && t.lon >= 56.5 && t.lon <= 61.5) activeZonesSet.add('GOMAN');
+        if (t.lat >= 25.8 && t.lat <= 27.3 && t.lon >= 55.5 && t.lon <= 57.1)
+          activeZonesSet.add('HORMUZ');
+        else if (t.lat >= 24.8 && t.lat <= 25.6 && t.lon >= 56.2 && t.lon <= 56.8)
+          activeZonesSet.add('FUJAIRAH');
+        else if (t.lat >= 24.0 && t.lat <= 30.5 && t.lon >= 48.0 && t.lon <= 56.0)
+          activeZonesSet.add('PGULF');
+        else if (t.lat >= 22.5 && t.lat <= 26.5 && t.lon >= 56.5 && t.lon <= 61.5)
+          activeZonesSet.add('GOMAN');
       }
     }
-    const activeRegionsCount = activeZonesSet.size > 0 ? activeZonesSet.size : (rawMetrics?.activeRegions && rawMetrics.activeRegions > 0 ? rawMetrics.activeRegions : 4);
+    const activeRegionsCount =
+      activeZonesSet.size > 0
+        ? activeZonesSet.size
+        : rawMetrics?.activeRegions && rawMetrics.activeRegions > 0
+          ? rawMetrics.activeRegions
+          : 4;
 
     const avgScore =
       activeVisibleTraces.length > 0
         ? Math.round(
-            activeVisibleTraces.reduce((acc, t) => acc + (t.score || 0), 0) / activeVisibleTraces.length
+            activeVisibleTraces.reduce((acc, t) => acc + (t.score || 0), 0) /
+              activeVisibleTraces.length
           )
-        : (rawMetrics?.avgScore && rawMetrics.avgScore > 0 ? Math.round(rawMetrics.avgScore) : 18);
+        : rawMetrics?.avgScore && rawMetrics.avgScore > 0
+          ? Math.round(rawMetrics.avgScore)
+          : 18;
 
     return {
       maritimeCount: effectiveVessels,
@@ -238,7 +273,15 @@ export function useHomeTelemetry({
       activeRegions: activeRegionsCount,
       timestamp: new Date().toISOString(),
     };
-  }, [metricsData, liveStats, allLiveTraces, activeVisibleTraces, showVessels, showAircraft, showConflicts]);
+  }, [
+    metricsData,
+    liveStats,
+    allLiveTraces,
+    activeVisibleTraces,
+    showVessels,
+    showAircraft,
+    showConflicts,
+  ]);
 
   // Derived counts
   const vesselCount = displayMetrics.maritimeCount;
@@ -264,7 +307,10 @@ export function useHomeTelemetry({
             const parsed = JSON.parse(t.reasons);
             reasonsList = Array.isArray(parsed) ? parsed : [String(parsed)];
           } catch {
-            reasonsList = t.reasons.split(';').map((s) => s.trim()).filter(Boolean);
+            reasonsList = t.reasons
+              .split(';')
+              .map((s) => s.trim())
+              .filter(Boolean);
           }
         }
         const isAir =
@@ -282,10 +328,13 @@ export function useHomeTelemetry({
           trackId: t.trackId,
           assetName: t.assetName || t.trackId,
           title: `${isAir ? 'Air Corridor Anomaly' : 'Vessel Deviation'}: ${t.assetName || t.trackId}`,
-          description: reasonsList.join('; ') || 'Elevated behavioral anomaly detected by ML ensemble',
+          description:
+            reasonsList.join('; ') || 'Elevated behavioral anomaly detected by ML ensemble',
           severity: severityVal,
           region: 'Strait of Hormuz',
-          time: t.updatedAt ? new Date(t.updatedAt).toLocaleTimeString() : new Date().toLocaleTimeString(),
+          time: t.updatedAt
+            ? new Date(t.updatedAt).toLocaleTimeString()
+            : new Date().toLocaleTimeString(),
           score: scoreVal,
           anomalyScore: scoreVal,
           reasons: reasonsList,

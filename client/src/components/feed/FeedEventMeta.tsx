@@ -1,5 +1,5 @@
-import React from 'react';
-import { MapPin, Globe, Shield, Activity } from 'lucide-react';
+import { Activity, Globe, MapPin, Shield } from 'lucide-react';
+import type React from 'react';
 import { cn } from '@/utils/cn';
 
 export interface FeedEventMetaProps {
@@ -20,7 +20,12 @@ export const FeedEventMeta: React.FC<FeedEventMetaProps> = ({
   className,
 }) => {
   return (
-    <div className={cn('flex items-center gap-2 font-mono text-[10px] text-[var(--color-fg-muted)] flex-wrap', className)}>
+    <div
+      className={cn(
+        'flex items-center gap-2 font-mono text-[10px] text-[var(--color-fg-muted)] flex-wrap',
+        className
+      )}
+    >
       {source && (
         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 border border-[var(--color-border)] bg-[var(--color-bg-input)] text-[var(--color-primary-600)] dark:text-[#38bdf8] uppercase font-bold">
           <Globe className="w-2.5 h-2.5 text-[var(--color-primary-600)] dark:text-[#38bdf8]" />
@@ -46,7 +51,9 @@ export const FeedEventMeta: React.FC<FeedEventMetaProps> = ({
         <span
           className={cn(
             'inline-flex items-center gap-0.5 font-bold uppercase',
-            verified ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
+            verified
+              ? 'text-emerald-600 dark:text-emerald-400'
+              : 'text-amber-600 dark:text-amber-400'
           )}
         >
           <Shield className="w-2.5 h-2.5" />

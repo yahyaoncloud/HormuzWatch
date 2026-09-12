@@ -1,5 +1,5 @@
-import React from 'react';
 import { Compass } from 'lucide-react';
+import type React from 'react';
 import { cn } from '@/utils/cn';
 
 export interface SectorData {
@@ -20,12 +20,60 @@ export interface SectorStatusPanelProps {
 }
 
 const DEFAULT_SECTORS: SectorData[] = [
-  { id: 'AREA-HORMUZ', name: 'Strait of Hormuz (TSS)', code: 'HORMUZ-TSS', trafficCount: 42, anomalyCount: 3, riskLevel: 'high', avgScore: 48 },
-  { id: 'AREA-PGULF', name: 'Persian Gulf Basin', code: 'PGULF-MAIN', trafficCount: 118, anomalyCount: 1, riskLevel: 'medium', avgScore: 22 },
-  { id: 'AREA-KHARG', name: 'Kharg Island Deepwater', code: 'KHARG-TERM', trafficCount: 14, anomalyCount: 0, riskLevel: 'nominal', avgScore: 12 },
-  { id: 'AREA-FUJAIRAH', name: 'Fujairah Anchorage (FOA)', code: 'FOA-ANCHOR', trafficCount: 65, anomalyCount: 2, riskLevel: 'medium', avgScore: 35 },
-  { id: 'AREA-GOMAN', name: 'Gulf of Oman Approach', code: 'GOMAN-SECT', trafficCount: 38, anomalyCount: 0, riskLevel: 'low', avgScore: 15 },
-  { id: 'AREA-RASTANURA', name: 'Ras Tanura Terminal', code: 'RTAN-CRUDE', trafficCount: 21, anomalyCount: 1, riskLevel: 'medium', avgScore: 28 },
+  {
+    id: 'AREA-HORMUZ',
+    name: 'Strait of Hormuz (TSS)',
+    code: 'HORMUZ-TSS',
+    trafficCount: 42,
+    anomalyCount: 3,
+    riskLevel: 'high',
+    avgScore: 48,
+  },
+  {
+    id: 'AREA-PGULF',
+    name: 'Persian Gulf Basin',
+    code: 'PGULF-MAIN',
+    trafficCount: 118,
+    anomalyCount: 1,
+    riskLevel: 'medium',
+    avgScore: 22,
+  },
+  {
+    id: 'AREA-KHARG',
+    name: 'Kharg Island Deepwater',
+    code: 'KHARG-TERM',
+    trafficCount: 14,
+    anomalyCount: 0,
+    riskLevel: 'nominal',
+    avgScore: 12,
+  },
+  {
+    id: 'AREA-FUJAIRAH',
+    name: 'Fujairah Anchorage (FOA)',
+    code: 'FOA-ANCHOR',
+    trafficCount: 65,
+    anomalyCount: 2,
+    riskLevel: 'medium',
+    avgScore: 35,
+  },
+  {
+    id: 'AREA-GOMAN',
+    name: 'Gulf of Oman Approach',
+    code: 'GOMAN-SECT',
+    trafficCount: 38,
+    anomalyCount: 0,
+    riskLevel: 'low',
+    avgScore: 15,
+  },
+  {
+    id: 'AREA-RASTANURA',
+    name: 'Ras Tanura Terminal',
+    code: 'RTAN-CRUDE',
+    trafficCount: 21,
+    anomalyCount: 1,
+    riskLevel: 'medium',
+    avgScore: 28,
+  },
 ];
 
 export const SectorStatusPanel: React.FC<SectorStatusPanelProps> = ({
@@ -78,11 +126,16 @@ export const SectorStatusPanel: React.FC<SectorStatusPanelProps> = ({
                   <span
                     className={cn(
                       'px-1.5 py-0.2 text-[9px] font-mono font-bold uppercase border',
-                      sec.riskLevel === 'critical' && 'bg-rose-500/10 dark:bg-rose-950 text-rose-600 dark:text-rose-400 border-rose-600/60',
-                      sec.riskLevel === 'high' && 'bg-amber-500/10 dark:bg-amber-950 text-amber-600 dark:text-amber-400 border-amber-600/60',
-                      sec.riskLevel === 'medium' && 'bg-yellow-500/10 dark:bg-yellow-950 text-yellow-600 dark:text-yellow-400 border-yellow-600/50',
-                      sec.riskLevel === 'low' && 'bg-emerald-500/10 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 border-emerald-600/50',
-                      sec.riskLevel === 'nominal' && 'bg-slate-500/10 dark:bg-slate-900 text-[var(--color-fg-muted)] border-[var(--color-border)]'
+                      sec.riskLevel === 'critical' &&
+                        'bg-rose-500/10 dark:bg-rose-950 text-rose-600 dark:text-rose-400 border-rose-600/60',
+                      sec.riskLevel === 'high' &&
+                        'bg-amber-500/10 dark:bg-amber-950 text-amber-600 dark:text-amber-400 border-amber-600/60',
+                      sec.riskLevel === 'medium' &&
+                        'bg-yellow-500/10 dark:bg-yellow-950 text-yellow-600 dark:text-yellow-400 border-yellow-600/50',
+                      sec.riskLevel === 'low' &&
+                        'bg-emerald-500/10 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 border-emerald-600/50',
+                      sec.riskLevel === 'nominal' &&
+                        'bg-slate-500/10 dark:bg-slate-900 text-[var(--color-fg-muted)] border-[var(--color-border)]'
                     )}
                   >
                     {sec.riskLevel}
@@ -102,15 +155,26 @@ export const SectorStatusPanel: React.FC<SectorStatusPanelProps> = ({
                 </div>
 
                 <div className="bg-[var(--color-bg-card)] p-1 border border-[var(--color-border)]">
-                  <div className="text-[8px] text-[var(--color-fg-subtle)] uppercase">ANOMALIES</div>
-                  <div className={cn('font-bold mt-0.5', sec.anomalyCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-[var(--color-fg-muted)]')}>
+                  <div className="text-[8px] text-[var(--color-fg-subtle)] uppercase">
+                    ANOMALIES
+                  </div>
+                  <div
+                    className={cn(
+                      'font-bold mt-0.5',
+                      sec.anomalyCount > 0
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-[var(--color-fg-muted)]'
+                    )}
+                  >
                     {sec.anomalyCount}
                   </div>
                 </div>
 
                 <div className="bg-[var(--color-bg-card)] p-1 border border-[var(--color-border)]">
                   <div className="text-[8px] text-[var(--color-fg-subtle)] uppercase">AVG RISK</div>
-                  <div className="font-bold text-[var(--color-primary-600)] dark:text-[#38bdf8] mt-0.5">{sec.avgScore.toFixed(0)}</div>
+                  <div className="font-bold text-[var(--color-primary-600)] dark:text-[#38bdf8] mt-0.5">
+                    {sec.avgScore.toFixed(0)}
+                  </div>
                 </div>
               </div>
             </div>

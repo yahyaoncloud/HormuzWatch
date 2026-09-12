@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react';
 
-import { env } from "@/environments/environment";
+import { env } from '@/environments/environment';
 
 // ============================================================
 // Supabase Auth Provider (Session-based admin auth)
@@ -91,7 +91,9 @@ const shouldConnectWS = () => {
 async function buildWSUrl(base: string): Promise<string> {
   try {
     if (!isSupabaseAvailable()) return base;
-    const { data: { session } } = await getSupabase().auth.getSession();
+    const {
+      data: { session },
+    } = await getSupabase().auth.getSession();
     const token = session?.access_token;
     if (!token) return base;
     const url = new URL(base);
@@ -188,7 +190,9 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         }
 
         // Subscribe to telemetry and anomaly channels
-        socket.send(JSON.stringify({ type: 'subscribe', channels: ['telemetry', 'anomaly', 'conflict'] }));
+        socket.send(
+          JSON.stringify({ type: 'subscribe', channels: ['telemetry', 'anomaly', 'conflict'] })
+        );
       };
 
       socket.onmessage = (event) => {
@@ -221,7 +225,10 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
                     heading: item.heading ?? 0,
                     score: item.anomalyScore ?? item.score ?? 0,
                     severity: item.severity || 'low',
-                    reasons: typeof item.reasons === 'string' ? item.reasons : JSON.stringify(item.reasons || []),
+                    reasons:
+                      typeof item.reasons === 'string'
+                        ? item.reasons
+                        : JSON.stringify(item.reasons || []),
                     updatedAt: new Date().toISOString(),
                   });
                 }
@@ -247,7 +254,9 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
                     heading: item.heading ?? existing?.heading ?? 0,
                     score: item.score ?? item.final_score ?? 0,
                     severity: item.severity || 'medium',
-                    reasons: Array.isArray(item.reasons) ? JSON.stringify(item.reasons) : (item.reasons || '[]'),
+                    reasons: Array.isArray(item.reasons)
+                      ? JSON.stringify(item.reasons)
+                      : item.reasons || '[]',
                     updatedAt: new Date().toISOString(),
                   });
                 }
@@ -257,7 +266,9 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             case 'stats': {
               const sPayload = message.payload as StatsPayload;
               rtSetStats(sPayload);
-              useServerStatusStore.getState().setTrackCounts(sPayload.maritimeCount || 0, sPayload.aviationCount || 0);
+              useServerStatusStore
+                .getState()
+                .setTrackCounts(sPayload.maritimeCount || 0, sPayload.aviationCount || 0);
               break;
             }
             case 'conflict':
@@ -268,7 +279,9 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           // Route to subscribers (backwards compat)
           const subscribers = subscriptionsRef.current.get(message.type);
           if (subscribers) {
-            subscribers.forEach((cb) => cb(message.payload));
+            subscribers.forEach((cb) => {
+              cb(message.payload);
+            });
           }
         } catch (error) {
           if (env.isDev) {
@@ -353,9 +366,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       eventSourceRef.current = null;
     }
 
-    const es = new EventSource(
-      env.sse.tracesUrl
-    );
+    const es = new EventSource(env.sse.tracesUrl);
     eventSourceRef.current = es;
 
     es.onopen = () => {
@@ -372,7 +383,9 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
         const subscribers = subscriptionsRef.current.get('traces');
         if (subscribers) {
-          subscribers.forEach((cb) => cb(payload));
+          subscribers.forEach((cb) => {
+            cb(payload);
+          });
         }
       } catch (error) {
         if (env.isDev) {

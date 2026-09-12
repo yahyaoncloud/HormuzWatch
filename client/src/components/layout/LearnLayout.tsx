@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router';
-import { PageContainer } from './PageContainer';
 import type { TOCItem } from './FloatingTOC';
+import { PageContainer } from './PageContainer';
 
 // Route-specific TOC fallback configurations
 export const ROUTE_TOC_REGISTRY: Record<string, TOCItem[]> = {
@@ -78,7 +78,8 @@ export function LearnLayout() {
         setTocItems(dynamicItems);
         if (dynamicItems[0]?.id) setActiveId(dynamicItems[0].id);
       } else {
-        const fallback = ROUTE_TOC_REGISTRY[location.pathname] || ROUTE_TOC_REGISTRY['/learn'] || [];
+        const fallback =
+          ROUTE_TOC_REGISTRY[location.pathname] || ROUTE_TOC_REGISTRY['/learn'] || [];
         setTocItems(fallback);
         if (fallback[0]?.id) setActiveId(fallback[0].id);
       }

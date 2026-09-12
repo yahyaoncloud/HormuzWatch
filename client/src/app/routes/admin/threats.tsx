@@ -1,64 +1,63 @@
-import { useQuery } from "@tanstack/react-query";
-import { getThreats } from "@/lib/api";
-import type { Threat } from "@/lib/api";
-import { useState, useMemo } from "react";
+import { useQuery } from '@tanstack/react-query';
+import { Activity, AlertCircle, Clock, FileText, ShieldAlert } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import {
-  ShieldAlert,
-  AlertCircle,
-  Clock,
-  Activity,
-  FileText,
-} from "lucide-react";
-import {
-  PageHeader,
-  KPICardGrid,
-  SearchFilter,
-  LoadingState,
-  ErrorState,
-  EmptyState,
-  Modal,
   ConfirmDialog,
-} from "@/components/ui";
+  EmptyState,
+  ErrorState,
+  KPICardGrid,
+  LoadingState,
+  Modal,
+  PageHeader,
+  SearchFilter,
+} from '@/components/ui';
+import type { Threat } from '@/lib/api';
+import { getThreats } from '@/lib/api';
 
-type ThreatStatus = "Investigating" | "Mitigated" | "False Positive" | "Closed";
+type ThreatStatus = 'Investigating' | 'Mitigated' | 'False Positive' | 'Closed';
 
 const levelColors: Record<string, string> = {
-  critical: "bg-[var(--color-danger)]/20 text-[var(--color-danger)] border-[var(--color-danger)]/30",
-  high: "bg-amber-500/20 text-amber-500 border-amber-500/30",
-  medium: "bg-[var(--color-warning)]/20 text-[var(--color-warning)] border-[var(--color-warning)]/30",
-  low: "bg-[var(--color-info)]/20 text-[var(--color-info)] border-[var(--color-info)]/30",
+  critical:
+    'bg-[var(--color-danger)]/20 text-[var(--color-danger)] border-[var(--color-danger)]/30',
+  high: 'bg-amber-500/20 text-amber-500 border-amber-500/30',
+  medium:
+    'bg-[var(--color-warning)]/20 text-[var(--color-warning)] border-[var(--color-warning)]/30',
+  low: 'bg-[var(--color-info)]/20 text-[var(--color-info)] border-[var(--color-info)]/30',
 };
 
 const THREAT_LEVELS = [
-  { value: "all", label: "All Severity Levels" },
-  { value: "critical", label: "Critical Only" },
-  { value: "high", label: "High Only" },
-  { value: "medium", label: "Medium Only" },
+  { value: 'all', label: 'All Severity Levels' },
+  { value: 'critical', label: 'Critical Only' },
+  { value: 'high', label: 'High Only' },
+  { value: 'medium', label: 'Medium Only' },
 ] as const;
 
 const STATUS_OPTIONS = [
-  { value: "all", label: "All Operational Statuses" },
-  { value: "investigating", label: "Investigating" },
-  { value: "mitigated", label: "Mitigated" },
-  { value: "false positive", label: "False Positive" },
-  { value: "closed", label: "Closed" },
+  { value: 'all', label: 'All Operational Statuses' },
+  { value: 'investigating', label: 'Investigating' },
+  { value: 'mitigated', label: 'Mitigated' },
+  { value: 'false positive', label: 'False Positive' },
+  { value: 'closed', label: 'Closed' },
 ] as const;
 
-const STATUS_CHIPS: ThreatStatus[] = ["Investigating", "Mitigated", "False Positive", "Closed"];
+const STATUS_CHIPS: ThreatStatus[] = ['Investigating', 'Mitigated', 'False Positive', 'Closed'];
 
 export default function AdminThreats() {
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["admin", "threats"],
+    queryKey: ['admin', 'threats'],
     queryFn: () => getThreats(100),
     refetchInterval: 30_000,
   });
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedLevel, setSelectedLevel] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedLevel, setSelectedLevel] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [threatStatuses, setThreatStatuses] = useState<Record<string, ThreatStatus>>({});
   const [activeModalThreat, setActiveModalThreat] = useState<Threat | null>(null);
-  const [confirmDismiss, setConfirmDismiss] = useState<{ threatId: string; status: ThreatStatus } | null>(null);
+  const [confirmDismiss, setConfirmDismiss] = useState<{
+    threatId: string;
+    status: ThreatStatus;
+  } | null>(null);
 
   const rawThreats = data?.data ?? [];
 
@@ -70,30 +69,40 @@ export default function AdminThreats() {
         t.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         t.region.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesLevel = selectedLevel === "all" || t.level.toLowerCase() === selectedLevel.toLowerCase();
+      const matchesLevel =
+        selectedLevel === 'all' || t.level.toLowerCase() === selectedLevel.toLowerCase();
 
-      const currentStatus = threatStatuses[t.id] || "Investigating";
-      const matchesStatus = statusFilter === "all" || currentStatus.toLowerCase() === statusFilter.toLowerCase();
+      const currentStatus = threatStatuses[t.id] || 'Investigating';
+      const matchesStatus =
+        statusFilter === 'all' || currentStatus.toLowerCase() === statusFilter.toLowerCase();
 
       return matchesSearch && matchesLevel && matchesStatus;
     });
   }, [rawThreats, searchQuery, selectedLevel, statusFilter, threatStatuses]);
 
-  const criticalCount = rawThreats.filter((t) => t.level === "critical").length;
-  const highCount = rawThreats.filter((t) => t.level === "high").length;
-  const mediumCount = rawThreats.filter((t) => t.level === "medium").length;
-  const lowCount = rawThreats.filter((t) => t.level === "low").length;
+  const criticalCount = rawThreats.filter((t) => t.level === 'critical').length;
+  const highCount = rawThreats.filter((t) => t.level === 'high').length;
+  const mediumCount = rawThreats.filter((t) => t.level === 'medium').length;
+  const lowCount = rawThreats.filter((t) => t.level === 'low').length;
 
   const handleUpdateStatus = (threatId: string, status: ThreatStatus) => {
     setThreatStatuses((prev) => ({ ...prev, [threatId]: status }));
   };
 
-  const kpiCards = useMemo(() => [
-    { icon: AlertCircle, value: criticalCount, label: "Critical", iconColor: "var(--color-danger)" },
-    { icon: AlertCircle, value: highCount, label: "High", iconColor: "var(--color-warning)" },
-    { icon: Activity, value: mediumCount, label: "Medium", iconColor: "var(--color-info)" },
-    { icon: ShieldAlert, value: lowCount, label: "Low", iconColor: "var(--color-fg-muted)" },
-  ], [criticalCount, highCount, mediumCount, lowCount]);
+  const kpiCards = useMemo(
+    () => [
+      {
+        icon: AlertCircle,
+        value: criticalCount,
+        label: 'Critical',
+        iconColor: 'var(--color-danger)',
+      },
+      { icon: AlertCircle, value: highCount, label: 'High', iconColor: 'var(--color-warning)' },
+      { icon: Activity, value: mediumCount, label: 'Medium', iconColor: 'var(--color-info)' },
+      { icon: ShieldAlert, value: lowCount, label: 'Low', iconColor: 'var(--color-fg-muted)' },
+    ],
+    [criticalCount, highCount, mediumCount, lowCount]
+  );
 
   if (isLoading) {
     return <LoadingState message="Loading active threat monitoring board..." size="md" />;
@@ -103,7 +112,7 @@ export default function AdminThreats() {
     return (
       <ErrorState
         title="Failed to Load Threat Board"
-        message={error instanceof Error ? error.message : "Unknown error"}
+        message={error instanceof Error ? error.message : 'Unknown error'}
         onRetry={() => refetch()}
       />
     );
@@ -132,13 +141,17 @@ export default function AdminThreats() {
         <div className="h-10 w-full rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)] p-1 flex items-center gap-1 overflow-hidden">
           <div
             className="bg-[var(--color-danger)] h-full rounded text-[10px] font-mono font-bold text-white flex items-center justify-center"
-            style={{ width: `${Math.max(15, (criticalCount / Math.max(1, rawThreats.length)) * 100)}%` }}
+            style={{
+              width: `${Math.max(15, (criticalCount / Math.max(1, rawThreats.length)) * 100)}%`,
+            }}
           >
             CRITICAL ({criticalCount})
           </div>
           <div
             className="bg-amber-500 h-full rounded text-[10px] font-mono font-bold text-black flex items-center justify-center"
-            style={{ width: `${Math.max(15, (highCount / Math.max(1, rawThreats.length)) * 100)}%` }}
+            style={{
+              width: `${Math.max(15, (highCount / Math.max(1, rawThreats.length)) * 100)}%`,
+            }}
           >
             HIGH ({highCount})
           </div>
@@ -154,8 +167,20 @@ export default function AdminThreats() {
         onSearchChange={setSearchQuery}
         searchPlaceholder="Search threats by title or region..."
         filters={[
-          { key: "level", label: "Severity", value: selectedLevel, onChange: setSelectedLevel, options: THREAT_LEVELS },
-          { key: "status", label: "Status", value: statusFilter, onChange: setStatusFilter, options: STATUS_OPTIONS },
+          {
+            key: 'level',
+            label: 'Severity',
+            value: selectedLevel,
+            onChange: setSelectedLevel,
+            options: THREAT_LEVELS,
+          },
+          {
+            key: 'status',
+            label: 'Status',
+            value: statusFilter,
+            onChange: setStatusFilter,
+            options: STATUS_OPTIONS,
+          },
         ]}
       />
 
@@ -169,13 +194,18 @@ export default function AdminThreats() {
           />
         ) : (
           filteredThreats.map((t) => {
-            const currentStatus = threatStatuses[t.id] || "Investigating";
+            const currentStatus = threatStatuses[t.id] || 'Investigating';
 
             return (
-              <div key={t.id} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 hover:border-[var(--color-primary-600)]/40 transition-colors space-y-3 ">
+              <div
+                key={t.id}
+                className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 hover:border-[var(--color-primary-600)]/40 transition-colors space-y-3 "
+              >
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border uppercase ${levelColors[t.level] ?? levelColors.low}`}>
+                    <span
+                      className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border uppercase ${levelColors[t.level] ?? levelColors.low}`}
+                    >
                       {t.level.toUpperCase()}
                     </span>
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--color-bg-elevated)] text-[var(--color-fg-muted)] border border-[var(--color-border)]">
@@ -195,8 +225,8 @@ export default function AdminThreats() {
                         onClick={() => handleUpdateStatus(t.id, st)}
                         className={`px-2 py-0.5 rounded text-[10px] font-mono transition-all border ${
                           currentStatus === st
-                            ? "bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)] font-bold"
-                            : "bg-[var(--color-bg)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:text-[var(--color-fg)]"
+                            ? 'bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)] font-bold'
+                            : 'bg-[var(--color-bg)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:text-[var(--color-fg)]'
                         }`}
                       >
                         {st}
@@ -212,7 +242,9 @@ export default function AdminThreats() {
                   {t.title}
                 </h3>
 
-                <p className="text-xs text-[var(--color-fg-muted)] leading-relaxed">{t.description}</p>
+                <p className="text-xs text-[var(--color-fg-muted)] leading-relaxed">
+                  {t.description}
+                </p>
 
                 <div className="flex items-center justify-between pt-2 border-t border-[var(--color-border)] text-[10px] font-mono text-[var(--color-fg-muted)]">
                   <div className="flex items-center gap-2">
@@ -234,30 +266,53 @@ export default function AdminThreats() {
       </div>
 
       {/* Threat Detail Modal */}
-      <Modal open={!!activeModalThreat} onClose={() => setActiveModalThreat(null)} title="Threat Inspector" size="lg">
+      <Modal
+        open={!!activeModalThreat}
+        onClose={() => setActiveModalThreat(null)}
+        title="Threat Inspector"
+        size="lg"
+      >
         {activeModalThreat && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="space-y-2">
-                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase">Threat ID</p>
+                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase">
+                  Threat ID
+                </p>
                 <p className="font-mono text-xs text-[var(--color-fg)]">{activeModalThreat.id}</p>
               </div>
               <div className="space-y-2">
-                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase">Severity</p>
-                <p className="font-mono text-xs text-[var(--color-fg)]">{activeModalThreat.level.toUpperCase()}</p>
+                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase">
+                  Severity
+                </p>
+                <p className="font-mono text-xs text-[var(--color-fg)]">
+                  {activeModalThreat.level.toUpperCase()}
+                </p>
               </div>
               <div className="space-y-2">
-                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase">Region</p>
-                <p className="font-mono text-xs text-[var(--color-fg)]">{activeModalThreat.region}</p>
+                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase">
+                  Region
+                </p>
+                <p className="font-mono text-xs text-[var(--color-fg)]">
+                  {activeModalThreat.region}
+                </p>
               </div>
               <div className="space-y-2">
-                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase">Reported</p>
-                <p className="font-mono text-xs text-[var(--color-fg)]">{new Date(activeModalThreat.reportedAt).toLocaleString()}</p>
+                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase">
+                  Reported
+                </p>
+                <p className="font-mono text-xs text-[var(--color-fg)]">
+                  {new Date(activeModalThreat.reportedAt).toLocaleString()}
+                </p>
               </div>
             </div>
             <div className="pt-2 border-t border-[var(--color-border)]">
-              <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase mb-2">Full Threat Description</p>
-              <p className="text-sm text-[var(--color-fg)] leading-relaxed">{activeModalThreat.description}</p>
+              <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase mb-2">
+                Full Threat Description
+              </p>
+              <p className="text-sm text-[var(--color-fg)] leading-relaxed">
+                {activeModalThreat.description}
+              </p>
             </div>
           </div>
         )}

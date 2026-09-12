@@ -19,10 +19,10 @@ export type IconCategory =
 
 export type IconBehavior =
   | 'rotating-symbol' // Live moving contact centered on coord, rotates with heading
-  | 'pin'             // Static teardrop pin fixed upright at coordinate
-  | 'overlay'         // Status frame overlaying a contact symbol
-  | 'animated'        // Vector indicator line/pattern
-  | 'cluster';        // Aggregated marker
+  | 'pin' // Static teardrop pin fixed upright at coordinate
+  | 'overlay' // Status frame overlaying a contact symbol
+  | 'animated' // Vector indicator line/pattern
+  | 'cluster'; // Aggregated marker
 
 export interface IconMeta {
   id: string;

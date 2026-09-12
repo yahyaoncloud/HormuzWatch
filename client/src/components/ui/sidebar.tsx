@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, LogOut, LucideIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LogOut, type LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Link, NavLink } from 'react-router';
 import { cn } from '@/utils/cn';
@@ -50,7 +50,11 @@ export function Sidebar({
       {/* Sidebar Header */}
       <div className="flex h-12 items-center justify-between border-b border-[var(--color-border)] px-3 shrink-0">
         <Link to="/" className="flex items-center gap-2.5 overflow-hidden">
-          <img src="/apple-touch-icon.png" alt="HormuzWatch Logo" className="h-6 w-6 rounded-md object-contain shrink-0" />
+          <img
+            src="/apple-touch-icon.png"
+            alt="HormuzWatch Logo"
+            className="h-6 w-6 rounded-md object-contain shrink-0"
+          />
           {!collapsed && (
             <div className="flex flex-col min-w-0">
               <span className="font-display text-[13px] font-bold tracking-tight text-[var(--color-fg)] truncate">
@@ -70,7 +74,11 @@ export function Sidebar({
           className="flex h-6 w-6 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-fg-muted)] hover:bg-[var(--color-bg)] hover:text-[var(--color-fg)] transition-colors shrink-0"
           title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
         >
-          {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
+          {collapsed ? (
+            <ChevronRight className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronLeft className="h-3.5 w-3.5" />
+          )}
         </button>
       </div>
 
@@ -99,9 +107,12 @@ export function Sidebar({
                 className={cn(
                   'px-1.5 py-0.5 rounded text-[10px] font-mono font-bold shrink-0',
                   item.badgeColor === 'primary' && 'bg-white/20 text-white',
-                  item.badgeColor === 'success' && 'bg-[var(--color-success)]/15 text-[var(--color-success)]',
-                  item.badgeColor === 'danger' && 'bg-[var(--color-danger)]/15 text-[var(--color-danger)]',
-                  (!item.badgeColor || item.badgeColor === 'warning') && 'bg-[var(--color-warning)]/15 text-[var(--color-warning)]'
+                  item.badgeColor === 'success' &&
+                    'bg-[var(--color-success)]/15 text-[var(--color-success)]',
+                  item.badgeColor === 'danger' &&
+                    'bg-[var(--color-danger)]/15 text-[var(--color-danger)]',
+                  (!item.badgeColor || item.badgeColor === 'warning') &&
+                    'bg-[var(--color-warning)]/15 text-[var(--color-warning)]'
                 )}
               >
                 {item.badge}

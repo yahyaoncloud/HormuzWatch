@@ -1,57 +1,55 @@
-import { useQuery } from "@tanstack/react-query";
-import { getEvents } from "@/lib/api";
-import { useState, useMemo, lazy, Suspense } from "react";
+import { useQuery } from '@tanstack/react-query';
 import {
+  AlertTriangle,
+  ChevronRight,
   Clock,
   Download,
-  AlertTriangle,
-  MapPin,
   GitCommit,
-  ChevronRight,
   Inbox,
-} from "lucide-react";
+  MapPin,
+} from 'lucide-react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import {
+  EmptyState,
+  ErrorState,
+  KPICardGrid,
+  LoadingState,
+  Modal,
   PageHeader,
   PageHeaderAction,
   SearchFilter,
-  LoadingState,
-  ErrorState,
-  EmptyState,
-  Modal,
-  KPICardGrid,
-} from "@/components/ui";
+} from '@/components/ui';
+import { getEvents } from '@/lib/api';
 
 const LeafletMap = lazy(() =>
-  import("@/components/maps/LeafletMap").then((m) => ({ default: m.LeafletMap }))
+  import('@/components/maps/LeafletMap').then((m) => ({ default: m.LeafletMap }))
 );
 
-
-
 const EVENT_TYPES = [
-  { value: "all", label: "All Event Types" },
-  { value: "military movement", label: "Military Movement" },
-  { value: "diplomatic", label: "Diplomatic Note" },
-  { value: "sanctions", label: "Sanctions / Policy" },
-  { value: "ais anomaly", label: "AIS / Navigation Anomaly" },
+  { value: 'all', label: 'All Event Types' },
+  { value: 'military movement', label: 'Military Movement' },
+  { value: 'diplomatic', label: 'Diplomatic Note' },
+  { value: 'sanctions', label: 'Sanctions / Policy' },
+  { value: 'ais anomaly', label: 'AIS / Navigation Anomaly' },
 ] as const;
 
 const SEVERITY_LEVELS = [
-  { value: "all", label: "All Severities" },
-  { value: "critical", label: "Critical Only" },
-  { value: "high", label: "High Only" },
-  { value: "medium", label: "Medium Only" },
+  { value: 'all', label: 'All Severities' },
+  { value: 'critical', label: 'Critical Only' },
+  { value: 'high', label: 'High Only' },
+  { value: 'medium', label: 'Medium Only' },
 ] as const;
 
 export default function AdminEvents() {
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["admin", "events"],
+    queryKey: ['admin', 'events'],
     queryFn: () => getEvents({ limit: 100 }),
     refetchInterval: 30_000,
   });
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedType, setSelectedType] = useState("all");
-  const [selectedSeverity, setSelectedSeverity] = useState("all");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedType, setSelectedType] = useState('all');
+  const [selectedSeverity, setSelectedSeverity] = useState('all');
   const [showCorrelation, setShowCorrelation] = useState(false);
   const [showMiniMap, setShowMiniMap] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
@@ -63,8 +61,8 @@ export default function AdminEvents() {
     if (highSev.length < 2) return [];
     return [
       {
-        id: "c1",
-        title: "Live High-Severity Event Cluster",
+        id: 'c1',
+        title: 'Live High-Severity Event Cluster',
         events: highSev.slice(0, 4).map((e) => e.title),
       },
     ];
@@ -78,41 +76,66 @@ export default function AdminEvents() {
         e.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         e.type.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesType = selectedType === "all" || e.type.toLowerCase() === selectedType.toLowerCase();
-      const matchesSeverity = selectedSeverity === "all" || e.severity.toLowerCase() === selectedSeverity.toLowerCase();
+      const matchesType =
+        selectedType === 'all' || e.type.toLowerCase() === selectedType.toLowerCase();
+      const matchesSeverity =
+        selectedSeverity === 'all' || e.severity.toLowerCase() === selectedSeverity.toLowerCase();
 
       return matchesSearch && matchesType && matchesSeverity;
     });
   }, [rawEvents, searchQuery, selectedType, selectedSeverity]);
 
-  const exportEvents = (format: "json" | "csv") => {
+  const exportEvents = (format: 'json' | 'csv') => {
     if (filteredEvents.length === 0) return;
     const content =
-      format === "json"
+      format === 'json'
         ? JSON.stringify(filteredEvents, null, 2)
-        : "ID,Type,Severity,Title,Country,OccurredAt\n" +
+        : 'ID,Type,Severity,Title,Country,OccurredAt\n' +
           filteredEvents
             .map(
               (e) =>
-                `"${e.id}","${e.type}","${e.severity}","${e.title.replace(/"/g, '""')}","${e.country || ""}","${e.occurredAt}"`
+                `"${e.id}","${e.type}","${e.severity}","${e.title.replace(/"/g, '""')}","${e.country || ''}","${e.occurredAt}"`
             )
-            .join("\n");
+            .join('\n');
 
-    const blob = new Blob([content], { type: format === "json" ? "application/json" : "text/csv" });
+    const blob = new Blob([content], { type: format === 'json' ? 'application/json' : 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+    const link = document.createElement('a');
     link.href = url;
     link.download = `hormuz_events_export_${Date.now()}.${format}`;
     link.click();
   };
 
   // KPI cards data
-  const kpiCards = useMemo(() => [
-    { icon: Clock, value: rawEvents.length, label: "Total Events", iconColor: "var(--color-primary-600)" },
-    { icon: AlertTriangle, value: rawEvents.filter(e => e.severity?.toLowerCase() === "critical").length, label: "Critical", iconColor: "var(--color-danger)" },
-    { icon: AlertTriangle, value: rawEvents.filter(e => e.severity?.toLowerCase() === "high").length, label: "High Severity", iconColor: "var(--color-warning)" },
-    { icon: MapPin, value: new Set(rawEvents.map(e => e.country).filter(Boolean)).size, label: "Countries", iconColor: "var(--color-info)" },
-  ], [rawEvents]);
+  const kpiCards = useMemo(
+    () => [
+      {
+        icon: Clock,
+        value: rawEvents.length,
+        label: 'Total Events',
+        iconColor: 'var(--color-primary-600)',
+      },
+      {
+        icon: AlertTriangle,
+        value: rawEvents.filter((e) => e.severity?.toLowerCase() === 'critical').length,
+        label: 'Critical',
+        iconColor: 'var(--color-danger)',
+      },
+      {
+        icon: AlertTriangle,
+        value: rawEvents.filter((e) => e.severity?.toLowerCase() === 'high').length,
+        label: 'High Severity',
+        iconColor: 'var(--color-warning)',
+      },
+      {
+        icon: MapPin,
+        value: new Set(rawEvents.map((e) => e.country).filter(Boolean)).size,
+        label: 'Countries',
+        iconColor: 'var(--color-info)',
+      },
+    ],
+    [rawEvents]
+  );
 
   if (isLoading) {
     return <LoadingState message="Building events timeline feed..." size="md" />;
@@ -122,7 +145,7 @@ export default function AdminEvents() {
     return (
       <ErrorState
         title="Failed to Load Intelligence Events"
-        message={error instanceof Error ? error.message : "Unknown error"}
+        message={error instanceof Error ? error.message : 'Unknown error'}
         onRetry={() => refetch()}
       />
     );
@@ -138,21 +161,21 @@ export default function AdminEvents() {
         actions={
           <>
             <PageHeaderAction
-              variant={showCorrelation ? "primary" : "secondary"}
+              variant={showCorrelation ? 'primary' : 'secondary'}
               onClick={() => setShowCorrelation(!showCorrelation)}
-              aria-label={showCorrelation ? "Hide correlation view" : "Show correlation view"}
+              aria-label={showCorrelation ? 'Hide correlation view' : 'Show correlation view'}
             >
               <GitCommit className="h-3.5 w-3.5" />
-              {showCorrelation ? "Hide Correlation View" : "Correlation View"}
+              {showCorrelation ? 'Hide Correlation View' : 'Correlation View'}
             </PageHeaderAction>
             <PageHeaderAction
-              onClick={() => exportEvents("json")}
+              onClick={() => exportEvents('json')}
               aria-label="Export events as JSON"
             >
               <Download className="h-3.5 w-3.5" /> Export JSON
             </PageHeaderAction>
             <PageHeaderAction
-              onClick={() => exportEvents("csv")}
+              onClick={() => exportEvents('csv')}
               aria-label="Export events as CSV"
               variant="ghost"
             >
@@ -204,13 +227,20 @@ export default function AdminEvents() {
           {correlations.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {correlations.map((c) => (
-                <div key={c.id} className="p-4 rounded-xl border border-purple-500/20 bg-[var(--color-bg-card)] space-y-2">
+                <div
+                  key={c.id}
+                  className="p-4 rounded-xl border border-purple-500/20 bg-[var(--color-bg-card)] space-y-2"
+                >
                   <h4 className="font-semibold text-xs text-[var(--color-fg)]">{c.title}</h4>
                   <div className="flex items-center gap-1.5 flex-wrap font-mono text-[10px]">
                     {c.events.map((ev, idx) => (
                       <span key={ev} className="flex items-center gap-1 text-purple-400">
-                        <span className="px-2 py-0.5 rounded bg-purple-500/15 border border-purple-500/30">{ev}</span>
-                        {idx < c.events.length - 1 && <ChevronRight className="h-3 w-3 text-[var(--color-fg-muted)]" />}
+                        <span className="px-2 py-0.5 rounded bg-purple-500/15 border border-purple-500/30">
+                          {ev}
+                        </span>
+                        {idx < c.events.length - 1 && (
+                          <ChevronRight className="h-3 w-3 text-[var(--color-fg-muted)]" />
+                        )}
                       </span>
                     ))}
                   </div>
@@ -218,7 +248,9 @@ export default function AdminEvents() {
               ))}
             </div>
           ) : (
-            <p className="text-xs text-[var(--color-fg-muted)] font-mono">No active event correlation clusters detected in current dataset.</p>
+            <p className="text-xs text-[var(--color-fg-muted)] font-mono">
+              No active event correlation clusters detected in current dataset.
+            </p>
           )}
         </div>
       )}
@@ -229,8 +261,20 @@ export default function AdminEvents() {
         onSearchChange={setSearchQuery}
         searchPlaceholder="Search events by title or type..."
         filters={[
-          { key: "type", label: "Event Type", value: selectedType, onChange: setSelectedType, options: EVENT_TYPES },
-          { key: "severity", label: "Severity", value: selectedSeverity, onChange: setSelectedSeverity, options: SEVERITY_LEVELS },
+          {
+            key: 'type',
+            label: 'Event Type',
+            value: selectedType,
+            onChange: setSelectedType,
+            options: EVENT_TYPES,
+          },
+          {
+            key: 'severity',
+            label: 'Severity',
+            value: selectedSeverity,
+            onChange: setSelectedSeverity,
+            options: SEVERITY_LEVELS,
+          },
         ]}
       />
 
@@ -244,18 +288,18 @@ export default function AdminEvents() {
           />
         ) : (
           filteredEvents.map((e) => {
-            const isCritical = e.severity?.toLowerCase() === "critical";
-            const isHigh = e.severity?.toLowerCase() === "high";
+            const isCritical = e.severity?.toLowerCase() === 'critical';
+            const isHigh = e.severity?.toLowerCase() === 'high';
 
             return (
               <div key={e.id} className="relative pl-12">
                 <div
                   className={`absolute left-4 top-4 h-4.5 w-4.5 -translate-x-1/2 rounded-full border-2 bg-[var(--color-bg-card)] flex items-center justify-center ${
                     isCritical
-                      ? "border-[var(--color-danger)] text-[var(--color-danger)] shadow-[0_0_10px_rgba(239,68,68,0.4)]"
+                      ? 'border-[var(--color-danger)] text-[var(--color-danger)] shadow-[0_0_10px_rgba(239,68,68,0.4)]'
                       : isHigh
-                      ? "border-amber-500 text-amber-500"
-                      : "border-[var(--color-primary-600)] text-[var(--color-primary-600)]"
+                        ? 'border-amber-500 text-amber-500'
+                        : 'border-[var(--color-primary-600)] text-[var(--color-primary-600)]'
                   }`}
                 >
                   <div className="h-1.5 w-1.5 rounded-full bg-current" />
@@ -273,10 +317,10 @@ export default function AdminEvents() {
                       <span
                         className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border uppercase ${
                           isCritical
-                            ? "bg-[var(--color-danger)]/20 text-[var(--color-danger)] border-[var(--color-danger)]/30"
+                            ? 'bg-[var(--color-danger)]/20 text-[var(--color-danger)] border-[var(--color-danger)]/30'
                             : isHigh
-                            ? "bg-amber-500/20 text-amber-500 border-amber-500/30"
-                            : "bg-[var(--color-primary-600)]/15 text-[var(--color-primary-600)] border-[var(--color-primary-600)]/30"
+                              ? 'bg-amber-500/20 text-amber-500 border-amber-500/30'
+                              : 'bg-[var(--color-primary-600)]/15 text-[var(--color-primary-600)] border-[var(--color-primary-600)]/30'
                         }`}
                       >
                         SEVERITY: {e.severity}
@@ -293,13 +337,19 @@ export default function AdminEvents() {
                     </span>
                   </div>
 
-                  <h3 className="font-display text-base font-bold text-[var(--color-fg)]">{e.title}</h3>
-                  <p className="text-xs text-[var(--color-fg-muted)] leading-relaxed">{e.description}</p>
+                  <h3 className="font-display text-base font-bold text-[var(--color-fg)]">
+                    {e.title}
+                  </h3>
+                  <p className="text-xs text-[var(--color-fg-muted)] leading-relaxed">
+                    {e.description}
+                  </p>
 
                   {e.sources && e.sources.length > 0 && (
                     <div className="pt-2 border-t border-[var(--color-border)] flex items-center justify-between text-[10px] font-mono text-[var(--color-fg-muted)]">
                       <span>{e.sources.length} Correlated Intelligence Sources</span>
-                      <span className="text-[var(--color-primary-600)] font-semibold">VERIFIED TELEMETRY</span>
+                      <span className="text-[var(--color-primary-600)] font-semibold">
+                        VERIFIED TELEMETRY
+                      </span>
                     </div>
                   )}
                 </div>
@@ -320,7 +370,9 @@ export default function AdminEvents() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="space-y-2">
-                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase">Event ID</p>
+                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase">
+                  Event ID
+                </p>
                 <p className="font-mono text-xs text-[var(--color-fg)]">{selectedEvent.id}</p>
               </div>
               <div className="space-y-2">
@@ -328,31 +380,52 @@ export default function AdminEvents() {
                 <p className="font-mono text-xs text-[var(--color-fg)]">{selectedEvent.type}</p>
               </div>
               <div className="space-y-2">
-                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase">Severity</p>
+                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase">
+                  Severity
+                </p>
                 <p className="font-mono text-xs text-[var(--color-fg)]">{selectedEvent.severity}</p>
               </div>
               <div className="space-y-2">
-                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase">Country</p>
-                <p className="font-mono text-xs text-[var(--color-fg)]">{selectedEvent.country || "Unknown"}</p>
+                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase">
+                  Country
+                </p>
+                <p className="font-mono text-xs text-[var(--color-fg)]">
+                  {selectedEvent.country || 'Unknown'}
+                </p>
               </div>
               <div className="space-y-2">
-                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase">Occurred</p>
-                <p className="font-mono text-xs text-[var(--color-fg)]">{new Date(selectedEvent.occurredAt).toLocaleString()}</p>
+                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase">
+                  Occurred
+                </p>
+                <p className="font-mono text-xs text-[var(--color-fg)]">
+                  {new Date(selectedEvent.occurredAt).toLocaleString()}
+                </p>
               </div>
               <div className="space-y-2">
-                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase">Sources</p>
-                <p className="font-mono text-xs text-[var(--color-fg)]">{selectedEvent.sources?.length || 0} sources</p>
+                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase">
+                  Sources
+                </p>
+                <p className="font-mono text-xs text-[var(--color-fg)]">
+                  {selectedEvent.sources?.length || 0} sources
+                </p>
               </div>
             </div>
             <div className="pt-2 border-t border-[var(--color-border)]">
-              <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase mb-2">Description</p>
-              <p className="text-sm text-[var(--color-fg)] leading-relaxed">{selectedEvent.description}</p>
+              <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase mb-2">
+                Description
+              </p>
+              <p className="text-sm text-[var(--color-fg)] leading-relaxed">
+                {selectedEvent.description}
+              </p>
             </div>
             {selectedEvent.coordinates && (
               <div className="pt-2 border-t border-[var(--color-border)]">
-                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase mb-2">Coordinates</p>
+                <p className="font-mono text-[10px] text-[var(--color-fg-muted)] uppercase mb-2">
+                  Coordinates
+                </p>
                 <p className="font-mono text-xs text-[var(--color-fg)]">
-                  {selectedEvent.coordinates.lat?.toFixed(4)}, {selectedEvent.coordinates.lon?.toFixed(4)}
+                  {selectedEvent.coordinates.lat?.toFixed(4)},{' '}
+                  {selectedEvent.coordinates.lon?.toFixed(4)}
                 </p>
               </div>
             )}

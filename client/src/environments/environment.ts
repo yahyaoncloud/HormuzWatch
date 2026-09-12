@@ -15,12 +15,12 @@
 // ---------------------------------------------------------------------------
 
 const bool = (v: string | undefined, fallback: boolean): boolean => {
-  if (v === undefined || v === "") return fallback;
-  return v === "true" || v === "1";
+  if (v === undefined || v === '') return fallback;
+  return v === 'true' || v === '1';
 };
 
 const num = (v: string | undefined, fallback: number): number => {
-  if (v === undefined || v === "") return fallback;
+  if (v === undefined || v === '') return fallback;
   const n = Number(v);
   return Number.isNaN(n) ? fallback : n;
 };
@@ -32,31 +32,31 @@ const num = (v: string | undefined, fallback: number): number => {
 // Dynamic URL Resolvers for Dev, LAN, and Cloudflare Production
 const getDefaultApiUrl = (): string => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  if (typeof window === "undefined") return "https://hormuzwatch.aburcloud.com";
+  if (typeof window === 'undefined') return 'https://hormuzwatch.aburcloud.com';
   // In local Vite dev server without local backend, connect directly to live backend
-  if (window.location.hostname === "localhost" && window.location.port === "5173") {
-    return "https://hormuzwatch.aburcloud.com";
+  if (window.location.hostname === 'localhost' && window.location.port === '5173') {
+    return 'https://hormuzwatch.aburcloud.com';
   }
   // When running on SPA / Nginx (port 3000 or Cloudflare), use same-origin relative routing
-  return "";
+  return '';
 };
 
 const getDefaultMlUrl = (): string => {
   if (import.meta.env.VITE_ML_SERVICE_URL) return import.meta.env.VITE_ML_SERVICE_URL;
-  if (typeof window === "undefined") return "https://hormuzwatch.aburcloud.com/ml";
-  if (window.location.hostname === "localhost" && window.location.port === "5173") {
-    return "https://hormuzwatch.aburcloud.com/ml";
+  if (typeof window === 'undefined') return 'https://hormuzwatch.aburcloud.com/ml';
+  if (window.location.hostname === 'localhost' && window.location.port === '5173') {
+    return 'https://hormuzwatch.aburcloud.com/ml';
   }
-  return "/ml";
+  return '/ml';
 };
 
 const getDefaultWsUrl = (): string => {
   if (import.meta.env.VITE_WS_TELEMETRY_URL) return import.meta.env.VITE_WS_TELEMETRY_URL;
-  if (typeof window === "undefined") return "wss://hormuzwatch.aburcloud.com/ws/stream";
-  if (window.location.hostname === "localhost" && window.location.port === "5173") {
-    return "wss://hormuzwatch.aburcloud.com/ws/stream";
+  if (typeof window === 'undefined') return 'wss://hormuzwatch.aburcloud.com/ws/stream';
+  if (window.location.hostname === 'localhost' && window.location.port === '5173') {
+    return 'wss://hormuzwatch.aburcloud.com/ws/stream';
   }
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${protocol}//${window.location.host}/ws/stream`;
 };
 
@@ -72,7 +72,7 @@ export const env = {
   /** True in production build. */
   isProd: import.meta.env.PROD,
   /** True during SSR render pass. */
-  isSSR: typeof window === "undefined",
+  isSSR: typeof window === 'undefined',
   /** Build mode ("development" | "production"). */
   mode: import.meta.env.MODE as string,
 
@@ -93,17 +93,11 @@ export const env = {
     /** Telemetry WebSocket endpoint. */
     telemetryUrl: getDefaultWsUrl(),
     /** Reconnect backoff floor (ms). */
-    reconnectInitialMs: num(
-      import.meta.env.VITE_WS_RECONNECT_INITIAL_MS,
-      1000,
-    ),
+    reconnectInitialMs: num(import.meta.env.VITE_WS_RECONNECT_INITIAL_MS, 1000),
     /** Reconnect backoff ceiling (ms). */
     reconnectMaxMs: num(import.meta.env.VITE_WS_RECONNECT_MAX_MS, 30000),
     /** Max reconnect attempts before giving up. */
-    maxReconnectAttempts: num(
-      import.meta.env.VITE_WS_MAX_RECONNECT,
-      10,
-    ),
+    maxReconnectAttempts: num(import.meta.env.VITE_WS_MAX_RECONNECT, 10),
   },
 
   // ── Server-Sent Events ────────────────────────────────────────────
@@ -124,14 +118,15 @@ export const env = {
   auth: {
     /** Allowed admin emails configured via environment. */
     adminEmails: [
-      (import.meta.env.VITE_ADMIN_EMAIL as string) || "admin@hormuzwatch.aburcloud.com",
+      (import.meta.env.VITE_ADMIN_EMAIL as string) || 'admin@hormuzwatch.aburcloud.com',
     ] as readonly string[],
     /** Regex pattern for admin email verification. */
     adminEmailPattern: /^.+@.+\..+$/i,
     /** Email used by the UI guard screens for display only. */
-    adminDisplayEmail: (import.meta.env.VITE_ADMIN_EMAIL as string) || "admin@hormuzwatch.aburcloud.com",
+    adminDisplayEmail:
+      (import.meta.env.VITE_ADMIN_EMAIL as string) || 'admin@hormuzwatch.aburcloud.com',
     /** Secret used for admin session signing. */
-    sessionSecret: (import.meta.env.VITE_SESSION_SECRET as string) || "",
+    sessionSecret: (import.meta.env.VITE_SESSION_SECRET as string) || '',
     /** Session expiry in milliseconds (default 7 days). */
     sessionExpiryMs: num(import.meta.env.VITE_SESSION_EXPIRY_MS, 7 * 24 * 60 * 60 * 1000),
   },
@@ -142,33 +137,31 @@ export const env = {
     tileUrlDark:
       import.meta.env.VITE_MAP_TILE_URL_DARK ||
       import.meta.env.VITE_MAP_TILE_URL ||
-      "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
     /** Satellite reconnaissance tile URL template (XYZ format). Default: ESRI World Imagery. */
     tileUrlSatellite:
       import.meta.env.VITE_MAP_TILE_URL_SATELLITE ||
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     /** Primary light basemap tile URL template (XYZ format). Default: ESRI World Light Gray Base (Nautical Daylight). */
     tileUrlLight:
       import.meta.env.VITE_MAP_TILE_URL_LIGHT ||
-      "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
     /** Fallback basemap URL (OSM with custom tactical shader grading). */
     tileUrlFallback:
       import.meta.env.VITE_MAP_TILE_URL_FALLBACK ||
-      "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     /** Subdomains for tile rotation. Default: ''. */
-    subdomains: (import.meta.env.VITE_MAP_SUBDOMAINS as string) || "",
+    subdomains: (import.meta.env.VITE_MAP_SUBDOMAINS as string) || '',
     /** Map copyright & attribution HTML. */
     attribution:
       import.meta.env.VITE_MAP_ATTRIBUTION ||
       '&copy; <a href="https://www.esri.com" target="_blank" rel="noopener noreferrer">Esri</a> &mdash; National Geographic, DeLorme, NAVTEQ, OpenStreetMap',
     /** Optional public client-side API key / token. */
-    apiKey: (import.meta.env.VITE_MAP_API_KEY as string) || "",
+    apiKey: (import.meta.env.VITE_MAP_API_KEY as string) || '',
     /** MapLibre style JSON URL. */
-    styleUrl:
-      import.meta.env.VITE_MAP_STYLE_URL ||
-      "/map-styles/hormuz-dark.json",
+    styleUrl: import.meta.env.VITE_MAP_STYLE_URL || '/map-styles/hormuz-dark.json',
     /** Raster tile server URL (legacy compatibility alias). */
-    tilesUrl: import.meta.env.VITE_MAP_TILES_URL || "",
+    tilesUrl: import.meta.env.VITE_MAP_TILES_URL || '',
     /** Default center [lon, lat]. */
     defaultCenter: [54.5, 25.5] as [number, number],
     /** Default zoom. */
@@ -197,8 +190,8 @@ export const env = {
 
   // ── App metadata ──────────────────────────────────────────────────
   meta: {
-    name: "HormuzWatch",
-    version: (import.meta.env.VITE_APP_VERSION as string) || "2.0.0",
+    name: 'HormuzWatch',
+    version: (import.meta.env.VITE_APP_VERSION as string) || '2.0.0',
     buildTime: import.meta.env.VITE_BUILD_TIME as string | undefined,
   },
 } as const;

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { type TOCItem } from './FloatingTOC';
 import { cn } from '@/utils/cn';
+import type { TOCItem } from './FloatingTOC';
 
 export function PageContainer({
   children,
@@ -24,9 +24,7 @@ export function PageContainer({
       <div className={cn('mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8', className)}>
         <div className="flex flex-col lg:flex-row lg:gap-10">
           {/* Main Article Content */}
-          <main className="min-w-0 flex-1 py-2">
-            {children}
-          </main>
+          <main className="min-w-0 flex-1 py-2">{children}</main>
 
           {/* Table of Contents Sidebar (Navbar-matching highlight style) */}
           <aside className="hidden lg:block w-56 shrink-0">
@@ -64,7 +62,13 @@ export function PageContainer({
   }
 
   return (
-    <div className={cn('mx-auto px-5 py-8 sm:px-8 sm:py-10', wide ? 'max-w-7xl' : 'max-w-5xl', className)}>
+    <div
+      className={cn(
+        'mx-auto px-5 py-8 sm:px-8 sm:py-10',
+        wide ? 'max-w-7xl' : 'max-w-5xl',
+        className
+      )}
+    >
       {children}
     </div>
   );

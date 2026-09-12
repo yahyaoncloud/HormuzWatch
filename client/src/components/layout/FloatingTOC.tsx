@@ -16,7 +16,10 @@ export function FloatingTOC({
   onNavigate: (id: string) => void;
 }) {
   return (
-    <nav aria-label="On this page" className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto py-2 border-l border-[var(--color-border)] pl-1 rounded-none">
+    <nav
+      aria-label="On this page"
+      className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto py-2 border-l border-[var(--color-border)] pl-1 rounded-none"
+    >
       <h3 className="mb-3 font-display text-xs font-semibold uppercase tracking-wider text-[var(--color-fg-muted)] px-3">
         On This Page
       </h3>

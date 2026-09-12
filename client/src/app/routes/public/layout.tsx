@@ -1,1 +1,1 @@
-export { RootLayout as default } from "@/components/layout/RootLayout";
+export { RootLayout as default } from '@/components/layout/RootLayout';

@@ -1,7 +1,7 @@
 {
   "registry_version": "1.0.0",
-  "last_updated": "2026-09-05T15:03:25.941770+00:00",
-  "total_datasets": 2,
+  "last_updated": "2026-09-12T06:35:25.365184+00:00",
+  "total_datasets": 3,
   "datasets": {
     "dataset_aircraft_20260902_2200_20260903_2200": {
       "dataset_id": "dataset_aircraft_20260902_2200_20260903_2200",
@@ -86,6 +86,49 @@
         "val.csv": {
           "sha256": "681f99e4c9fca9c821acf98924b0f9ae659096e73f76505d5026755963a7b4ed",
           "size_bytes": 5965501
+        }
+      }
+    },
+    "dataset_vessel_20260912_0635": {
+      "dataset_id": "dataset_vessel_20260912_0635",
+      "domain": "vessel",
+      "version": "1.0.0",
+      "created_at": "2026-09-12T06:35:25.365184+00:00",
+      "total_rows": 1000,
+      "train_rows": 700,
+      "val_rows": 150,
+      "test_rows": 150,
+      "schema_version": "2.0.0",
+      "feature_version": "v2.0.0",
+      "total_size_bytes": 510935,
+      "files": {
+        "data.csv": {
+          "sha256": "f65c9a886e8c2c331d9309398b73c5a1f14cfb7b8d07a405f96ca93ddf4f9625",
+          "size_bytes": 253362
+        },
+        "metadata.json": {
+          "sha256": "0f757fd3e05a89862d311930b2182ff4d968d304bb00fcfa3d12e5e0b370ddf6",
+          "size_bytes": 930
+        },
+        "quality_report.json": {
+          "sha256": "4224e0e50d2cdc655b1660a4bf7b9d86433376fbcb8236e9fc303547af19a614",
+          "size_bytes": 1822
+        },
+        "quality_report.md": {
+          "sha256": "00949c9d55e02b028f6dad44b92495e86a284fc85514097978c907d298148e8f",
+          "size_bytes": 717
+        },
+        "test.csv": {
+          "sha256": "67b342a423a198081f749d226e798114f6dbf155e6149a4d04bbcc349eb81b00",
+          "size_bytes": 38384
+        },
+        "train.csv": {
+          "sha256": "aa5d8f7125ab96b9eb2b3faeb305a981ae3d84af61622f8f49330cd724b7cb07",
+          "size_bytes": 177708
+        },
+        "val.csv": {
+          "sha256": "eaa3e054830fc5de002660cc408b464cedb190126b837afe73fa2c39978b537e",
+          "size_bytes": 38012
         }
       }
     }

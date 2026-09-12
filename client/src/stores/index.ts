@@ -1,8 +1,8 @@
+import { enableMapSet } from 'immer';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { create } from 'zustand';
 import { persist, subscribeWithSelector } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { enableMapSet } from 'immer';
 
 // Enable Map and Set support for Immer across all Zustand stores
 enableMapSet();
@@ -257,12 +257,12 @@ export const useMapStore = create<MapState>()(
 // ============================================================
 
 import type {
+  AnomalyPayload,
+  ConflictEvent,
   StatsPayload,
   TelemetryPayload,
-  AnomalyPayload,
-  TracesPayload,
   TopTrace,
-  ConflictEvent,
+  TracesPayload,
 } from '@/types/websocket';
 
 type WSStatus = 'disconnected' | 'connecting' | 'connected';
@@ -785,7 +785,6 @@ export const useSettingsStore = create<SettingsState>()(
   )
 );
 
-export * from './slices/map.store';
 export * from './slices/health.store';
+export * from './slices/map.store';
 export * from './slices/serverStatus.store';
-

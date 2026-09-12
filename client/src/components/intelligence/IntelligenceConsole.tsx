@@ -1,12 +1,5 @@
+import { Compass, FileText, Layers, Plane, ShieldAlert, Ship } from 'lucide-react';
 import { useState } from 'react';
-import {
-  Compass,
-  FileText,
-  Layers,
-  Plane,
-  Ship,
-  ShieldAlert,
-} from 'lucide-react';
 import type { NewsItem } from '@/lib/api';
 import { cn } from '@/utils/cn';
 
@@ -54,15 +47,35 @@ export function IntelligenceConsole({
     time: item.pubDate
       ? formatTimeAgo(new Date(item.pubDate).getTime())
       : (item as any).pub_date
-      ? formatTimeAgo(new Date((item as any).pub_date).getTime())
-      : '',
+        ? formatTimeAgo(new Date((item as any).pub_date).getTime())
+        : '',
   }));
 
   const watchZones = [
-    { id: 'AREA-HORMUZ', name: 'Strait of Hormuz (TSS)', color: '#FF0055', desc: 'Critical Maritime Chokepoint & TSS' },
-    { id: 'AREA-PGULF', name: 'Persian Gulf Basin', color: '#FF9900', desc: 'Central & Northern Tanker Basin' },
-    { id: 'AREA-GOMAN', name: 'Gulf of Oman', color: '#00E5FF', desc: 'Deep-Water Ingress & Egress' },
-    { id: 'AREA-FUJAIRAH', name: 'Fujairah Anchorage (FOA)', color: '#00E676', desc: 'Global Bunkering & STS Anchorage' },
+    {
+      id: 'AREA-HORMUZ',
+      name: 'Strait of Hormuz (TSS)',
+      color: '#FF0055',
+      desc: 'Critical Maritime Chokepoint & TSS',
+    },
+    {
+      id: 'AREA-PGULF',
+      name: 'Persian Gulf Basin',
+      color: '#FF9900',
+      desc: 'Central & Northern Tanker Basin',
+    },
+    {
+      id: 'AREA-GOMAN',
+      name: 'Gulf of Oman',
+      color: '#00E5FF',
+      desc: 'Deep-Water Ingress & Egress',
+    },
+    {
+      id: 'AREA-FUJAIRAH',
+      name: 'Fujairah Anchorage (FOA)',
+      color: '#00E676',
+      desc: 'Global Bunkering & STS Anchorage',
+    },
   ];
 
   return (
@@ -135,7 +148,9 @@ export function IntelligenceConsole({
             <div className="space-y-2">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-fg-muted)] flex items-center justify-between">
                 <span>Active Geofence Corridors</span>
-                <span className="font-mono text-[9px] text-[var(--color-primary-600)]">Hover to Highlight</span>
+                <span className="font-mono text-[9px] text-[var(--color-primary-600)]">
+                  Hover to Highlight
+                </span>
               </div>
               <div className="space-y-1">
                 {watchZones.map((z) => {
@@ -151,7 +166,9 @@ export function IntelligenceConsole({
                         }
                       }}
                       onMouseEnter={() => highlightZone(z.id)}
-                      onMouseLeave={() => highlightZone(selectedRegion !== 'all' ? selectedRegion : null)}
+                      onMouseLeave={() =>
+                        highlightZone(selectedRegion !== 'all' ? selectedRegion : null)
+                      }
                       className={cn(
                         'w-full flex items-center justify-between px-2.5 py-2 cursor-pointer text-left transition-all group rounded-xs border',
                         isSelected
@@ -207,7 +224,9 @@ export function IntelligenceConsole({
             <div className="space-y-2">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-fg-muted)] flex items-center justify-between">
                 <span>Real-Time Intelligence Log</span>
-                <span className="font-mono text-[9px] text-[var(--color-primary-600)]">Live Updates</span>
+                <span className="font-mono text-[9px] text-[var(--color-primary-600)]">
+                  Live Updates
+                </span>
               </div>
               <div className="space-y-1.5">
                 {notations.length === 0 ? (
@@ -251,10 +270,27 @@ export function IntelligenceConsole({
                 </div>
                 <div className="space-y-1.5 p-2 bg-[var(--color-bg-input)] border border-[var(--color-border)] tactical-beveled">
                   {[
-                    { color: '#22c55e', label: 'NOMINAL TRANSIT', desc: 'Standard SOG & course within shipping corridor' },
-                    { color: '#eab308', label: 'MEDIUM VARIANCE', desc: 'Minor course delta, deceleration or anchored' },
-                    { color: '#f97316', label: 'HIGH ANOMALY', desc: 'AIS dark period, erratic maneuvers or hot zone approach' },
-                    { color: '#ef4444', label: 'CRITICAL THREAT', desc: 'ML ensemble anomaly score ≥80 or kinetic proximity', pulse: true },
+                    {
+                      color: '#22c55e',
+                      label: 'NOMINAL TRANSIT',
+                      desc: 'Standard SOG & course within shipping corridor',
+                    },
+                    {
+                      color: '#eab308',
+                      label: 'MEDIUM VARIANCE',
+                      desc: 'Minor course delta, deceleration or anchored',
+                    },
+                    {
+                      color: '#f97316',
+                      label: 'HIGH ANOMALY',
+                      desc: 'AIS dark period, erratic maneuvers or hot zone approach',
+                    },
+                    {
+                      color: '#ef4444',
+                      label: 'CRITICAL THREAT',
+                      desc: 'ML ensemble anomaly score ≥80 or kinetic proximity',
+                      pulse: true,
+                    },
                   ].map((m) => (
                     <div key={m.label} className="flex items-center gap-2">
                       <div
@@ -272,8 +308,12 @@ export function IntelligenceConsole({
                         </svg>
                       </div>
                       <div className="min-w-0">
-                        <div className="font-mono text-[10px] font-bold text-[var(--color-fg)] uppercase">{m.label}</div>
-                        <div className="font-mono text-[9px] text-[var(--color-fg-muted)] leading-tight">{m.desc}</div>
+                        <div className="font-mono text-[10px] font-bold text-[var(--color-fg)] uppercase">
+                          {m.label}
+                        </div>
+                        <div className="font-mono text-[9px] text-[var(--color-fg-muted)] leading-tight">
+                          {m.desc}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -295,8 +335,12 @@ export function IntelligenceConsole({
                       </svg>
                     </div>
                     <div className="min-w-0">
-                      <div className="font-mono text-[10px] font-bold text-[var(--color-fg)] uppercase">AIR CORRIDOR FLIGHTS</div>
-                      <div className="font-mono text-[9px] text-[var(--color-fg-muted)] leading-tight">ADS-B transponder vectors, squawk & altitude</div>
+                      <div className="font-mono text-[10px] font-bold text-[var(--color-fg)] uppercase">
+                        AIR CORRIDOR FLIGHTS
+                      </div>
+                      <div className="font-mono text-[9px] text-[var(--color-fg-muted)] leading-tight">
+                        ADS-B transponder vectors, squawk & altitude
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -314,8 +358,12 @@ export function IntelligenceConsole({
                       <span className="font-mono text-[11px] font-bold text-rose-500">⊕</span>
                     </div>
                     <div className="min-w-0">
-                      <div className="font-mono text-[10px] font-bold text-[var(--color-fg)] uppercase">VERIFIED INCIDENT RETICLE</div>
-                      <div className="font-mono text-[9px] text-[var(--color-fg-muted)] leading-tight">UKMTO, NASA FIRMS, naval events & OSINT strikes</div>
+                      <div className="font-mono text-[10px] font-bold text-[var(--color-fg)] uppercase">
+                        VERIFIED INCIDENT RETICLE
+                      </div>
+                      <div className="font-mono text-[9px] text-[var(--color-fg-muted)] leading-tight">
+                        UKMTO, NASA FIRMS, naval events & OSINT strikes
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -330,19 +378,27 @@ export function IntelligenceConsole({
                 <div className="space-y-1.5 p-2 bg-[var(--color-bg-input)] border border-[var(--color-border)] tactical-beveled font-mono text-[9px]">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 border border-[#FF0055] bg-[#FF0055]/20 inline-block" />
-                    <span className="font-bold text-[var(--color-fg)]">HORMUZ TSS / CHOKEPOINT</span>
+                    <span className="font-bold text-[var(--color-fg)]">
+                      HORMUZ TSS / CHOKEPOINT
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 border border-[#FF9900] bg-[#FF9900]/20 inline-block" />
-                    <span className="font-bold text-[var(--color-fg)]">PERSIAN GULF TANKER BASIN</span>
+                    <span className="font-bold text-[var(--color-fg)]">
+                      PERSIAN GULF TANKER BASIN
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 border border-[#00E5FF] bg-[#00E5FF]/20 inline-block" />
-                    <span className="font-bold text-[var(--color-fg)]">GULF OF OMAN INGRESS/EGRESS</span>
+                    <span className="font-bold text-[var(--color-fg)]">
+                      GULF OF OMAN INGRESS/EGRESS
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 border border-[#00E676] bg-[#00E676]/20 inline-block" />
-                    <span className="font-bold text-[var(--color-fg)]">FUJAIRAH ANCHORAGE (FOA)</span>
+                    <span className="font-bold text-[var(--color-fg)]">
+                      FUJAIRAH ANCHORAGE (FOA)
+                    </span>
                   </div>
                 </div>
               </div>

@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
-import { ShieldAlert, Search, Filter } from 'lucide-react';
+import { Filter, Search, ShieldAlert } from 'lucide-react';
+import type React from 'react';
+import { useMemo, useState } from 'react';
 import { cn } from '@/utils/cn';
-import { AnomalyEventRow, type AnomalyEventData } from './AnomalyEventRow';
+import { type AnomalyEventData, AnomalyEventRow } from './AnomalyEventRow';
 
 export interface ActiveAnomaliesPanelProps {
   anomalies: AnomalyEventData[];
@@ -33,7 +34,7 @@ export const ActiveAnomaliesPanel: React.FC<ActiveAnomaliesPanelProps> = ({
   const [severityFilter, setSeverityFilter] = useState('all');
 
   const sortedAndFiltered = useMemo(() => {
-    let list = anomalies.filter((a) => {
+    const list = anomalies.filter((a) => {
       if (a.score < 1 && (!a.severity || a.severity === 'low' || a.severity === 'nominal')) {
         return false;
       }
@@ -45,7 +46,9 @@ export const ActiveAnomaliesPanel: React.FC<ActiveAnomaliesPanelProps> = ({
         const name = (a.assetName || '').toLowerCase();
         const id = (a.trackId || '').toLowerCase();
         const region = (a.region || '').toLowerCase();
-        const reasons = Array.isArray(a.reasons) ? a.reasons.join(' ').toLowerCase() : (a.reasons || '').toLowerCase();
+        const reasons = Array.isArray(a.reasons)
+          ? a.reasons.join(' ').toLowerCase()
+          : (a.reasons || '').toLowerCase();
         return name.includes(q) || id.includes(q) || region.includes(q) || reasons.includes(q);
       }
       return true;
@@ -134,9 +137,12 @@ export const ActiveAnomaliesPanel: React.FC<ActiveAnomaliesPanelProps> = ({
         {sortedAndFiltered.length === 0 && (
           <div className="py-12 text-center font-mono text-xs text-[var(--color-fg-muted)] border border-dashed border-[var(--color-border)] bg-[var(--color-bg-input)] p-4">
             <ShieldAlert className="w-8 h-8 text-[var(--color-fg-subtle)] mx-auto mb-2" />
-            <div className="text-[var(--color-fg)] font-bold uppercase">NO ACTIVE ANOMALIES MATCHING CRITERIA</div>
+            <div className="text-[var(--color-fg)] font-bold uppercase">
+              NO ACTIVE ANOMALIES MATCHING CRITERIA
+            </div>
             <div className="text-[10px] text-[var(--color-fg-muted)] mt-1">
-              All vessels & air assets operating within nominal kinematic corridors (threshold: score &ge; 1).
+              All vessels & air assets operating within nominal kinematic corridors (threshold:
+              score &ge; 1).
             </div>
           </div>
         )}

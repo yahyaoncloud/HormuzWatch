@@ -1,10 +1,10 @@
-import { CheckSquare, Square, ListTodo } from "lucide-react";
-import { useState } from "react";
+import { CheckSquare, ListTodo, Square } from 'lucide-react';
+import { useState } from 'react';
 
 export interface TodoItem {
   id: string;
   title: string;
-  category: "API & Data" | "UI & UX" | "ML & Anomaly" | "Security & Auth";
+  category: 'API & Data' | 'UI & UX' | 'ML & Anomaly' | 'Security & Auth';
   completed: boolean;
   notes?: string;
 }
@@ -47,7 +47,9 @@ export function PageTodoList({ pageTitle, items: initialItems }: PageTodoListPro
             <span className="font-mono text-xs font-bold text-[var(--color-fg)]">
               {completedCount} / {items.length} Done
             </span>
-            <span className="block font-mono text-[10px] text-[var(--color-primary-600)]">{progressPct}% Complete</span>
+            <span className="block font-mono text-[10px] text-[var(--color-primary-600)]">
+              {progressPct}% Complete
+            </span>
           </div>
           <div className="w-20 bg-[var(--color-bg)] h-2 rounded-full overflow-hidden border border-[var(--color-border)]">
             <div
@@ -65,8 +67,8 @@ export function PageTodoList({ pageTitle, items: initialItems }: PageTodoListPro
             onClick={() => toggleItem(todo.id)}
             className={`p-3 rounded-lg border cursor-pointer transition-all flex items-start gap-3 ${
               todo.completed
-                ? "bg-[var(--color-success)]/10 border-[var(--color-success)]/30 opacity-75"
-                : "bg-[var(--color-bg)] border-[var(--color-border)] hover:border-[var(--color-primary-600)]/50"
+                ? 'bg-[var(--color-success)]/10 border-[var(--color-success)]/30 opacity-75'
+                : 'bg-[var(--color-bg)] border-[var(--color-border)] hover:border-[var(--color-primary-600)]/50'
             }`}
           >
             <div className="mt-0.5 shrink-0 text-[var(--color-primary-600)]">
@@ -80,7 +82,9 @@ export function PageTodoList({ pageTitle, items: initialItems }: PageTodoListPro
               <div className="flex items-center justify-between gap-2">
                 <span
                   className={`font-ui text-xs font-semibold ${
-                    todo.completed ? "line-through text-[var(--color-fg-muted)]" : "text-[var(--color-fg)]"
+                    todo.completed
+                      ? 'line-through text-[var(--color-fg-muted)]'
+                      : 'text-[var(--color-fg)]'
                   }`}
                 >
                   {todo.title}
@@ -90,7 +94,9 @@ export function PageTodoList({ pageTitle, items: initialItems }: PageTodoListPro
                 </span>
               </div>
               {todo.notes && (
-                <p className="text-[11px] font-ui text-[var(--color-fg-muted)] mt-1">{todo.notes}</p>
+                <p className="text-[11px] font-ui text-[var(--color-fg-muted)] mt-1">
+                  {todo.notes}
+                </p>
               )}
             </div>
           </div>

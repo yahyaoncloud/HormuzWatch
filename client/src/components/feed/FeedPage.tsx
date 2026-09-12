@@ -1,15 +1,14 @@
-import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getLatestNews, getTopTraces, getConflictFeed } from '@/lib/api';
-import { useRealtimeStore } from '@/stores';
-
-import { FeedToolbar } from './FeedToolbar';
-import { FeedFilters, type FeedEventType } from './FeedFilters';
-import { FeedTimeline } from './FeedTimeline';
+import { useMemo, useState } from 'react';
 import type { AnomalyEventData } from '@/components/intelligence/AnomalyEventRow';
-import type { NewsArticleItem } from './NewsFeedEvent';
+import { getConflictFeed, getLatestNews, getTopTraces } from '@/lib/api';
+import { useRealtimeStore } from '@/stores';
 import type { ConflictEvent } from '@/types/websocket';
 import { cn } from '@/utils/cn';
+import { type FeedEventType, FeedFilters } from './FeedFilters';
+import { FeedTimeline } from './FeedTimeline';
+import { FeedToolbar } from './FeedToolbar';
+import type { NewsArticleItem } from './NewsFeedEvent';
 
 export interface FeedPageProps {
   onViewOnMap?: (id: string, lat?: number, lon?: number) => void;
@@ -22,28 +21,40 @@ export function FeedPage({ onViewOnMap, className }: FeedPageProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Queries
-  const { data: newsData, refetch: refetchNews, isRefetching: isRefetchingNews } = useQuery({
+  const {
+    data: newsData,
+    refetch: refetchNews,
+    isRefetching: isRefetchingNews,
+  } = useQuery({
     queryKey: ['feed-news'],
     queryFn: () => getLatestNews(),
     refetchInterval: 60000,
     staleTime: 30000,
   });
 
-  const { data: tracesData, refetch: refetchTraces, isRefetching: isRefetchingTraces } = useQuery({
+  const {
+    data: tracesData,
+    refetch: refetchTraces,
+    isRefetching: isRefetchingTraces,
+  } = useQuery({
     queryKey: ['feed-traces'],
     queryFn: getTopTraces,
     refetchInterval: false,
     staleTime: 60000,
   });
 
-  const { data: conflictData, refetch: refetchConflicts, isRefetching: isRefetchingConflicts } = useQuery({
+  const {
+    data: conflictData,
+    refetch: refetchConflicts,
+    isRefetching: isRefetchingConflicts,
+  } = useQuery({
     queryKey: ['feed-conflicts'],
     queryFn: getConflictFeed,
     refetchInterval: 30000,
     staleTime: 15000,
   });
 
-  const liveTelemetry = useRealtimeStore((s) => s.telemetry);
+  const liveTelemetryTimestamp = useRealtimeStore((s) => s.telemetry?.timestamp);
 
   const handleRefresh = () => {
     refetchNews();
@@ -65,7 +76,10 @@ export function FeedPage({ onViewOnMap, className }: FeedPageProps) {
           const parsed = JSON.parse(t.reasons);
           reasons = Array.isArray(parsed) ? parsed : [String(parsed)];
         } catch {
-          reasons = t.reasons.split(';').map((s: string) => s.trim()).filter(Boolean);
+          reasons = t.reasons
+            .split(';')
+            .map((s: string) => s.trim())
+            .filter(Boolean);
         }
       }
 
@@ -91,7 +105,8 @@ export function FeedPage({ onViewOnMap, className }: FeedPageProps) {
 
   // Normalized news
   const news: NewsArticleItem[] = useMemo(() => {
-    const raw = (newsData as any)?.articles || (newsData as any)?.data || (newsData as any)?.news || [];
+    const raw =
+      (newsData as any)?.articles || (newsData as any)?.data || (newsData as any)?.news || [];
     return raw;
   }, [newsData]);
 
@@ -101,10 +116,17 @@ export function FeedPage({ onViewOnMap, className }: FeedPageProps) {
   }, [conflictData?.conflicts]);
 
   const totalEvents = anomalies.length + conflicts.length + news.length;
-  const latestTimestamp = liveTelemetry?.timestamp || (news.length > 0 ? news[0].published_at || news[0].created_at : undefined);
+  const latestTimestamp =
+    liveTelemetryTimestamp ||
+    (news.length > 0 ? news[0].published_at || news[0].created_at : undefined);
 
   return (
-    <div className={cn('w-full max-w-[1600px] mx-auto px-2 sm:px-3 py-2 space-y-2 h-[calc(100vh-3.2rem)] flex flex-col overflow-hidden select-none', className)}>
+    <div
+      className={cn(
+        'w-full max-w-[1600px] mx-auto px-2 sm:px-3 py-2 space-y-2 h-[calc(100vh-3.2rem)] flex flex-col overflow-hidden select-none',
+        className
+      )}
+    >
       {/* 1. Feed Toolbar */}
       <FeedToolbar
         totalEvents={totalEvents}

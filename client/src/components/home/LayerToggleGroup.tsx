@@ -1,5 +1,5 @@
-import React from 'react';
-import { Ship, Plane, AlertTriangle, Layers, Eye, EyeOff, Activity } from 'lucide-react';
+import { Activity, AlertTriangle, Eye, EyeOff, Layers, Plane, Ship } from 'lucide-react';
+import type React from 'react';
 import { cn } from '@/utils/cn';
 
 export interface LayerToggleGroupProps {

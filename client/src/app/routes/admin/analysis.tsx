@@ -1,21 +1,21 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { env } from "@/environments/environment";
-import { useState } from "react";
+import { useMutation, useQuery } from '@tanstack/react-query';
 import {
-  BarChart3,
-  PieChart,
   Activity,
-  Zap,
-  RefreshCw,
-  Play,
-  FileSearch,
-  Calendar,
-  Gauge,
   AlertTriangle,
-  Ship,
-  Plane,
+  BarChart3,
+  Calendar,
+  FileSearch,
+  Gauge,
   Layers,
-} from "lucide-react";
+  PieChart,
+  Plane,
+  Play,
+  RefreshCw,
+  Ship,
+  Zap,
+} from 'lucide-react';
+import { useState } from 'react';
+import { env } from '@/environments/environment';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -41,7 +41,7 @@ interface AnalysisResult {
 
 // ── API Helpers ────────────────────────────────────────────────────────────
 
-const ANALYSIS_BASE = env.mlServiceUrl || "http://localhost:8090";
+const ANALYSIS_BASE = env.mlServiceUrl || 'http://localhost:8090';
 
 async function fetchAnalysis<T>(path: string): Promise<T> {
   const res = await fetch(`${ANALYSIS_BASE}${path}`);
@@ -52,10 +52,10 @@ async function fetchAnalysis<T>(path: string): Promise<T> {
 }
 
 async function triggerAnalysis(dataset?: string): Promise<AnalysisResult> {
-  const params = dataset ? `?dataset=${encodeURIComponent(dataset)}` : "";
-  const res = await fetch(`${ANALYSIS_BASE}/api/analysis/run${params}`, { method: "POST" });
+  const params = dataset ? `?dataset=${encodeURIComponent(dataset)}` : '';
+  const res = await fetch(`${ANALYSIS_BASE}/api/analysis/run${params}`, { method: 'POST' });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "Request failed" }));
+    const err = await res.json().catch(() => ({ error: 'Request failed' }));
     throw new Error((err as { error?: string }).error || `HTTP ${res.status}`);
   }
   return res.json();
@@ -66,16 +66,16 @@ function chartUrl(name: string): string {
 }
 
 function formatSize(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB"];
+  if (bytes === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[Math.min(i, units.length - 1)]}`;
+  return `${(bytes / 1024 ** i).toFixed(1)} ${units[Math.min(i, units.length - 1)]}`;
 }
 
 function formatAge(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
+  if (mins < 1) return 'Just now';
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
@@ -85,7 +85,7 @@ function formatAge(dateStr: string): string {
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function AdminAnalysis() {
-  const [selectedDataset, setSelectedDataset] = useState<string>("");
+  const [selectedDataset, setSelectedDataset] = useState<string>('');
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
 
   // Fetch available datasets
@@ -94,8 +94,9 @@ export default function AdminAnalysis() {
     isLoading: dsLoading,
     error: dsError,
   } = useQuery({
-    queryKey: ["analysis", "datasets"],
-    queryFn: () => fetchAnalysis<{ datasets: DatasetInfo[]; count: number }>("/api/analysis/datasets"),
+    queryKey: ['analysis', 'datasets'],
+    queryFn: () =>
+      fetchAnalysis<{ datasets: DatasetInfo[]; count: number }>('/api/analysis/datasets'),
     refetchInterval: 30000,
   });
 
@@ -105,8 +106,8 @@ export default function AdminAnalysis() {
     isLoading: chartsLoading,
     error: chartsError,
   } = useQuery({
-    queryKey: ["analysis", "charts"],
-    queryFn: () => fetchAnalysis<{ charts: ChartInfo[]; count: number }>("/api/analysis/charts"),
+    queryKey: ['analysis', 'charts'],
+    queryFn: () => fetchAnalysis<{ charts: ChartInfo[]; count: number }>('/api/analysis/charts'),
     refetchInterval: 30000,
   });
 
@@ -135,11 +136,14 @@ export default function AdminAnalysis() {
       <div className="border-b border-[var(--color-border)] pb-5">
         <div className="flex items-center gap-2">
           <BarChart3 className="h-6 w-6 text-[var(--color-primary-600)]" />
-          <h1 className="font-display text-2xl font-bold text-[var(--color-fg)]">Dataset Analysis</h1>
+          <h1 className="font-display text-2xl font-bold text-[var(--color-fg)]">
+            Dataset Analysis
+          </h1>
         </div>
         <p className="font-ui text-sm text-[var(--color-fg-muted)] mt-1">
-          Analyze exported datasets to generate intelligence charts. Requires the Python analysis engine (ml-service).
-          Exported datasets from the Dataset Pipeline are automatically detected.
+          Analyze exported datasets to generate intelligence charts. Requires the Python analysis
+          engine (ml-service). Exported datasets from the Dataset Pipeline are automatically
+          detected.
         </p>
       </div>
 
@@ -192,13 +196,14 @@ export default function AdminAnalysis() {
         {/* Results Feedback */}
         {runMutation.isError && (
           <div className="p-3 rounded-md bg-red-500/15 border border-red-500/30 text-xs text-red-400 font-mono">
-            Analysis failed: {runMutation.error instanceof Error ? runMutation.error.message : "Unknown error"}
+            Analysis failed:{' '}
+            {runMutation.error instanceof Error ? runMutation.error.message : 'Unknown error'}
           </div>
         )}
         {analysisResult && runMutation.isSuccess && (
           <div className="p-3 rounded-md bg-[var(--color-success)]/15 border border-[var(--color-success)]/30 text-xs text-[var(--color-success)] font-mono">
             Analysis complete: {analysisResult.dataset} &mdash; {analysisResult.charts.length} chart
-            {analysisResult.charts.length !== 1 ? "s" : ""} generated
+            {analysisResult.charts.length !== 1 ? 's' : ''} generated
           </div>
         )}
       </div>
@@ -288,11 +293,9 @@ export default function AdminAnalysis() {
         ) : hasError ? (
           <div className="p-8 text-center space-y-2">
             <AlertTriangle className="h-8 w-8 mx-auto text-amber-400 opacity-60" />
-            <p className="text-sm text-amber-400 font-semibold">
-              Analysis engine unavailable
-            </p>
+            <p className="text-sm text-amber-400 font-semibold">Analysis engine unavailable</p>
             <p className="text-xs text-[var(--color-fg-muted)] max-w-md mx-auto">
-              The Python analysis service (ml-service) is not running or unreachable at{" "}
+              The Python analysis service (ml-service) is not running or unreachable at{' '}
               <code className="font-mono text-[var(--color-primary-600)]">{ANALYSIS_BASE}</code>.
               Start the service to generate and view analysis charts.
             </p>
@@ -319,7 +322,7 @@ export default function AdminAnalysis() {
                   className="w-full h-auto"
                   loading="lazy"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
+                    (e.target as HTMLImageElement).style.display = 'none';
                   }}
                 />
                 <div className="flex items-center justify-between px-3 py-2 border-t border-[var(--color-border)]">
@@ -356,7 +359,9 @@ function InsightCard({
     <div className="p-3 rounded-md border border-[var(--color-border)] bg-[var(--color-bg)]">
       <div className="flex items-center gap-1.5 mb-1">
         {icon}
-        <span className="text-[10px] font-mono uppercase text-[var(--color-fg-muted)]">{label}</span>
+        <span className="text-[10px] font-mono uppercase text-[var(--color-fg-muted)]">
+          {label}
+        </span>
       </div>
       <div className="font-mono text-lg font-bold text-[var(--color-fg)]">{value}</div>
     </div>

@@ -40,10 +40,16 @@ export default defineConfig({
     target: 'es2022',
     minify: 'esbuild',
     cssCodeSplit: true,
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 1200,
     rollupOptions: {
       output: {
         manualChunks(id) {
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/') || id.includes('node_modules/react-router/')) {
+            return 'vendor-react';
+          }
+          if (id.includes('node_modules/@supabase/')) {
+            return 'vendor-supabase';
+          }
           if (id.includes('node_modules/leaflet')) {
             return 'vendor-leaflet';
           }

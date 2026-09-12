@@ -1,8 +1,8 @@
-import React from 'react';
-import { MapPin, Navigation, Compass, ExternalLink } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import { Compass, ExternalLink, MapPin, Navigation } from 'lucide-react';
+import type React from 'react';
 import { SeverityIndicator } from '@/components/common/SeverityIndicator';
 import { TimestampDisplay } from '@/components/common/TimestampDisplay';
+import { cn } from '@/utils/cn';
 
 export interface AnomalyEventData {
   id: string;
@@ -38,8 +38,11 @@ export const AnomalyEventRow: React.FC<AnomalyEventRowProps> = ({
   const reasonsList = Array.isArray(event.reasons)
     ? event.reasons
     : typeof event.reasons === 'string' && event.reasons.trim()
-    ? event.reasons.split(';').map((s) => s.trim()).filter(Boolean)
-    : [];
+      ? event.reasons
+          .split(';')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
 
   const isAir = event.domain === 'aviation' || event.trackId.startsWith('FLIGHT-');
 
@@ -48,13 +51,21 @@ export const AnomalyEventRow: React.FC<AnomalyEventRowProps> = ({
       onClick={() => onSelect?.(event)}
       className={cn(
         'group flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 border border-[var(--color-border)] bg-[var(--color-bg-card)] tactical-beveled transition-colors cursor-pointer',
-        isSelected ? 'border-[var(--color-primary-600)] dark:border-[#38bdf8] bg-[var(--color-bg-hover)]' : 'hover:bg-[var(--color-bg-hover)]',
+        isSelected
+          ? 'border-[var(--color-primary-600)] dark:border-[#38bdf8] bg-[var(--color-bg-hover)]'
+          : 'hover:bg-[var(--color-bg-hover)]',
         className
       )}
     >
       {/* Left: Entity & Severity Info */}
       <div className="flex items-start gap-2.5 min-w-0 flex-1">
-        <SeverityIndicator severity={event.severity} score={event.score} showScore size="sm" className="shrink-0 mt-0.5" />
+        <SeverityIndicator
+          severity={event.severity}
+          score={event.score}
+          showScore
+          size="sm"
+          className="shrink-0 mt-0.5"
+        />
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">

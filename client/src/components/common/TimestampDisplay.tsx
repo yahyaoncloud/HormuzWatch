@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import type React from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/utils/cn';
 
 export interface TimestampDisplayProps {
@@ -50,8 +51,8 @@ export const TimestampDisplay: React.FC<TimestampDisplayProps> = ({
     return <span className={cn('font-mono text-[10px] text-slate-500', className)}>—</span>;
   }
 
-  const utcString = date.toISOString().substring(11, 19) + 'Z';
-  const fullUtcString = date.toISOString().replace('T', ' ').substring(0, 19) + 'Z';
+  const utcString = `${date.toISOString().substring(11, 19)}Z`;
+  const fullUtcString = `${date.toISOString().replace('T', ' ').substring(0, 19)}Z`;
 
   let display = utcString;
   if (format === 'relative') {

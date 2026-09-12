@@ -1,76 +1,76 @@
-import { useQuery } from "@tanstack/react-query";
-import { getLatestNews } from "@/lib/api";
-import type { NewsArticle } from "@/lib/api";
-import { useState, useMemo } from "react";
+import { useQuery } from '@tanstack/react-query';
 import {
-  Download,
-  Clock,
-  ExternalLink,
   Bot,
-  RefreshCw,
   CheckSquare,
+  Clock,
+  Download,
+  ExternalLink,
+  FileText,
+  Globe2,
+  Inbox,
+  RefreshCw,
   Square,
   TrendingUp,
-  Globe2,
-  FileText,
-  Inbox,
-} from "lucide-react";
+} from 'lucide-react';
+import { useMemo, useState } from 'react';
 import {
+  EmptyState,
+  ErrorState,
+  KPICardGrid,
+  LoadingState,
+  Modal,
   PageHeader,
   PageHeaderAction,
   SearchFilter,
-  LoadingState,
-  ErrorState,
-  EmptyState,
-  Modal,
-  KPICardGrid,
-} from "@/components/ui";
+} from '@/components/ui';
+import type { NewsArticle } from '@/lib/api';
+import { getLatestNews } from '@/lib/api';
 
 const TRENDING_KEYWORDS = [
-  "Hormuz Strait",
-  "GPS Jamming",
-  "IRGC Navy",
-  "Tanker Escort",
-  "Drone Intercept",
-  "Bab-el-Mandeb",
-  "Oil Tanker",
-  "AIS Spoofing",
+  'Hormuz Strait',
+  'GPS Jamming',
+  'IRGC Navy',
+  'Tanker Escort',
+  'Drone Intercept',
+  'Bab-el-Mandeb',
+  'Oil Tanker',
+  'AIS Spoofing',
 ];
 
 const CATEGORIES = [
-  { value: "all", label: "All Categories" },
-  { value: "maritime", label: "Maritime Security" },
-  { value: "military", label: "Military Movement" },
-  { value: "energy", label: "Energy & Infrastructure" },
-  { value: "sanctions", label: "Sanctions & Diplomacy" },
+  { value: 'all', label: 'All Categories' },
+  { value: 'maritime', label: 'Maritime Security' },
+  { value: 'military', label: 'Military Movement' },
+  { value: 'energy', label: 'Energy & Infrastructure' },
+  { value: 'sanctions', label: 'Sanctions & Diplomacy' },
 ] as const;
 
 const COUNTRIES = [
-  { value: "all", label: "All Regions / Countries" },
-  { value: "iran", label: "Iran (IR)" },
-  { value: "uae", label: "UAE (AE)" },
-  { value: "saudi arabia", label: "Saudi Arabia (SA)" },
-  { value: "oman", label: "Oman (OM)" },
-  { value: "us", label: "United States (US)" },
+  { value: 'all', label: 'All Regions / Countries' },
+  { value: 'iran', label: 'Iran (IR)' },
+  { value: 'uae', label: 'UAE (AE)' },
+  { value: 'saudi arabia', label: 'Saudi Arabia (SA)' },
+  { value: 'oman', label: 'Oman (OM)' },
+  { value: 'us', label: 'United States (US)' },
 ] as const;
 
 const SORT_OPTIONS = [
-  { value: "latest", label: "Sort: Latest Published" },
-  { value: "threat", label: "Sort: Highest Threat Score" },
-  { value: "trending", label: "Sort: Title Alphabetical" },
+  { value: 'latest', label: 'Sort: Latest Published' },
+  { value: 'threat', label: 'Sort: Highest Threat Score' },
+  { value: 'trending', label: 'Sort: Title Alphabetical' },
 ] as const;
 
 export default function AdminNews() {
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
-    queryKey: ["admin", "news", "latest"],
+    queryKey: ['admin', 'news', 'latest'],
     queryFn: () => getLatestNews({ limit: 100 }),
     refetchInterval: 30_000,
   });
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedCountry, setSelectedCountry] = useState("all");
-  const [sortBy, setSortBy] = useState<"latest" | "threat" | "trending">("latest");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCountry, setSelectedCountry] = useState('all');
+  const [sortBy, setSortBy] = useState<'latest' | 'threat' | 'trending'>('latest');
   const [selectedArticles, setSelectedArticles] = useState<Set<string>>(new Set());
   const [activeModalArticle, setActiveModalArticle] = useState<NewsArticle | null>(null);
 
@@ -86,20 +86,20 @@ export default function AdminNews() {
           a.source.toLowerCase().includes(searchQuery.toLowerCase());
 
         const matchesCategory =
-          selectedCategory === "all" ||
+          selectedCategory === 'all' ||
           (a.category && a.category.toLowerCase() === selectedCategory.toLowerCase());
 
         const matchesCountry =
-          selectedCountry === "all" ||
+          selectedCountry === 'all' ||
           (a.country && a.country.toLowerCase() === selectedCountry.toLowerCase());
 
         return matchesSearch && matchesCategory && matchesCountry;
       })
       .sort((a, b) => {
-        if (sortBy === "latest") {
+        if (sortBy === 'latest') {
           return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
         }
-        if (sortBy === "threat") {
+        if (sortBy === 'threat') {
           const scoreA = (a as any).threatScore ?? 50;
           const scoreB = (b as any).threatScore ?? 50;
           return scoreB - scoreA;
@@ -123,37 +123,60 @@ export default function AdminNews() {
     }
   };
 
-  const exportSelected = (format: "json" | "csv") => {
+  const exportSelected = (format: 'json' | 'csv') => {
     const targetArticles = rawArticles.filter((a) => selectedArticles.has(a.id));
     if (targetArticles.length === 0) {
-      alert("Please select at least one article to export.");
+      alert('Please select at least one article to export.');
       return;
     }
     const content =
-      format === "json"
+      format === 'json'
         ? JSON.stringify(targetArticles, null, 2)
-        : "ID,Title,Source,Country,Category,Date\n" +
+        : 'ID,Title,Source,Country,Category,Date\n' +
           targetArticles
             .map(
               (a) =>
-                `"${a.id}","${a.title.replace(/"/g, '""')}","${a.source}","${a.country || ""}","${a.category || ""}","${a.publishedAt}"`
+                `"${a.id}","${a.title.replace(/"/g, '""')}","${a.source}","${a.country || ''}","${a.category || ''}","${a.publishedAt}"`
             )
-            .join("\n");
+            .join('\n');
 
-    const blob = new Blob([content], { type: format === "json" ? "application/json" : "text/csv" });
+    const blob = new Blob([content], { type: format === 'json' ? 'application/json' : 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+    const link = document.createElement('a');
     link.href = url;
     link.download = `hormuz_news_export_${Date.now()}.${format}`;
     link.click();
   };
 
-  const kpiCards = useMemo(() => [
-    { icon: Globe2, value: rawArticles.length, label: "Total Articles", iconColor: "var(--color-primary-600)" },
-    { icon: Clock, value: filteredArticles.length, label: "Filtered", iconColor: "var(--color-info)" },
-    { icon: Bot, value: rawArticles.filter(a => a.category).length, label: "Classified", iconColor: "var(--color-warning)" },
-    { icon: ExternalLink, value: rawArticles.filter(a => a.url).length, label: "With Source URLs", iconColor: "var(--color-success)" },
-  ], [rawArticles, filteredArticles.length]);
+  const kpiCards = useMemo(
+    () => [
+      {
+        icon: Globe2,
+        value: rawArticles.length,
+        label: 'Total Articles',
+        iconColor: 'var(--color-primary-600)',
+      },
+      {
+        icon: Clock,
+        value: filteredArticles.length,
+        label: 'Filtered',
+        iconColor: 'var(--color-info)',
+      },
+      {
+        icon: Bot,
+        value: rawArticles.filter((a) => a.category).length,
+        label: 'Classified',
+        iconColor: 'var(--color-warning)',
+      },
+      {
+        icon: ExternalLink,
+        value: rawArticles.filter((a) => a.url).length,
+        label: 'With Source URLs',
+        iconColor: 'var(--color-success)',
+      },
+    ],
+    [rawArticles, filteredArticles.length]
+  );
 
   if (isLoading) {
     return <LoadingState message="Ingesting real-time intelligence feeds..." size="md" />;
@@ -163,7 +186,7 @@ export default function AdminNews() {
     return (
       <ErrorState
         title="Failed to Load Intelligence News"
-        message={error instanceof Error ? error.message : "Unknown error"}
+        message={error instanceof Error ? error.message : 'Unknown error'}
         onRetry={() => refetch()}
       />
     );
@@ -184,7 +207,9 @@ export default function AdminNews() {
               aria-label="Refresh feed"
               variant="ghost"
             >
-              <RefreshCw className={`h-4 w-4 ${isRefetching ? "animate-spin text-[var(--color-primary-600)]" : ""}`} />
+              <RefreshCw
+                className={`h-4 w-4 ${isRefetching ? 'animate-spin text-[var(--color-primary-600)]' : ''}`}
+              />
             </PageHeaderAction>
           </>
         }
@@ -198,7 +223,9 @@ export default function AdminNews() {
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--color-success)]" />
           </span>
           <div className="flex flex-col">
-            <span className="text-[10px] font-mono text-[var(--color-fg-muted)] uppercase">Live Ingest Status</span>
+            <span className="text-[10px] font-mono text-[var(--color-fg-muted)] uppercase">
+              Live Ingest Status
+            </span>
             <span className="font-mono text-xs font-bold text-[var(--color-fg)]">
               {rawArticles.length} Articles Ingested
             </span>
@@ -223,8 +250,8 @@ export default function AdminNews() {
               onClick={() => setSearchQuery(kw)}
               className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-all border ${
                 searchQuery === kw
-                  ? "bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)]"
-                  : "bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:border-[var(--color-primary-600)]/40"
+                  ? 'bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)]'
+                  : 'bg-[var(--color-bg)] border-[var(--color-border)] text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:border-[var(--color-primary-600)]/40'
               }`}
             >
               #{kw}
@@ -233,7 +260,7 @@ export default function AdminNews() {
           {searchQuery && (
             <button
               type="button"
-              onClick={() => setSearchQuery("")}
+              onClick={() => setSearchQuery('')}
               className="px-2.5 py-1 rounded-lg text-xs font-mono bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20"
             >
               Clear Filter
@@ -248,9 +275,27 @@ export default function AdminNews() {
         onSearchChange={setSearchQuery}
         searchPlaceholder="Search titles, sources, content..."
         filters={[
-          { key: "category", label: "Category", value: selectedCategory, onChange: setSelectedCategory, options: CATEGORIES },
-          { key: "country", label: "Country", value: selectedCountry, onChange: setSelectedCountry, options: COUNTRIES },
-          { key: "sort", label: "Sort", value: sortBy, onChange: (val: string) => setSortBy(val as any), options: SORT_OPTIONS },
+          {
+            key: 'category',
+            label: 'Category',
+            value: selectedCategory,
+            onChange: setSelectedCategory,
+            options: CATEGORIES,
+          },
+          {
+            key: 'country',
+            label: 'Country',
+            value: selectedCountry,
+            onChange: setSelectedCountry,
+            options: COUNTRIES,
+          },
+          {
+            key: 'sort',
+            label: 'Sort',
+            value: sortBy,
+            onChange: (val: string) => setSortBy(val as any),
+            options: SORT_OPTIONS,
+          },
         ]}
       />
 
@@ -274,14 +319,14 @@ export default function AdminNews() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => exportSelected("json")}
+                onClick={() => exportSelected('json')}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[var(--color-bg)] border border-[var(--color-border)] hover:border-[var(--color-primary-600)] text-[var(--color-fg)] text-[11px]"
               >
                 <Download className="h-3 w-3" /> Export JSON
               </button>
               <button
                 type="button"
-                onClick={() => exportSelected("csv")}
+                onClick={() => exportSelected('csv')}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[var(--color-bg)] border border-[var(--color-border)] hover:border-[var(--color-primary-600)] text-[var(--color-fg)] text-[11px]"
               >
                 <Download className="h-3 w-3" /> Export CSV
@@ -310,8 +355,8 @@ export default function AdminNews() {
                 key={a.id}
                 className={`rounded-xl border transition-all p-5 space-y-3 relative ${
                   isChecked
-                    ? "border-[var(--color-primary-600)] bg-[var(--color-primary-600)]/5"
-                    : "border-[var(--color-border)] bg-[var(--color-bg-card)] hover:border-[var(--color-primary-600)]/40"
+                    ? 'border-[var(--color-primary-600)] bg-[var(--color-primary-600)]/5'
+                    : 'border-[var(--color-border)] bg-[var(--color-bg-card)] hover:border-[var(--color-primary-600)]/40'
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -326,7 +371,7 @@ export default function AdminNews() {
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[var(--color-primary-600)]/15 text-[var(--color-primary-600)] border border-[var(--color-primary-600)]/30">
-                          {a.source || "RSS Feed"}
+                          {a.source || 'RSS Feed'}
                         </span>
                         {a.category && (
                           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--color-bg-elevated)] text-[var(--color-fg-muted)] border border-[var(--color-border)]">
@@ -351,8 +396,8 @@ export default function AdminNews() {
                       <span
                         className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
                           isHighThreat
-                            ? "bg-[var(--color-danger)]/20 text-[var(--color-danger)] border-[var(--color-danger)]/30"
-                            : "bg-amber-500/15 text-amber-500 border-amber-500/30"
+                            ? 'bg-[var(--color-danger)]/20 text-[var(--color-danger)] border-[var(--color-danger)]/30'
+                            : 'bg-amber-500/15 text-amber-500 border-amber-500/30'
                         }`}
                       >
                         THREAT SCORE: {threatScore}/100
@@ -367,7 +412,7 @@ export default function AdminNews() {
                     </h3>
 
                     <p className="text-xs text-[var(--color-fg-muted)] line-clamp-2 leading-relaxed">
-                      {a.description || "No description excerpt provided by feed source."}
+                      {a.description || 'No description excerpt provided by feed source.'}
                     </p>
 
                     <div className="flex items-center justify-between pt-1 text-[11px] font-mono text-[var(--color-fg-muted)]">
@@ -405,7 +450,12 @@ export default function AdminNews() {
       </div>
 
       {/* Article Detail Modal */}
-      <Modal open={!!activeModalArticle} onClose={() => setActiveModalArticle(null)} title="Article Intelligence Report" size="lg">
+      <Modal
+        open={!!activeModalArticle}
+        onClose={() => setActiveModalArticle(null)}
+        title="Article Intelligence Report"
+        size="lg"
+      >
         {activeModalArticle && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-1">
@@ -416,7 +466,9 @@ export default function AdminNews() {
                 {new Date(activeModalArticle.publishedAt).toLocaleString()}
               </span>
             </div>
-            <h2 className="font-display text-lg font-bold text-[var(--color-fg)]">{activeModalArticle.title}</h2>
+            <h2 className="font-display text-lg font-bold text-[var(--color-fg)]">
+              {activeModalArticle.title}
+            </h2>
 
             {/* AI Classification Card */}
             <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-500/10 space-y-2">
@@ -424,7 +476,8 @@ export default function AdminNews() {
                 <Bot className="h-4 w-4" /> OpenRouter LLM Classification Output
               </div>
               <p className="text-xs text-[var(--color-fg)] leading-relaxed font-ui">
-                "Article describes military and naval assets operating near critical choke points. High strategic relevance to Strait of Hormuz maritime security."
+                "Article describes military and naval assets operating near critical choke points.
+                High strategic relevance to Strait of Hormuz maritime security."
               </p>
               <div className="flex items-center gap-3 pt-2 text-[10px] font-mono text-purple-300">
                 <span>MODEL: google/gemini-2.5-flash</span>
@@ -435,13 +488,20 @@ export default function AdminNews() {
 
             {/* Full Content */}
             <div className="space-y-2 text-xs text-[var(--color-fg)] leading-relaxed font-ui">
-              <h4 className="font-mono text-[10px] uppercase text-[var(--color-fg-muted)] font-bold">Summary / Excerpt</h4>
-              <p>{activeModalArticle.description || "No further details supplied by intelligence feed."}</p>
+              <h4 className="font-mono text-[10px] uppercase text-[var(--color-fg-muted)] font-bold">
+                Summary / Excerpt
+              </h4>
+              <p>
+                {activeModalArticle.description ||
+                  'No further details supplied by intelligence feed.'}
+              </p>
             </div>
 
             {/* Extracted Entities */}
             <div className="space-y-2 pt-2 border-t border-[var(--color-border)]">
-              <h4 className="font-mono text-[10px] uppercase text-[var(--color-fg-muted)] font-bold">Extracted Entities & Tags</h4>
+              <h4 className="font-mono text-[10px] uppercase text-[var(--color-fg-muted)] font-bold">
+                Extracted Entities & Tags
+              </h4>
               <div className="flex flex-wrap gap-1.5">
                 <span className="px-2 py-0.5 rounded bg-[var(--color-bg)] border border-[var(--color-border)] text-[10px] font-mono text-[var(--color-fg)]">
                   Strait of Hormuz

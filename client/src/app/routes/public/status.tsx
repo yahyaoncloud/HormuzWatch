@@ -1,22 +1,22 @@
-import { useState, useEffect, useRef } from 'react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  Cpu,
+  Database,
+  Globe,
+  Pause,
+  Play,
+  Radio,
+  RefreshCw,
+  Server,
+  Terminal,
+  XCircle,
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { cn } from '@/utils/cn';
-import {
-  Server,
-  Cpu,
-  Database,
-  Radio,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  Terminal,
-  RefreshCw,
-  Play,
-  Pause,
-  Globe,
-  ArrowRight,
-} from 'lucide-react';
 
 interface ServiceHealth {
   name: string;
@@ -163,7 +163,7 @@ export default function MediatoryStatusPage() {
       } else {
         throw new Error(`HTTP ${resML.status}`);
       }
-    } catch (err: any) {
+    } catch (_err: any) {
       setServices((prev) => ({
         ...prev,
         ml: { ...prev.ml, status: 'booting', lastChecked: new Date() },
@@ -176,7 +176,11 @@ export default function MediatoryStatusPage() {
     addLog('info', 'TUNNEL', 'Cloudflare Ingress active on hormuzwatch.aburcloud.com');
     addLog('info', 'GATEWAY', 'Nginx reverse proxy initialized on port 3000');
     addLog('info', 'GO_SERVER', 'Bootstrapping HormuzWatch Intelligence Gateway...');
-    addLog('info', 'ML_ENGINE', 'Starting Python Anomaly Ensemble (IsolationForest, LOF, XGBoost)...');
+    addLog(
+      'info',
+      'ML_ENGINE',
+      'Starting Python Anomaly Ensemble (IsolationForest, LOF, XGBoost)...'
+    );
 
     checkHealth();
 
@@ -431,17 +435,28 @@ export default function MediatoryStatusPage() {
               </div>
             ) : (
               filteredLogs.map((log) => (
-                <div key={log.id} className="flex items-start gap-3 leading-relaxed hover:bg-slate-900/40 px-1 py-0.5 rounded">
-                  <span className="text-slate-500 select-none shrink-0 font-light">{log.timestamp}</span>
+                <div
+                  key={log.id}
+                  className="flex items-start gap-3 leading-relaxed hover:bg-slate-900/40 px-1 py-0.5 rounded"
+                >
+                  <span className="text-slate-500 select-none shrink-0 font-light">
+                    {log.timestamp}
+                  </span>
                   <span
                     className={cn(
                       'px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 tracking-wide',
-                      log.service === 'GO_SERVER' && 'bg-cyan-950 text-cyan-300 border border-cyan-800/40',
-                      log.service === 'ML_ENGINE' && 'bg-purple-950 text-purple-300 border border-purple-800/40',
-                      log.service === 'POSTGRES' && 'bg-amber-950 text-amber-300 border border-amber-800/40',
-                      log.service === 'TELEMETRY' && 'bg-emerald-950 text-emerald-300 border border-emerald-800/40',
-                      log.service === 'TUNNEL' && 'bg-blue-950 text-blue-300 border border-blue-800/40',
-                      log.service === 'GATEWAY' && 'bg-slate-800 text-slate-300 border border-slate-700'
+                      log.service === 'GO_SERVER' &&
+                        'bg-cyan-950 text-cyan-300 border border-cyan-800/40',
+                      log.service === 'ML_ENGINE' &&
+                        'bg-purple-950 text-purple-300 border border-purple-800/40',
+                      log.service === 'POSTGRES' &&
+                        'bg-amber-950 text-amber-300 border border-amber-800/40',
+                      log.service === 'TELEMETRY' &&
+                        'bg-emerald-950 text-emerald-300 border border-emerald-800/40',
+                      log.service === 'TUNNEL' &&
+                        'bg-blue-950 text-blue-300 border border-blue-800/40',
+                      log.service === 'GATEWAY' &&
+                        'bg-slate-800 text-slate-300 border border-slate-700'
                     )}
                   >
                     [{log.service}]

@@ -1,9 +1,9 @@
-import React from 'react';
 import { AlertCircle, ExternalLink } from 'lucide-react';
-import { cn } from '@/utils/cn';
-import type { AnomalyEventData } from './AnomalyEventRow';
+import type React from 'react';
 import { SeverityIndicator } from '@/components/common/SeverityIndicator';
 import { TimestampDisplay } from '@/components/common/TimestampDisplay';
+import { cn } from '@/utils/cn';
+import type { AnomalyEventData } from './AnomalyEventRow';
 
 export interface TopRiskEventsPanelProps {
   threats: AnomalyEventData[];
@@ -60,8 +60,8 @@ export const TopRiskEventsPanel: React.FC<TopRiskEventsPanelProps> = ({
                     rank === 1
                       ? 'bg-rose-500/10 dark:bg-rose-950 text-rose-600 dark:text-rose-400 border-rose-600/70 shadow-[0_0_4px_#ef4444]'
                       : rank <= 3
-                      ? 'bg-amber-500/10 dark:bg-amber-950 text-amber-600 dark:text-amber-400 border-amber-600/60'
-                      : 'bg-[var(--color-bg-card)] text-[var(--color-fg-muted)] border-[var(--color-border)]'
+                        ? 'bg-amber-500/10 dark:bg-amber-950 text-amber-600 dark:text-amber-400 border-amber-600/60'
+                        : 'bg-[var(--color-bg-card)] text-[var(--color-fg-muted)] border-[var(--color-border)]'
                   )}
                 >
                   #{rank}

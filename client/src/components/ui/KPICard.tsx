@@ -25,7 +25,10 @@ export function KPICard({
   onClick,
 }: KPICardProps) {
   const renderIcon = () => {
-    if (typeof Icon === 'function' || (typeof Icon === 'object' && Icon !== null && '$$typeof' in Icon && !('props' in Icon))) {
+    if (
+      typeof Icon === 'function' ||
+      (typeof Icon === 'object' && Icon !== null && '$$typeof' in Icon && !('props' in Icon))
+    ) {
       const IconComp = Icon as ComponentType<{ className?: string }>;
       return <IconComp className="h-5 w-5" />;
     }
@@ -43,7 +46,9 @@ export function KPICard({
     >
       <div className="w-full">
         <div className="flex items-center justify-between">
-          <span className="font-ui text-xs text-[var(--color-fg-muted)] uppercase tracking-wider">{label}</span>
+          <span className="font-ui text-xs text-[var(--color-fg-muted)] uppercase tracking-wider">
+            {label}
+          </span>
           <span style={{ color: iconColor }}>{renderIcon()}</span>
         </div>
         <div className="font-mono text-2xl font-bold mt-2" style={{ color: valueColor }}>

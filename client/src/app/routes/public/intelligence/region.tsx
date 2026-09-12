@@ -1,20 +1,38 @@
 import { type LoaderFunctionArgs, useLoaderData, useRouteError } from 'react-router';
-import { Section } from '@/components/layout/Section';
-import { DesktopOnlyOverlay } from '@/components/ui/DesktopOnlyOverlay';
 import {
-  RegionalDashboardBlock,
-  MetricGrid,
-  LiveMaritimeMetrics,
   LiveAviationMetrics,
+  LiveMaritimeMetrics,
+  MetricGrid,
+  RegionalDashboardBlock,
 } from '@/components/data/MetricGrid';
+import { Section } from '@/components/layout/Section';
 import { RegionalEditorialMap, type RegionKey } from '@/components/maps';
+import { DesktopOnlyOverlay } from '@/components/ui/DesktopOnlyOverlay';
+import { PageTodoList, type TodoItem } from '@/components/ui/PageTodoList';
 import { getPublicMetrics, getTopTraces } from '@/lib/api';
-import { PageTodoList, type TodoItem } from "@/components/ui/PageTodoList";
 
 const REGION_TODOS: TodoItem[] = [
-  { id: "r1", title: "Regional Map & Threat Matrix", category: "UI & UX", completed: true, notes: "Interactive sector map with live metrics breakdown" },
-  { id: "r2", title: "Live AIS Geo-fence Filtering", category: "API & Data", completed: false, notes: "Filter incoming WebSocket tracks by polygon bounds of selected region" },
-  { id: "r3", title: "Historical Region Risk Score Trend", category: "ML & Anomaly", completed: false, notes: "Chart comparing historical risk index over 30-day window for this sector" },
+  {
+    id: 'r1',
+    title: 'Regional Map & Threat Matrix',
+    category: 'UI & UX',
+    completed: true,
+    notes: 'Interactive sector map with live metrics breakdown',
+  },
+  {
+    id: 'r2',
+    title: 'Live AIS Geo-fence Filtering',
+    category: 'API & Data',
+    completed: false,
+    notes: 'Filter incoming WebSocket tracks by polygon bounds of selected region',
+  },
+  {
+    id: 'r3',
+    title: 'Historical Region Risk Score Trend',
+    category: 'ML & Anomaly',
+    completed: false,
+    notes: 'Chart comparing historical risk index over 30-day window for this sector',
+  },
 ];
 
 function getRegionNameByCoords(lat: number, lon: number): string {
@@ -310,123 +328,125 @@ export default function HormuzIntelligence() {
     <>
       <DesktopOnlyOverlay title="Regional Intelligence Command" subtitle="Desktop View Required" />
       <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-16 space-y-12">
-      <Section
-        id="overview"
-        title={`${data.meta.name} Intelligence`}
-        subtitle={data.meta.subtitle}
-        className="mb-8"
-        wide
-      >
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <RegionalEditorialMap
-              region={mapParamToRegionKey(data.region)}
-              className="aspect-[16/9] rounded-xl overflow-hidden glass-card "
-              height="450px"
-              showLayerControls={true}
-              showMetricsRibbon={false}
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="glass-card rounded-xl p-4">
-                <h4 className="font-display text-heading-sm text-[var(--color-fg)] mb-2">
-                  Key Statistics
-                </h4>
-                <div className="grid grid-cols-2 gap-4">
-                  {data.meta.facts.map((fact: any) => (
-                    <div key={fact.label}>
-                      <p className="font-data text-data text-[var(--color-fg)]">{fact.value}</p>
-                      <p className="font-ui text-caption text-[var(--color-fg-muted)]">
-                        {fact.label}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="glass-card rounded-xl p-4">
-                <h4 className="font-display text-heading-sm text-[var(--color-fg)] mb-2">
-                  Risk Trend (24h)
-                </h4>
-                <div className="h-20">
-                  <div className="h-full flex items-end justify-center gap-1">
-                    {data.riskTrend.map((val: any, i: any) => (
-                      <div
-                        key={`risk-${i}`}
-                        className="w-6 bg-primary/50 rounded-t"
-                        style={{ height: `${(val / 80) * 100}%` }}
-                      />
+        <Section
+          id="overview"
+          title={`${data.meta.name} Intelligence`}
+          subtitle={data.meta.subtitle}
+          className="mb-8"
+          wide
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <RegionalEditorialMap
+                region={mapParamToRegionKey(data.region)}
+                className="aspect-[16/9] rounded-xl overflow-hidden glass-card "
+                height="450px"
+                showLayerControls={true}
+                showMetricsRibbon={false}
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="glass-card rounded-xl p-4">
+                  <h4 className="font-display text-heading-sm text-[var(--color-fg)] mb-2">
+                    Key Statistics
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    {data.meta.facts.map((fact: any) => (
+                      <div key={fact.label}>
+                        <p className="font-data text-data text-[var(--color-fg)]">{fact.value}</p>
+                        <p className="font-ui text-caption text-[var(--color-fg-muted)]">
+                          {fact.label}
+                        </p>
+                      </div>
                     ))}
+                  </div>
+                </div>
+                <div className="glass-card rounded-xl p-4">
+                  <h4 className="font-display text-heading-sm text-[var(--color-fg)] mb-2">
+                    Risk Trend (24h)
+                  </h4>
+                  <div className="h-20">
+                    <div className="h-full flex items-end justify-center gap-1">
+                      {data.riskTrend.map((val: any, i: any) => (
+                        <div
+                          key={`risk-${i}`}
+                          className="w-6 bg-primary/50 rounded-t"
+                          style={{ height: `${(val / 80) * 100}%` }}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="space-y-6">
-            <MetricGrid metrics={liveMetrics} compact />
+            <div className="space-y-6">
+              <MetricGrid metrics={liveMetrics} compact />
 
-            <RegionalDashboardBlock region={data.meta.name} metrics={data.metrics} />
-          </div>
-        </div>
-      </Section>
-
-      <Section
-        id="maritime"
-        title="Maritime Domain Awareness"
-        subtitle="AIS vessel tracking and behavioral analysis"
-        className="mt-12"
-        wide
-      >
-        <LiveMaritimeMetrics columns={4} />
-      </Section>
-
-      <Section
-        id="aviation"
-        title="Aviation Domain Awareness"
-        subtitle="ADS-B aircraft tracking over the region"
-        className="mt-12"
-        wide
-      >
-        <LiveAviationMetrics columns={4} />
-      </Section>
-
-      <Section
-        id="context"
-        title="Strategic Context"
-        subtitle={`Why the ${data.meta.name} matters`}
-        className="mt-12"
-        wide
-      >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {data.meta.contexts.map((item: any) => (
-            <div key={item.title} className="glass-card rounded-xl p-6">
-              <div className="text-3xl mb-3">{item.icon}</div>
-              <h4 className="font-display text-heading-sm text-[var(--color-fg)] mb-2">
-                {item.title}
-              </h4>
-              <p className="font-ui text-body text-[var(--color-fg-muted)]">{item.desc}</p>
+              <RegionalDashboardBlock region={data.meta.name} metrics={data.metrics} />
             </div>
-          ))}
-        </div>
-      </Section>
+          </div>
+        </Section>
 
-      {/* TODO List Component */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-        <PageTodoList pageTitle={`${data.meta.name} Sector`} items={REGION_TODOS} />
+        <Section
+          id="maritime"
+          title="Maritime Domain Awareness"
+          subtitle="AIS vessel tracking and behavioral analysis"
+          className="mt-12"
+          wide
+        >
+          <LiveMaritimeMetrics columns={4} />
+        </Section>
+
+        <Section
+          id="aviation"
+          title="Aviation Domain Awareness"
+          subtitle="ADS-B aircraft tracking over the region"
+          className="mt-12"
+          wide
+        >
+          <LiveAviationMetrics columns={4} />
+        </Section>
+
+        <Section
+          id="context"
+          title="Strategic Context"
+          subtitle={`Why the ${data.meta.name} matters`}
+          className="mt-12"
+          wide
+        >
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {data.meta.contexts.map((item: any) => (
+              <div key={item.title} className="glass-card rounded-xl p-6">
+                <div className="text-3xl mb-3">{item.icon}</div>
+                <h4 className="font-display text-heading-sm text-[var(--color-fg)] mb-2">
+                  {item.title}
+                </h4>
+                <p className="font-ui text-body text-[var(--color-fg-muted)]">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        {/* TODO List Component */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+          <PageTodoList pageTitle={`${data.meta.name} Sector`} items={REGION_TODOS} />
+        </div>
       </div>
-    </div>
     </>
   );
 }
-
-
 
 export function ErrorBoundary() {
   const error = useRouteError();
   console.error('HormuzIntelligence error:', error);
   return (
     <div className="flex items-center justify-center min-h-[500px] text-[var(--color-danger)] flex-col gap-4">
-      <h3 className="font-display text-xl font-semibold">Failed to load regional intelligence data</h3>
-      <p className="font-ui text-body-sm">{error instanceof Error ? error.message : 'An unknown error occurred.'}</p>
+      <h3 className="font-display text-xl font-semibold">
+        Failed to load regional intelligence data
+      </h3>
+      <p className="font-ui text-body-sm">
+        {error instanceof Error ? error.message : 'An unknown error occurred.'}
+      </p>
     </div>
   );
 }

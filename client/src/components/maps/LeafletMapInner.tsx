@@ -13,10 +13,10 @@ import { env } from '@/environments/environment';
 import * as apiMethods from '@/lib/api';
 import { getConflictFeed } from '@/lib/api';
 import { useWebSocket } from '@/providers';
-import { useSettingsStore, useRealtimeStore } from '@/stores';
+import { useRealtimeStore, useSettingsStore } from '@/stores';
 import type { ConflictEvent } from '@/types/websocket';
 
-const CENTER: [number, number] = [26.20, 56.10];
+const CENTER: [number, number] = [26.2, 56.1];
 const ZOOM = 7;
 const DEFAULT_MIN_ZOOM = 5.5;
 const DEFAULT_MAX_ZOOM = 16;
@@ -32,20 +32,30 @@ function getTileLayerConfig(mode: BasemapMode, isDarkMode: boolean, useFallback 
 
   if (useFallback) {
     rawUrl = env.map.tileUrlFallback;
-    attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+    attribution =
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
     className = 'tactical-osm-fallback';
   } else if (effectiveMode === 'satellite') {
-    rawUrl = env.map.tileUrlSatellite || 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-    attribution = '&copy; Esri &mdash; DigitalGlobe, Earthstar Geographics, CNES/Airbus DS, USDA, USGS';
+    rawUrl =
+      env.map.tileUrlSatellite ||
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+    attribution =
+      '&copy; Esri &mdash; DigitalGlobe, Earthstar Geographics, CNES/Airbus DS, USDA, USGS';
     className = 'tactical-esri-satellite';
   } else if (effectiveMode === 'light') {
-    rawUrl = env.map.tileUrlLight || 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
-    attribution = '&copy; <a href="https://www.esri.com" target="_blank" rel="noopener noreferrer">Esri</a> &mdash; HERE, Garmin, OpenStreetMap contributors';
+    rawUrl =
+      env.map.tileUrlLight ||
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+    attribution =
+      '&copy; <a href="https://www.esri.com" target="_blank" rel="noopener noreferrer">Esri</a> &mdash; HERE, Garmin, OpenStreetMap contributors';
     className = 'tactical-esri-light';
   } else {
     // dark mode
-    rawUrl = env.map.tileUrlDark || 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
-    attribution = '&copy; <a href="https://www.esri.com" target="_blank" rel="noopener noreferrer">Esri</a> &mdash; HERE, Garmin, OpenStreetMap contributors';
+    rawUrl =
+      env.map.tileUrlDark ||
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+    attribution =
+      '&copy; <a href="https://www.esri.com" target="_blank" rel="noopener noreferrer">Esri</a> &mdash; HERE, Garmin, OpenStreetMap contributors';
     className = 'tactical-esri-dark';
   }
 
@@ -73,8 +83,8 @@ function getTileLayerConfig(mode: BasemapMode, isDarkMode: boolean, useFallback 
 }
 
 export const DEFAULT_GULF_BOUNDS: L.LatLngBoundsExpression = [
-  [21.5, 47.0],   // SW: UAE / Oman / Southern Gulf
-  [31.5, 61.5],   // NE: Northern Gulf / Shatt al-Arab / Gulf of Oman
+  [21.5, 47.0], // SW: UAE / Oman / Southern Gulf
+  [31.5, 61.5], // NE: Northern Gulf / Shatt al-Arab / Gulf of Oman
 ];
 
 export const LOCKED_BOUNDS: L.LatLngBoundsExpression = [
@@ -115,10 +125,18 @@ function classifyTrackObject(track: any): 'vessel' | 'aircraft' {
   }
 
   const assetName = String(track.assetName || track.name || track.callsign || '').toUpperCase();
-  if (/^(FDB|ETD|SVA|UAE|QTR|GFA|OMA|BOX|FAD|CHZ|KNE|THY|BAW|DLH|AFR|MSR|RJA|JZR|ABY|KAC)[0-9A-Z]+/i.test(assetName)) {
+  if (
+    /^(FDB|ETD|SVA|UAE|QTR|GFA|OMA|BOX|FAD|CHZ|KNE|THY|BAW|DLH|AFR|MSR|RJA|JZR|ABY|KAC)[0-9A-Z]+/i.test(
+      assetName
+    )
+  ) {
     return 'aircraft';
   }
-  if (assetName.startsWith('ICAO-') || assetName.startsWith('FLIGHT-') || assetName.startsWith('ADS-')) {
+  if (
+    assetName.startsWith('ICAO-') ||
+    assetName.startsWith('FLIGHT-') ||
+    assetName.startsWith('ADS-')
+  ) {
     return 'aircraft';
   }
 
@@ -171,20 +189,33 @@ function buildTrackPopupHTML(track: any): string {
   const score = Number(track.score || track.anomalyScore || 0);
 
   // Asset Name & Identifiers
-  const title = String(track.assetName || track.name || (track as any).vessel_name || (track as any).callsign || track.id || (isAircraft ? 'UNKNOWN AIRCRAFT' : 'UNKNOWN VESSEL')).trim();
+  const title = String(
+    track.assetName ||
+      track.name ||
+      (track as any).vessel_name ||
+      (track as any).callsign ||
+      track.id ||
+      (isAircraft ? 'UNKNOWN AIRCRAFT' : 'UNKNOWN VESSEL')
+  ).trim();
   const trackId = String(track.id || track.trackId || (track as any).mmsi || 'N/A');
 
   // Parse Reasons if available
   let reasonsList = '';
   try {
     let rawReasons = track.reasons;
-    if (typeof rawReasons === 'string' && (rawReasons.startsWith('[') || rawReasons.startsWith('{'))) {
+    if (
+      typeof rawReasons === 'string' &&
+      (rawReasons.startsWith('[') || rawReasons.startsWith('{'))
+    ) {
       rawReasons = JSON.parse(rawReasons);
     }
     if (Array.isArray(rawReasons) && rawReasons.length > 0) {
       reasonsList = rawReasons
         .slice(0, 3)
-        .map((r: any) => `• ${typeof r === 'string' ? r : (r.description || r.type || JSON.stringify(r))}`)
+        .map(
+          (r: any) =>
+            `• ${typeof r === 'string' ? r : r.description || r.type || JSON.stringify(r)}`
+        )
         .join('<br>');
     } else if (typeof rawReasons === 'string' && rawReasons.trim().length > 0) {
       reasonsList = rawReasons;
@@ -216,7 +247,7 @@ function buildTrackPopupHTML(track: any): string {
       <div style="background:var(--color-bg-elevated);border:1px solid var(--color-border);padding:5px 7px">
         <div style="font-size:8px;font-weight:700;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.04em">ICAO / SQUAWK</div>
         <div style="font-size:11px;font-weight:700;color:var(--color-fg);font-family:var(--font-mono, monospace);margin-top:1px">
-          ${(track as any).icao || trackId.substring(0, 8)} <span style="color:${squawkVal && ['7500','7600','7700'].includes(squawkVal) ? '#ef4444' : 'var(--color-primary-600)'}">[${squawkVal || '2000'}]</span>
+          ${(track as any).icao || trackId.substring(0, 8)} <span style="color:${squawkVal && ['7500', '7600', '7700'].includes(squawkVal) ? '#ef4444' : 'var(--color-primary-600)'}">[${squawkVal || '2000'}]</span>
         </div>
       </div>
       <div style="background:var(--color-bg-elevated);border:1px solid var(--color-border);padding:5px 7px">
@@ -243,8 +274,13 @@ function buildTrackPopupHTML(track: any): string {
     const callsignVal = (track as any).callsign;
     const draughtVal = (track as any).draft || (track as any).draught;
     const destinationVal = (track as any).destination;
-    const vesselTypeVal = (track as any).vesselType || (track as any).type || (track as any).ship_type || 'Commercial Marine Vessel';
-    const navStatusVal = (track as any).navStatus || (speed > 0.5 ? 'UNDERWAY' : 'ANCHORED / MOORED');
+    const vesselTypeVal =
+      (track as any).vesselType ||
+      (track as any).type ||
+      (track as any).ship_type ||
+      'Commercial Marine Vessel';
+    const navStatusVal =
+      (track as any).navStatus || (speed > 0.5 ? 'UNDERWAY' : 'ANCHORED / MOORED');
 
     domainSpecificGrid = `
       <div style="background:var(--color-bg-elevated);border:1px solid var(--color-border);padding:5px 7px">
@@ -271,19 +307,27 @@ function buildTrackPopupHTML(track: any): string {
           ${navStatusVal} ${draughtVal ? `<span style="color:var(--color-fg-muted)">· ${draughtVal}m</span>` : ''}
         </div>
       </div>
-      ${destinationVal ? `
+      ${
+        destinationVal
+          ? `
         <div style="grid-column:1/-1;background:var(--color-bg-elevated);border:1px solid var(--color-border);padding:4px 7px">
           <div style="font-size:8px;font-weight:700;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.04em">DESTINATION</div>
           <div style="font-size:10px;font-weight:700;color:var(--color-primary-600);font-family:var(--font-mono, monospace);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
             📍 ${destinationVal}
           </div>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
     `;
   }
 
   const regionName = getRegionNameByCoords(lat, lon);
-  const sourceName = ((track as any).provider || track.source || (isAircraft ? 'OPEN AIRSPACE ADS-B' : 'AIS LIVE STREAM')).toUpperCase();
+  const sourceName = (
+    (track as any).provider ||
+    track.source ||
+    (isAircraft ? 'OPEN AIRSPACE ADS-B' : 'AIS LIVE STREAM')
+  ).toUpperCase();
   const pingAge = track.aisAgeMinutes !== undefined ? `${track.aisAgeMinutes}m ago` : 'LIVE PING';
 
   return `
@@ -328,11 +372,15 @@ function buildTrackPopupHTML(track: any): string {
             ${score > 0 ? `${score.toFixed(0)}/100` : 'NOMINAL (0/100)'}
           </span>
         </div>
-        ${reasonsList ? `
+        ${
+          reasonsList
+            ? `
           <div style="font-size:9px;color:var(--color-fg-muted);line-height:1.3;border-top:1px dashed var(--color-border);padding-top:4px">
             ${reasonsList}
           </div>
-        ` : ''}
+        `
+            : ''
+        }
       </div>
 
       <!-- Source & Freshness Footer -->
@@ -363,14 +411,14 @@ export const WATCH_ZONES = [
     name: 'Strait of Hormuz (TSS)',
     coords: [
       [27.15, 55.95],
-      [27.20, 56.35],
+      [27.2, 56.35],
       [27.05, 56.75],
-      [26.75, 57.00],
-      [26.40, 56.90],
-      [26.15, 56.60],
+      [26.75, 57.0],
+      [26.4, 56.9],
+      [26.15, 56.6],
       [26.05, 56.15],
-      [26.30, 55.70],
-      [26.70, 55.65],
+      [26.3, 55.7],
+      [26.7, 55.65],
     ] as [number, number][],
     color: '#FF0055',
     label: 'HORMUZ TSS CHOKEPOINT',
@@ -379,18 +427,18 @@ export const WATCH_ZONES = [
     id: 'AREA-PGULF',
     name: 'Persian Gulf Maritime Basin',
     coords: [
-      [29.90, 48.60],
-      [29.80, 50.20],
-      [28.60, 51.50],
-      [27.30, 52.80],
-      [26.30, 54.80],
-      [25.60, 55.00],
-      [24.70, 53.50],
-      [24.40, 52.00],
-      [25.40, 50.80],
-      [26.80, 50.10],
-      [28.20, 49.20],
-      [29.40, 48.40],
+      [29.9, 48.6],
+      [29.8, 50.2],
+      [28.6, 51.5],
+      [27.3, 52.8],
+      [26.3, 54.8],
+      [25.6, 55.0],
+      [24.7, 53.5],
+      [24.4, 52.0],
+      [25.4, 50.8],
+      [26.8, 50.1],
+      [28.2, 49.2],
+      [29.4, 48.4],
     ] as [number, number][],
     color: '#FF9900',
     label: 'PERSIAN GULF BASIN',
@@ -399,15 +447,15 @@ export const WATCH_ZONES = [
     id: 'AREA-GOMAN',
     name: 'Gulf of Oman Approach',
     coords: [
-      [26.20, 56.80],
-      [26.40, 57.50],
-      [25.80, 58.60],
-      [25.20, 60.00],
-      [24.60, 61.20],
-      [23.40, 59.80],
-      [23.80, 58.40],
-      [24.40, 57.20],
-      [25.20, 56.60],
+      [26.2, 56.8],
+      [26.4, 57.5],
+      [25.8, 58.6],
+      [25.2, 60.0],
+      [24.6, 61.2],
+      [23.4, 59.8],
+      [23.8, 58.4],
+      [24.4, 57.2],
+      [25.2, 56.6],
     ] as [number, number][],
     color: '#00E5FF',
     label: 'GULF OF OMAN APPROACH',
@@ -416,9 +464,9 @@ export const WATCH_ZONES = [
     id: 'AREA-FUJAIRAH',
     name: 'Fujairah Offshore Anchorage (FOA)',
     coords: [
-      [25.40, 56.38],
-      [25.40, 56.70],
-      [24.95, 56.70],
+      [25.4, 56.38],
+      [25.4, 56.7],
+      [24.95, 56.7],
       [24.95, 56.38],
     ] as [number, number][],
     color: '#00E676',
@@ -480,15 +528,18 @@ export default function LeafletMapInner({
   const [tileFailed, setTileFailed] = useState(false);
   const tileErrorCountRef = useRef(0);
 
-  const handleTileError = useCallback((_e: L.TileErrorEvent) => {
-    tileErrorCountRef.current += 1;
-    if (tileErrorCountRef.current >= 8 && !tileFailed) {
-      console.warn(
-        '[LeafletMap] Primary basemap tile provider encountered repeated errors. Switching to fallback basemap.'
-      );
-      setTileFailed(true);
-    }
-  }, [tileFailed]);
+  const handleTileError = useCallback(
+    (_e: L.TileErrorEvent) => {
+      tileErrorCountRef.current += 1;
+      if (tileErrorCountRef.current >= 8 && !tileFailed) {
+        console.warn(
+          '[LeafletMap] Primary basemap tile provider encountered repeated errors. Switching to fallback basemap.'
+        );
+        setTileFailed(true);
+      }
+    },
+    [tileFailed]
+  );
 
   const clusterRef = useRef<any>(null);
   const heatRef = useRef<any>(null);
@@ -590,7 +641,11 @@ export default function LeafletMapInner({
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window === 'undefined') return true;
     const darkClass = document.documentElement.classList.contains('dark');
-    return darkClass || storeTheme === 'dark' || (storeTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    return (
+      darkClass ||
+      storeTheme === 'dark' ||
+      (storeTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    );
   });
 
   const [basemapMode, setBasemapMode] = useState<BasemapMode>('auto');
@@ -600,7 +655,8 @@ export default function LeafletMapInner({
     if (typeof window === 'undefined') return;
     const checkDark = () => {
       const darkClass = document.documentElement.classList.contains('dark');
-      const isSystemDark = storeTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isSystemDark =
+        storeTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches;
       setIsDarkMode(darkClass || storeTheme === 'dark' || isSystemDark);
     };
     checkDark();
@@ -619,7 +675,9 @@ export default function LeafletMapInner({
 
   useEffect(() => {
     if (!map) return;
-    const scaleControl = L.control.scale({ position: 'bottomleft', metric: true, imperial: true }).addTo(map);
+    const scaleControl = L.control
+      .scale({ position: 'bottomleft', metric: true, imperial: true })
+      .addTo(map);
     return () => {
       scaleControl.remove();
     };
@@ -631,7 +689,20 @@ export default function LeafletMapInner({
   const [tracks, setTracks] = useState<any[]>(tracksProp || []);
   const tracksRef = useRef<any[]>([]);
   tracksRef.current = tracks; // always latest for heatmap fallback
-  const trackMarkersRef = useRef<Map<string, { marker: L.Marker; track: any; lat: number; lon: number; heading: number; severity: string; selected: boolean }>>(new Map());
+  const trackMarkersRef = useRef<
+    Map<
+      string,
+      {
+        marker: L.Marker;
+        track: any;
+        lat: number;
+        lon: number;
+        heading: number;
+        severity: string;
+        selected: boolean;
+      }
+    >
+  >(new Map());
   const { subscribe } = useWebSocket();
   const wsConflicts = useRealtimeStore((s) => s.conflicts);
 
@@ -723,8 +794,10 @@ export default function LeafletMapInner({
         for (const t of initialTracesData) {
           const id = String(t.trackId || (t as any).id || (t as any).mmsi || '');
           if (!id) continue;
-          const lat = parseCoord(t.lat) ?? parseCoord((t as any).latitude) ?? parseCoord((t as any).lat_deg);
-          const lon = parseCoord(t.lon) ?? parseCoord((t as any).longitude) ?? parseCoord((t as any).lon_deg);
+          const lat =
+            parseCoord(t.lat) ?? parseCoord((t as any).latitude) ?? parseCoord((t as any).lat_deg);
+          const lon =
+            parseCoord(t.lon) ?? parseCoord((t as any).longitude) ?? parseCoord((t as any).lon_deg);
           if (lat === null || lon === null) continue;
           const existing = trackMap.get(id) || {};
           const severity = t.severity || existing.severity || 'low';
@@ -1136,10 +1209,26 @@ export default function LeafletMapInner({
       }
       if (regionFilter && regionFilter !== 'all') {
         const regionName = getRegionNameByCoords(lat, lon);
-        if ((regionFilter === 'hormuz' || regionFilter === 'AREA-HORMUZ') && regionName !== 'Strait of Hormuz') return false;
-        if ((regionFilter === 'pgulf' || regionFilter === 'AREA-PGULF') && regionName !== 'Persian Gulf') return false;
-        if ((regionFilter === 'goman' || regionFilter === 'AREA-GOMAN') && regionName !== 'Gulf of Oman') return false;
-        if ((regionFilter === 'fujairah' || regionFilter === 'AREA-FUJAIRAH') && regionName !== 'Fujairah Anchorage') return false;
+        if (
+          (regionFilter === 'hormuz' || regionFilter === 'AREA-HORMUZ') &&
+          regionName !== 'Strait of Hormuz'
+        )
+          return false;
+        if (
+          (regionFilter === 'pgulf' || regionFilter === 'AREA-PGULF') &&
+          regionName !== 'Persian Gulf'
+        )
+          return false;
+        if (
+          (regionFilter === 'goman' || regionFilter === 'AREA-GOMAN') &&
+          regionName !== 'Gulf of Oman'
+        )
+          return false;
+        if (
+          (regionFilter === 'fujairah' || regionFilter === 'AREA-FUJAIRAH') &&
+          regionName !== 'Fujairah Anchorage'
+        )
+          return false;
         if (regionFilter === 'redsea' && !regionName.includes('Red Sea')) return false;
       }
       if (timeline && timeline !== 'all' && track.timestamp) {
@@ -1182,7 +1271,11 @@ export default function LeafletMapInner({
           existing.lat = lat;
           existing.lon = lon;
         }
-        if (existing.heading !== heading || existing.severity !== severity || existing.selected !== selected) {
+        if (
+          existing.heading !== heading ||
+          existing.severity !== severity ||
+          existing.selected !== selected
+        ) {
           existing.marker.setIcon(makeIcon(track, severity, heading, selected));
           existing.heading = heading;
           existing.severity = severity;
@@ -1260,7 +1353,7 @@ export default function LeafletMapInner({
     });
 
     // Merge WS conflicts with REST fallback (WS preferred)
-    const allConflicts = wsConflicts.length > 0 ? wsConflicts : (conflictData?.conflicts || []);
+    const allConflicts = wsConflicts.length > 0 ? wsConflicts : conflictData?.conflicts || [];
     if (showConflicts && allConflicts.length > 0) {
       const severityColor: Record<string, string> = {
         critical: '#ef4444',
@@ -1403,12 +1496,16 @@ export default function LeafletMapInner({
                 <div style="font-size:8px;font-weight:700;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.04em">CASUALTIES / IMPACT</div>
                 <div style="font-size:10px;font-weight:700;color:${c.casualties && c.casualties !== 'None' ? 'var(--color-danger)' : 'var(--color-fg)'};margin-top:1px">${c.casualties || 'None reported'}</div>
               </div>
-              ${c.affectedAssets ? `
+              ${
+                c.affectedAssets
+                  ? `
                 <div style="grid-column:1/-1;background:var(--color-bg-elevated);border:1px solid var(--color-border);padding:4px 7px">
                   <div style="font-size:8px;font-weight:700;color:var(--color-fg-subtle);text-transform:uppercase;letter-spacing:0.04em">AFFECTED ASSETS / TARGETS</div>
                   <div style="font-size:10px;font-weight:700;color:var(--color-fg);margin-top:1px">${c.affectedAssets}</div>
                 </div>
-              ` : ''}
+              `
+                  : ''
+              }
             </div>
 
             <!-- Spatial-Temporal AIS Traffic Correlation -->
@@ -1474,9 +1571,9 @@ export default function LeafletMapInner({
   }, [recenterTrigger, map, setSearchParams]);
 
   const GULF_SECTORS = [
-    { label: 'Hormuz TSS', center: [26.45, 56.40] as [number, number], zoom: 8.5 },
-    { label: 'Persian Gulf', center: [26.60, 52.80] as [number, number], zoom: 7.2 },
-    { label: 'Gulf of Oman', center: [24.50, 58.20] as [number, number], zoom: 7.5 },
+    { label: 'Hormuz TSS', center: [26.45, 56.4] as [number, number], zoom: 8.5 },
+    { label: 'Persian Gulf', center: [26.6, 52.8] as [number, number], zoom: 7.2 },
+    { label: 'Gulf of Oman', center: [24.5, 58.2] as [number, number], zoom: 7.5 },
     { label: 'Fujairah (FOA)', center: [25.18, 56.55] as [number, number], zoom: 9.0 },
   ];
 
@@ -1502,7 +1599,18 @@ export default function LeafletMapInner({
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 6px', fontSize: '10px', fontWeight: 'bold', color: 'var(--color-primary-400)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0 6px',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            color: 'var(--color-primary-400)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          }}
+        >
           Gulf Sectors:
         </div>
         {GULF_SECTORS.map((s) => (
@@ -1562,7 +1670,18 @@ export default function LeafletMapInner({
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', padding: '0 5px 0 6px', fontSize: '9px', fontWeight: 'bold', color: 'var(--color-primary-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '0 5px 0 6px',
+              fontSize: '9px',
+              fontWeight: 'bold',
+              color: 'var(--color-primary-600)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}
+          >
             <Layers size={11} style={{ marginRight: '4px' }} />
             <span className="hidden sm:inline">BASEMAP:</span>
           </div>
@@ -1572,7 +1691,8 @@ export default function LeafletMapInner({
             { id: 'light' as const, label: 'NAUTICAL' },
           ].map((item) => {
             const isActive =
-              (basemapMode === 'auto' && ((item.id === 'dark' && isDarkMode) || (item.id === 'light' && !isDarkMode))) ||
+              (basemapMode === 'auto' &&
+                ((item.id === 'dark' && isDarkMode) || (item.id === 'light' && !isDarkMode))) ||
               basemapMode === item.id;
             return (
               <button

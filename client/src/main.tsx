@@ -1,10 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { enableMapSet } from 'immer';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { enableMapSet } from 'immer';
-import { Toaster } from '@/components/ui/toaster';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { Toaster } from '@/components/ui/toaster';
 import { App } from './App';
 import { Providers } from './providers';
 import './styles/globals.css';

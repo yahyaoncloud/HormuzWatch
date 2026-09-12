@@ -1,7 +1,7 @@
-import React from 'react';
 import { Newspaper, RefreshCw } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import type React from 'react';
 import { DataFreshnessIndicator } from '@/components/common/DataFreshnessIndicator';
+import { cn } from '@/utils/cn';
 
 export interface FeedToolbarProps {
   totalEvents: number;

@@ -41,8 +41,8 @@ pipeline {
         PREV_COMMIT = ''
         ACTIVE_DEPLOY_HOST = ''
         TRIVY_SEVERITY = 'HIGH,CRITICAL'
-        DEPLOY_HOST = '100.66.64.31'
-        DEPLOY_FALLBACK_HOST = '192.168.1.40'
+        DEPLOY_HOST = '192.168.1.40'
+        DEPLOY_FALLBACK_HOST = '100.66.64.31'
         DEPLOY_USER = 'yahya'
         DEPLOY_DIR = '/home/yahya/SHARED/Projects/HormuzWatch'
         REGISTRY = 'ghcr.io'
@@ -57,14 +57,15 @@ pipeline {
                     echo "=========================================================="
                     echo " 🌊 HormuzWatch DevOps Pipeline: Deploying ${params.BRANCH_NAME} "
                     echo " Target Slot: ${params.DEPLOY_SLOT} | Trigger: ${currentBuild.getBuildCauses()} "
+                    echo " Target Host: LATE5530 (${env.DEPLOY_HOST}) "
                     echo "=========================================================="
 
-                    // Resolve active deployment route (Tailscale primary with LAN fallback)
+                    // Resolve active deployment route to LATE5530 (LAN primary with Tailscale fallback)
                     def targetIp = sh(
                         script: """
-                            if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=3 ${env.DEPLOY_USER}@${env.DEPLOY_HOST} 'true' 2>/dev/null; then
+                            if ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=3 ${env.DEPLOY_USER}@${env.DEPLOY_HOST} 'true' 2>/dev/null; then
                                 echo "${env.DEPLOY_HOST}"
-                            elif ssh -o StrictHostKeyChecking=no -o ConnectTimeout=3 ${env.DEPLOY_USER}@${env.DEPLOY_FALLBACK_HOST} 'true' 2>/dev/null; then
+                            elif ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=3 ${env.DEPLOY_USER}@${env.DEPLOY_FALLBACK_HOST} 'true' 2>/dev/null; then
                                 echo "${env.DEPLOY_FALLBACK_HOST}"
                             else
                                 echo "${env.DEPLOY_HOST}"
@@ -148,11 +149,11 @@ pipeline {
 
                 stage('SAST: React Frontend Client') {
                     steps {
-                        echo "==> [ESLint / TypeScript] Frontend code quality & type safety check..."
+                        echo "==> [Biome / TypeScript] Frontend code quality & type safety check..."
                         sh '''
                             cd client
                             if [ -f "package.json" ] && command -v npm >/dev/null 2>&1; then
-                                npm run lint 2>/dev/null || npx eslint src --ext .ts,.tsx --max-warnings=10 2>/dev/null || echo "Frontend static check evaluated."
+                                npx @biomejs/biome check --diagnostic-level=error src/ || echo "Frontend static check evaluated."
                             fi
                             echo "==> [Client SAST] React frontend code quality check completed."
                         '''
@@ -212,10 +213,11 @@ pipeline {
 
                 stage('Verify React Client') {
                     steps {
-                        echo "==> [Client] Checking Frontend Codebase & TypeScript..."
+                        echo "==> [Client] Checking Frontend Codebase & Running Unit Tests..."
                         sh '''
                             cd client
                             if command -v npm >/dev/null 2>&1; then
+                                npm run test:run || npx vitest run
                                 npm run build || echo "Client build verified"
                             fi
                         '''

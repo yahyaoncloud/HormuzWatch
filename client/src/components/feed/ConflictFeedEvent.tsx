@@ -1,18 +1,15 @@
-import React from 'react';
-import { ExternalLink, Users, Package } from 'lucide-react';
+import { ExternalLink, Package, Users } from 'lucide-react';
+import type React from 'react';
+import type { ConflictEvent } from '@/types/websocket';
 import { FeedEvent } from './FeedEvent';
 import { FeedEventMeta } from './FeedEventMeta';
-import type { ConflictEvent } from '@/types/websocket';
 
 export interface ConflictFeedEventProps {
   conflict: ConflictEvent;
   onViewOnMap?: (id: string, lat?: number, lon?: number) => void;
 }
 
-export const ConflictFeedEvent: React.FC<ConflictFeedEventProps> = ({
-  conflict,
-  onViewOnMap,
-}) => {
+export const ConflictFeedEvent: React.FC<ConflictFeedEventProps> = ({ conflict, onViewOnMap }) => {
   return (
     <FeedEvent
       id={conflict.id}

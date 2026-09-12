@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import { Monitor, X } from 'lucide-react';
+import { useState } from 'react';
 
 export function DesktopNotice({
   title = 'Desktop View Recommended',

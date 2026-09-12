@@ -1,5 +1,5 @@
+import { ChevronDown, ChevronRight, X } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { X, ChevronDown, ChevronRight } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { cn } from '@/utils/cn';
 
@@ -83,12 +83,18 @@ export function Modal({
           <div className="flex items-start justify-between border-b border-[var(--color-border)] pb-3 mb-3">
             <div>
               {title && (
-                <h2 id="modal-title" className="font-display text-base font-semibold text-[var(--color-fg)]">
+                <h2
+                  id="modal-title"
+                  className="font-display text-base font-semibold text-[var(--color-fg)]"
+                >
                   {title}
                 </h2>
               )}
               {subtitle && (
-                <p id="modal-subtitle" className="mt-0.5 font-ui text-xs text-[var(--color-fg-muted)]">
+                <p
+                  id="modal-subtitle"
+                  className="mt-0.5 font-ui text-xs text-[var(--color-fg-muted)]"
+                >
                   {subtitle}
                 </p>
               )}
@@ -196,12 +202,18 @@ export function Drawer({
           <div className="flex items-start justify-between border-b border-[var(--color-border)] p-3">
             <div className="pr-4">
               {title && (
-                <h2 id="drawer-title" className="font-display text-base font-semibold text-[var(--color-fg)]">
+                <h2
+                  id="drawer-title"
+                  className="font-display text-base font-semibold text-[var(--color-fg)]"
+                >
                   {title}
                 </h2>
               )}
               {subtitle && (
-                <p id="drawer-subtitle" className="mt-0.5 font-ui text-xs text-[var(--color-fg-muted)]">
+                <p
+                  id="drawer-subtitle"
+                  className="mt-0.5 font-ui text-xs text-[var(--color-fg-muted)]"
+                >
                   {subtitle}
                 </p>
               )}
@@ -275,7 +287,10 @@ export function ConfirmDialog({
           type="button"
           onClick={onConfirm}
           disabled={loading}
-          className={cn('px-3.5 py-2 text-xs font-medium rounded-md transition-colors', variantStyles[variant])}
+          className={cn(
+            'px-3.5 py-2 text-xs font-medium rounded-md transition-colors',
+            variantStyles[variant]
+          )}
         >
           {loading ? 'Processing...' : confirmLabel}
         </button>

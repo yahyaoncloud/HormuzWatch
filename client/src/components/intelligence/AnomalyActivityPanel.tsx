@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
 import { Activity } from 'lucide-react';
+import type React from 'react';
+import { useMemo } from 'react';
 import { cn } from '@/utils/cn';
 import type { AnomalyEventData } from './AnomalyEventRow';
 
@@ -23,7 +24,10 @@ export const AnomalyActivityPanel: React.FC<AnomalyActivityPanelProps> = ({
     const buckets = Array.from({ length: bucketsCount }, (_, i) => {
       const bStart = startTime + i * bucketDurationMs;
       const bEnd = bStart + bucketDurationMs;
-      const timeLabel = new Date(bStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const timeLabel = new Date(bStart).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
       return {
         start: bStart,
         end: bEnd,
@@ -96,9 +100,17 @@ export const AnomalyActivityPanel: React.FC<AnomalyActivityPanelProps> = ({
                 <div className="absolute bottom-full mb-1 hidden group-hover:flex flex-col p-1.5 bg-[var(--color-bg-card)] border border-[var(--color-border)] text-[9px] font-mono whitespace-nowrap z-20 shadow-lg pointer-events-none">
                   <div className="text-[var(--color-fg)] font-bold">{b.label}</div>
                   <div className="text-[var(--color-fg-muted)]">Total: {b.count} events</div>
-                  {b.critical > 0 && <div className="text-rose-600 dark:text-rose-400">{b.critical} Critical</div>}
-                  {b.high > 0 && <div className="text-amber-600 dark:text-amber-400">{b.high} High Risk</div>}
-                  {b.maxScore > 0 && <div className="text-[var(--color-primary-600)] dark:text-[#38bdf8]">Max Score: {b.maxScore}</div>}
+                  {b.critical > 0 && (
+                    <div className="text-rose-600 dark:text-rose-400">{b.critical} Critical</div>
+                  )}
+                  {b.high > 0 && (
+                    <div className="text-amber-600 dark:text-amber-400">{b.high} High Risk</div>
+                  )}
+                  {b.maxScore > 0 && (
+                    <div className="text-[var(--color-primary-600)] dark:text-[#38bdf8]">
+                      Max Score: {b.maxScore}
+                    </div>
+                  )}
                 </div>
 
                 {/* Segmented Bar */}

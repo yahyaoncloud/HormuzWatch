@@ -1,9 +1,9 @@
-import { Link, useNavigate } from 'react-router';
+import { ArrowRight, CheckCircle2, Loader2, Lock, Mail, ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
-import { Lock, Mail, ShieldAlert, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
-import { adminRegister, isAdminEmail } from '@/lib/auth';
+import { Link, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { SpinningWireframeGlobe } from '@/components/ui/SpinningWireframeGlobe';
+import { adminRegister, isAdminEmail } from '@/lib/auth';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -50,7 +50,7 @@ export default function RegisterPage() {
       <div className="relative min-h-screen w-full flex items-center justify-center bg-[#060810] text-slate-100 px-4 sm:px-6 overflow-hidden selection:bg-indigo-600 selection:text-white font-ui">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b12_1px,transparent_1px),linear-gradient(to_bottom,#1e293b12_1px,transparent_1px)] bg-[size:36px_36px] pointer-events-none" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_75%_at_70%_-10%,rgba(129,140,248,0.18),transparent_70%)] pointer-events-none" />
-        
+
         <div className="absolute -top-32 -right-32 pointer-events-none z-0">
           <SpinningWireframeGlobe size={640} />
         </div>
@@ -59,9 +59,13 @@ export default function RegisterPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
             <CheckCircle2 className="h-6 w-6" />
           </div>
-          <h2 className="font-display text-2xl font-bold text-white">Verification Link Dispatched</h2>
+          <h2 className="font-display text-2xl font-bold text-white">
+            Verification Link Dispatched
+          </h2>
           <p className="font-ui text-xs text-slate-400 mt-2 leading-relaxed">
-            A confirmation token has been dispatched to <strong className="text-indigo-300 font-mono">{email}</strong>. Please complete the verification step to activate root console credentials.
+            A confirmation token has been dispatched to{' '}
+            <strong className="text-indigo-300 font-mono">{email}</strong>. Please complete the
+            verification step to activate root console credentials.
           </p>
           <Button
             onClick={() => navigate('/login')}

@@ -1,12 +1,12 @@
 import { useMemo } from 'react';
-import { cn } from '@/utils/cn';
-import type { FeedEventType } from './FeedFilters';
-import { AnomalyFeedEvent } from './AnomalyFeedEvent';
-import { NewsFeedEvent, type NewsArticleItem } from './NewsFeedEvent';
-import { ConflictFeedEvent } from './ConflictFeedEvent';
-import { FeedEmptyState } from './FeedEmptyState';
 import type { AnomalyEventData } from '@/components/intelligence/AnomalyEventRow';
 import type { ConflictEvent } from '@/types/websocket';
+import { cn } from '@/utils/cn';
+import { AnomalyFeedEvent } from './AnomalyFeedEvent';
+import { ConflictFeedEvent } from './ConflictFeedEvent';
+import { FeedEmptyState } from './FeedEmptyState';
+import type { FeedEventType } from './FeedFilters';
+import { type NewsArticleItem, NewsFeedEvent } from './NewsFeedEvent';
 
 export type UnifiedFeedItem =
   | { kind: 'anomaly'; data: AnomalyEventData; timestamp: number }
@@ -41,13 +41,21 @@ export const FeedTimeline: React.FC<FeedTimelineProps> = ({
     const list: UnifiedFeedItem[] = [];
 
     // 1. Add Anomalies
-    if (selectedType === 'all' || selectedType === 'anomaly' || selectedType === 'ais' || selectedType === 'aviation') {
+    if (
+      selectedType === 'all' ||
+      selectedType === 'anomaly' ||
+      selectedType === 'ais' ||
+      selectedType === 'aviation'
+    ) {
       for (const a of anomalies) {
         const isAir = a.domain === 'aviation' || a.trackId.startsWith('FLIGHT-');
         if (selectedType === 'ais' && isAir) continue;
         if (selectedType === 'aviation' && !isAir) continue;
 
-        if (selectedSeverity !== 'all' && (a.severity || 'low').toLowerCase() !== selectedSeverity) {
+        if (
+          selectedSeverity !== 'all' &&
+          (a.severity || 'low').toLowerCase() !== selectedSeverity
+        ) {
           continue;
         }
 
@@ -55,7 +63,9 @@ export const FeedTimeline: React.FC<FeedTimelineProps> = ({
           const q = searchQuery.toLowerCase();
           const name = (a.assetName || '').toLowerCase();
           const id = (a.trackId || '').toLowerCase();
-          const reasons = Array.isArray(a.reasons) ? a.reasons.join(' ').toLowerCase() : (a.reasons || '').toLowerCase();
+          const reasons = Array.isArray(a.reasons)
+            ? a.reasons.join(' ').toLowerCase()
+            : (a.reasons || '').toLowerCase();
           if (!name.includes(q) && !id.includes(q) && !reasons.includes(q)) {
             continue;
           }
@@ -69,7 +79,10 @@ export const FeedTimeline: React.FC<FeedTimelineProps> = ({
     // 2. Add Conflict Events
     if (selectedType === 'all' || selectedType === 'conflict') {
       for (const c of conflicts) {
-        if (selectedSeverity !== 'all' && (c.severity || 'low').toLowerCase() !== selectedSeverity) {
+        if (
+          selectedSeverity !== 'all' &&
+          (c.severity || 'low').toLowerCase() !== selectedSeverity
+        ) {
           continue;
         }
 
@@ -107,7 +120,10 @@ export const FeedTimeline: React.FC<FeedTimelineProps> = ({
           }
         }
 
-        const t = n.published_at || n.created_at || n.timestamp ? new Date(n.published_at || n.created_at || n.timestamp || 0).getTime() : Date.now();
+        const t =
+          n.published_at || n.created_at || n.timestamp
+            ? new Date(n.published_at || n.created_at || n.timestamp || 0).getTime()
+            : Date.now();
         list.push({ kind: 'news', data: n, timestamp: isNaN(t) ? Date.now() : t });
       }
     }
@@ -141,12 +157,7 @@ export const FeedTimeline: React.FC<FeedTimelineProps> = ({
           );
         }
         if (item.kind === 'news') {
-          return (
-            <NewsFeedEvent
-              key={`news-${item.data.id || idx}`}
-              article={item.data}
-            />
-          );
+          return <NewsFeedEvent key={`news-${item.data.id || idx}`} article={item.data} />;
         }
         return null;
       })}

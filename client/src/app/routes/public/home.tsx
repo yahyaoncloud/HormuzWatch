@@ -1,21 +1,21 @@
-import { BarChart3, Globe, Newspaper, Info, BookOpen } from 'lucide-react';
+import { BarChart3, BookOpen, Globe, Info, Newspaper } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLoaderData, useSearchParams } from 'react-router';
-import { type MetricKey } from '@/components/data/LiveStatStrip';
+import AboutPage from '@/app/routes/public/about';
+import LearnIndex from '@/app/routes/public/learn/index';
+import type { MetricKey } from '@/components/data/LiveStatStrip';
+import { FeedPage } from '@/components/feed/FeedPage';
+import { HomeMapLayout } from '@/components/home/HomePanels';
+import { HomeTopBar } from '@/components/home/HomeTopBar';
+import { useHomeTelemetry } from '@/components/home/useHomeTelemetry';
 import { IntelligenceDashboard } from '@/components/intelligence/IntelligenceDashboard';
 import { MetricDetailSheet } from '@/components/intelligence/MetricDetailSheet';
 import { ReportProgressModal } from '@/components/intelligence/ReportProgressModal';
 import { SettingsSheet } from '@/components/intelligence/SettingsSheet';
 import { ThreatDetailModal, type ThreatItem } from '@/components/intelligence/ThreatsPanel';
-import { DisclaimerModal } from '@/components/ui/DisclaimerModal';
 import { DesktopOnlyOverlay } from '@/components/ui/DesktopOnlyOverlay';
-import { HomeTopBar } from '@/components/home/HomeTopBar';
-import { HomeMapLayout } from '@/components/home/HomePanels';
-import { FeedPage } from '@/components/feed/FeedPage';
-import AboutPage from '@/app/routes/public/about';
-import LearnIndex from '@/app/routes/public/learn/index';
-
-import { useHomeTelemetry } from '@/components/home/useHomeTelemetry';
+import { DisclaimerModal } from '@/components/ui/DisclaimerModal';
+import { env } from '@/environments/environment';
 import {
   getDetailedReport,
   getDetailedReportPDF,
@@ -26,7 +26,6 @@ import {
   getTopTraces,
 } from '@/lib/api';
 import { useUIStore } from '@/stores';
-import { env } from "@/environments/environment";
 
 export async function clientLoader() {
   const timeout = (ms: number) => new Promise<null>((r) => setTimeout(() => r(null), ms));
@@ -64,38 +63,47 @@ export function HomePage() {
   const [_searchParams, setSearchParams] = useSearchParams();
 
   // Tab navigation with URL query synchronization (?tab=docs, ?tab=about, etc.)
-  const [activeTab, setActiveTab] = useState<'map' | 'intelligence' | 'feed' | 'docs' | 'about'>(() => {
-    if (typeof window === 'undefined') return 'map';
-    const tabParam = new URLSearchParams(window.location.search).get('tab');
-    if (tabParam && ['map', 'intelligence', 'feed', 'docs', 'about'].includes(tabParam)) {
-      return tabParam as any;
+  const [activeTab, setActiveTab] = useState<'map' | 'intelligence' | 'feed' | 'docs' | 'about'>(
+    () => {
+      if (typeof window === 'undefined') return 'map';
+      const tabParam = new URLSearchParams(window.location.search).get('tab');
+      if (tabParam && ['map', 'intelligence', 'feed', 'docs', 'about'].includes(tabParam)) {
+        return tabParam as any;
+      }
+      return (localStorage.getItem('hw-active-tab') as any) || 'map';
     }
-    return (localStorage.getItem('hw-active-tab') as any) || 'map';
-  });
+  );
 
   // Sync activeTab with URL search params whenever ?tab changes
   useEffect(() => {
     const tabParam = _searchParams.get('tab');
-    if (tabParam && ['map', 'intelligence', 'feed', 'docs', 'about'].includes(tabParam) && tabParam !== activeTab) {
+    if (
+      tabParam &&
+      ['map', 'intelligence', 'feed', 'docs', 'about'].includes(tabParam) &&
+      tabParam !== activeTab
+    ) {
       setActiveTab(tabParam as any);
     }
   }, [_searchParams, activeTab]);
 
-  const handleTabChange = useCallback((tab: 'map' | 'intelligence' | 'feed' | 'docs' | 'about') => {
-    setActiveTab(tab);
-    try {
-      localStorage.setItem('hw-active-tab', tab);
-    } catch {}
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      if (tab !== 'map') {
-        next.set('tab', tab);
-      } else {
-        next.delete('tab');
-      }
-      return next;
-    });
-  }, [setSearchParams]);
+  const handleTabChange = useCallback(
+    (tab: 'map' | 'intelligence' | 'feed' | 'docs' | 'about') => {
+      setActiveTab(tab);
+      try {
+        localStorage.setItem('hw-active-tab', tab);
+      } catch {}
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (tab !== 'map') {
+          next.set('tab', tab);
+        } else {
+          next.delete('tab');
+        }
+        return next;
+      });
+    },
+    [setSearchParams]
+  );
 
   // Timeline & Filters (default to 'all' on page refresh so all fleet contacts remain visible)
   const [timeline, setTimeline] = useState<TimelineOption>('all');
@@ -107,21 +115,24 @@ export function HomePage() {
     return 'all';
   });
 
-  const handleRegionFilterChange = useCallback((region: string) => {
-    setRegionFilter(region);
-    try {
-      localStorage.setItem('hw-region-filter', region);
-    } catch {}
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      if (region && region !== 'all') {
-        next.set('region', region);
-      } else {
-        next.delete('region');
-      }
-      return next;
-    });
-  }, [setSearchParams]);
+  const handleRegionFilterChange = useCallback(
+    (region: string) => {
+      setRegionFilter(region);
+      try {
+        localStorage.setItem('hw-region-filter', region);
+      } catch {}
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (region && region !== 'all') {
+          next.set('region', region);
+        } else {
+          next.delete('region');
+        }
+        return next;
+      });
+    },
+    [setSearchParams]
+  );
 
   // Layer Toggles
   const [showHeatmap, setShowHeatmap] = useState(() => {
@@ -225,7 +236,18 @@ export function HomePage() {
       window.localStorage.setItem('hw-severity-filter', severityFilter);
       window.localStorage.setItem('hw-region-filter', regionFilter);
     } catch {}
-  }, [showHeatmap, showVessels, showAircraft, showConflicts, showAreas, showMetrics, timeline, severityFilter, regionFilter, reduceMotion]);
+  }, [
+    showHeatmap,
+    showVessels,
+    showAircraft,
+    showConflicts,
+    showAreas,
+    showMetrics,
+    timeline,
+    severityFilter,
+    regionFilter,
+    reduceMotion,
+  ]);
 
   // Resizing mouse move handlers
   useEffect(() => {
@@ -288,7 +310,11 @@ export function HomePage() {
     } catch (error: any) {
       console.error('Failed to generate report:', error);
       const errorMsg = error?.message || 'Check your internet connection or credits.';
-      addToast({ type: 'error', title: 'Failure', message: `Failed to generate report: ${errorMsg}` });
+      addToast({
+        type: 'error',
+        title: 'Failure',
+        message: `Failed to generate report: ${errorMsg}`,
+      });
     } finally {
       setReportGenerating(false);
     }

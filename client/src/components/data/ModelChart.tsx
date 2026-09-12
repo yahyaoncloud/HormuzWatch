@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
-import { Maximize2, Minimize2, Radio, BarChart2 } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import { BarChart2, Maximize2, Minimize2, Radio } from 'lucide-react';
 import { useWebSocket } from '@/providers';
+import { cn } from '@/utils/cn';
 
 // ============================================================
 // ModelChart — uPlot-based charts with Realtime vs Static mode toggle.
@@ -26,7 +26,8 @@ const THEME = {
 };
 
 function commonAxes(xLabel?: string, yLabel?: string): uPlot.Axis[] {
-  const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+  const isDark =
+    typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
   const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : '#e4e4e7';
   const textColor = isDark ? '#a1a1aa' : '#71717a';
 
@@ -177,7 +178,11 @@ export function ScoreDistributionChart({
             width: 2,
             fill: THEME.accentFill,
             points: { show: false },
-            paths: (uPlot.paths as any).bars({ fill: THEME.accentFill, stroke: THEME.accent, width: 1 }),
+            paths: (uPlot.paths as any).bars({
+              fill: THEME.accentFill,
+              stroke: THEME.accent,
+              width: 1,
+            }),
           },
         ],
       };
@@ -218,10 +223,7 @@ export function ScoreDistributionChart({
       expanded={expanded}
       onExpand={() => setExpanded(!expanded)}
     >
-      <div
-        ref={chartRef}
-        className="w-full h-full"
-      />
+      <div ref={chartRef} className="w-full h-full" />
     </ChartWrapper>
   );
 }
@@ -304,10 +306,7 @@ export function FeatureImportanceChart({
       expanded={expanded}
       onExpand={() => setExpanded(!expanded)}
     >
-      <div
-        ref={chartRef}
-        style={{ width: '100%', height: '100%', display: 'block' }}
-      />
+      <div ref={chartRef} style={{ width: '100%', height: '100%', display: 'block' }} />
     </ChartWrapper>
   );
 }
@@ -355,7 +354,7 @@ export function DetectionTrendChart({
             label: yLabel,
             stroke: strokeColor,
             width: 2.5,
-            fill: strokeColor + '20',
+            fill: `${strokeColor}20`,
             points: { show: true, size: 3 },
           },
         ],
@@ -384,10 +383,7 @@ export function DetectionTrendChart({
       expanded={expanded}
       onExpand={() => setExpanded(!expanded)}
     >
-      <div
-        ref={chartRef}
-        style={{ width: '100%', height: '100%', display: 'block' }}
-      />
+      <div ref={chartRef} style={{ width: '100%', height: '100%', display: 'block' }} />
     </ChartWrapper>
   );
 }
@@ -462,10 +458,7 @@ export function ModelComparisonChart({
       expanded={expanded}
       onExpand={() => setExpanded(!expanded)}
     >
-      <div
-        ref={chartRef}
-        style={{ width: '100%', height: '100%', display: 'block' }}
-      />
+      <div ref={chartRef} style={{ width: '100%', height: '100%', display: 'block' }} />
     </ChartWrapper>
   );
 }
@@ -523,7 +516,16 @@ export function ModelDashboard({
 
   // Live Detection Trend (rolling per-minute counts)
   const [liveTrendLabels, setLiveTrendLabels] = useState<string[]>([
-    '10:00', '10:05', '10:10', '10:15', '10:20', '10:25', '10:30', '10:35', '10:40', '10:45',
+    '10:00',
+    '10:05',
+    '10:10',
+    '10:15',
+    '10:20',
+    '10:25',
+    '10:30',
+    '10:35',
+    '10:40',
+    '10:45',
   ]);
   const [liveTrendValues, setLiveTrendValues] = useState<number[]>([
     4, 7, 5, 12, 8, 15, 11, 18, 14, 21,
@@ -531,12 +533,25 @@ export function ModelDashboard({
 
   // Live Model Comparison (Rule vs ML vs Ensemble)
   const [liveCompLabels, setLiveCompLabels] = useState<string[]>([
-    'T-50s', 'T-40s', 'T-30s', 'T-20s', 'T-10s', 'Live',
+    'T-50s',
+    'T-40s',
+    'T-30s',
+    'T-20s',
+    'T-10s',
+    'Live',
   ]);
   const [liveCompSeries, setLiveCompSeries] = useState([
-    { name: 'Rule Baseline', values: [0.65, 0.68, 0.70, 0.72, 0.71, 0.73], color: THEME.warning },
-    { name: 'ML Model (Isolation Forest)', values: [0.78, 0.81, 0.79, 0.83, 0.85, 0.87], color: THEME.info },
-    { name: 'Calibrated Ensemble', values: [0.91, 0.93, 0.92, 0.95, 0.96, 0.97], color: THEME.success },
+    { name: 'Rule Baseline', values: [0.65, 0.68, 0.7, 0.72, 0.71, 0.73], color: THEME.warning },
+    {
+      name: 'ML Model (Isolation Forest)',
+      values: [0.78, 0.81, 0.79, 0.83, 0.85, 0.87],
+      color: THEME.info,
+    },
+    {
+      name: 'Calibrated Ensemble',
+      values: [0.91, 0.93, 0.92, 0.95, 0.96, 0.97],
+      color: THEME.success,
+    },
   ]);
 
   // Listen to live WebSocket telemetry/anomalies in realtime mode
@@ -547,7 +562,7 @@ export function ModelDashboard({
       setEventCount((c) => c + 1);
 
       const rawScore = (anomaly as any)?.finalScore ?? (anomaly as any)?.score;
-      const newScore = rawScore !== undefined ? rawScore / 100.0 : (Math.random() * 0.8 - 0.4);
+      const newScore = rawScore !== undefined ? rawScore / 100.0 : Math.random() * 0.8 - 0.4;
 
       // Update distribution buffer
       setLiveDist((prev) => [...prev.slice(-90), newScore]);
@@ -556,10 +571,19 @@ export function ModelDashboard({
       if (telemetry) {
         const alt = (telemetry as any).altitude;
         setLiveFeatures([
-          { name: 'Course Delta (°)', importance: Math.min(1.0, (telemetry.courseDelta ?? 15) / 90.0) },
-          { name: 'AIS Gap (min)', importance: Math.min(1.0, (telemetry.aisAgeMinutes ?? 2) / 10.0) },
+          {
+            name: 'Course Delta (°)',
+            importance: Math.min(1.0, (telemetry.courseDelta ?? 15) / 90.0),
+          },
+          {
+            name: 'AIS Gap (min)',
+            importance: Math.min(1.0, (telemetry.aisAgeMinutes ?? 2) / 10.0),
+          },
           { name: 'Speed Variance', importance: Math.min(1.0, (telemetry.speed ?? 12) / 35.0) },
-          { name: 'Hotzone Distance', importance: Math.min(1.0, 1.0 - (telemetry.hotZoneDistanceNm ?? 20) / 100.0) },
+          {
+            name: 'Hotzone Distance',
+            importance: Math.min(1.0, 1.0 - (telemetry.hotZoneDistanceNm ?? 20) / 100.0),
+          },
           { name: 'Altitude / Ground', importance: alt ? Math.min(1.0, alt / 40000.0) : 0.05 },
         ]);
       }
@@ -571,7 +595,11 @@ export function ModelDashboard({
     if (mode !== 'realtime') return;
     const interval = setInterval(() => {
       setEventCount((c) => c + 1);
-      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const timeStr = new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
 
       // Shift live trend
       setLiveTrendLabels((prev) => [...prev.slice(1), timeStr]);
@@ -580,9 +608,21 @@ export function ModelDashboard({
       // Shift live model comparison
       setLiveCompLabels((prev) => [...prev.slice(1), 'Live']);
       setLiveCompSeries([
-        { name: 'Rule Baseline', values: [...liveCompSeries[0].values.slice(1), 0.68 + Math.random() * 0.08], color: THEME.warning },
-        { name: 'ML Model (Isolation Forest)', values: [...liveCompSeries[1].values.slice(1), 0.82 + Math.random() * 0.08], color: THEME.info },
-        { name: 'Calibrated Ensemble', values: [...liveCompSeries[2].values.slice(1), 0.92 + Math.random() * 0.06], color: THEME.success },
+        {
+          name: 'Rule Baseline',
+          values: [...liveCompSeries[0].values.slice(1), 0.68 + Math.random() * 0.08],
+          color: THEME.warning,
+        },
+        {
+          name: 'ML Model (Isolation Forest)',
+          values: [...liveCompSeries[1].values.slice(1), 0.82 + Math.random() * 0.08],
+          color: THEME.info,
+        },
+        {
+          name: 'Calibrated Ensemble',
+          values: [...liveCompSeries[2].values.slice(1), 0.92 + Math.random() * 0.06],
+          color: THEME.success,
+        },
       ]);
     }, 4000);
 
@@ -734,7 +774,8 @@ export function ModelDashboard({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="font-display text-sm font-semibold text-[var(--color-fg)]">
-              Model Ensemble — {mode === 'realtime' ? 'Live Stream Evaluation' : 'F1 Score Comparison'}
+              Model Ensemble —{' '}
+              {mode === 'realtime' ? 'Live Stream Evaluation' : 'F1 Score Comparison'}
             </h4>
           </div>
           <ModelComparisonChart

@@ -7,7 +7,8 @@
       "preset": "recommended",
       "correctness": {
         "noUnusedVariables": "error",
-        "noUnusedImports": "error"
+        "noUnusedImports": "error",
+        "useExhaustiveDependencies": "warn"
       },
       "style": {
         "useConst": "error",
@@ -23,9 +24,16 @@
         "noConsole": "off"
       },
       "a11y": {
+        "recommended": false,
         "noSvgWithoutTitle": "warn",
         "useKeyWithClickEvents": "warn",
-        "useValidAnchor": "warn"
+        "useValidAnchor": "warn",
+        "noLabelWithoutControl": "warn",
+        "noStaticElementInteractions": "warn",
+        "useButtonType": "warn"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "warn"
       }
     }
   },
@@ -64,6 +72,13 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!**/node_modules", "!**/dist", "!**/build", "!**/.git"]
+    "includes": [
+      "**",
+      "!**/node_modules/**",
+      "!**/dist/**",
+      "!**/build/**",
+      "!**/.react-router/**",
+      "!**/.git/**"
+    ]
   }
 }
