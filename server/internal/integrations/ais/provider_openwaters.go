@@ -146,7 +146,8 @@ func (p *OpenWatersProvider) Health() ProviderHealth {
 
 // GetSnapshot retrieves the current vessel snapshot from Open Waters GET /v1/vessels GeoJSON endpoint.
 func (p *OpenWatersProvider) GetSnapshot(ctx context.Context) ([]*NormalizedAISObservation, error) {
-	reqURL := fmt.Sprintf("%s/v1/vessels", strings.TrimRight(p.apiBaseURL, "/"))
+	// Open Waters requires a valid bbox parameter (Hormuz sector: 16 sq deg)
+	reqURL := fmt.Sprintf("%s/v1/vessels?bbox=54.0,24.0,58.0,28.0", strings.TrimRight(p.apiBaseURL, "/"))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, err

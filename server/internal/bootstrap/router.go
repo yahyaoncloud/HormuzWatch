@@ -95,6 +95,8 @@ func registerPublicRoutes(router *gin.Engine, handlers *api.Handlers) {
 
 	// Public WebSocket telemetry stream
 	router.GET("/ws/stream", handlers.WebSocketStream)
+	router.GET("/ws", handlers.WebSocketStream)
+	router.GET("/ws/telemetry", handlers.WebSocketStream)
 
 	// Public geospatial & situational awareness
 	router.GET("/public/heatmap", cache30s, handlers.GetHeatmap)
@@ -107,6 +109,14 @@ func registerPublicRoutes(router *gin.Engine, handlers *api.Handlers) {
 	router.GET("/public/vessels/:mmsi/track", api.GetAISVesselTrack)
 	router.GET("/public/aircraft", cache2m, api.GetActiveAircraft)
 	router.GET("/public/tracks/active", cache2m, api.GetAllActiveTracks)
+
+	// API aliases for external clients, proxies, and dashboard consumers
+	router.GET("/api/vessels", cache2m, api.GetActiveVessels)
+	router.GET("/api/vessels/:mmsi", api.GetAISVesselByMMSI)
+	router.GET("/api/vessels/:mmsi/track", api.GetAISVesselTrack)
+	router.GET("/api/aircraft", cache2m, api.GetActiveAircraft)
+	router.GET("/api/tracks/active", cache2m, api.GetAllActiveTracks)
+	router.GET("/api/telemetry/digest", cache30s, api.GetTopTraces)
 
 	// AIS service health & incident correlation
 	router.GET("/public/ais/status", api.GetAISHealth)

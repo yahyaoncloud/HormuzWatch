@@ -122,6 +122,17 @@ func (p *AISStreamProvider) streamLoop(ctx context.Context) {
 		default:
 		}
 
+		if p.apiKey == "" || p.apiKey == "your_aisstream_api_key" {
+			p.setHealthStatus("unconfigured", false, "AISSTREAM_API_KEY is not configured")
+			log.Printf("[AISStream] No API key configured. Waiting 5m before checking again...")
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(5 * time.Minute):
+				continue
+			}
+		}
+
 		p.setHealthStatus("connecting", false, "")
 		log.Printf("[AISStream] Dialing %s...", p.url)
 
@@ -153,7 +164,7 @@ func (p *AISStreamProvider) streamLoop(ctx context.Context) {
 		p.conn = conn
 		p.connMu.Unlock()
 
-		backoff = 5 * time.Second
+		backoff = 15 * time.Second
 
 		// Send subscription payload
 		sub := AISStreamSubscription{
@@ -192,14 +203,21 @@ func (p *AISStreamProvider) streamLoop(ctx context.Context) {
 		p.connMu.Unlock()
 
 		p.setHealthStatus("disconnected", false, "Connection closed by remote")
+
+		// Grace period to allow remote server to close TCP state before next dial
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(10 * time.Second):
+		}
 	}
 }
 
 func (p *AISStreamProvider) readStream(ctx context.Context, conn *websocket.Conn) {
 	conn.SetReadLimit(10 * 1024 * 1024)
-	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	conn.SetReadDeadline(time.Now().Add(300 * time.Second))
 	conn.SetPongHandler(func(string) error {
-		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		conn.SetReadDeadline(time.Now().Add(300 * time.Second))
 		return nil
 	})
 
@@ -215,7 +233,7 @@ func (p *AISStreamProvider) readStream(ctx context.Context, conn *websocket.Conn
 			log.Printf("[AISStream] Read error: %v", err)
 			return
 		}
-		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		conn.SetReadDeadline(time.Now().Add(300 * time.Second))
 
 		if msgType == websocket.BinaryMessage {
 			decompressed, decErr := decompressZlib(msgBytes)

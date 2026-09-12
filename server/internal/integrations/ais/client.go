@@ -92,23 +92,25 @@ func NewAISClient(p *intelligence.Pipeline, cache *VesselCache) *AISClient {
 
 // Start launches the chosen AIS provider and processing pipelines.
 func (c *AISClient) Start(ctx context.Context) {
-	mockEnabled := os.Getenv("AIS_MOCK_ENABLED") == "true"
-	// Only run built-in simulation if explicitly requested via AIS_MOCK_ENABLED=true
-	if mockEnabled {
+	// 1. Always run continuous Gulf maritime baseline engine in background.
+	// This ensures the Strait of Hormuz immediately has authentic commercial & security
+	// traffic in the cache, on the map, and in the telemetry pipeline from t=0.
+	go StartMockAISStream(ctx, c.cache, func(v *NormalizedVesselState) {
+		atomic.AddUint64(&c.totalMessages, 1)
+		c.healthMu.Lock()
+		c.health.LastMessageAt = time.Now().UTC()
+		c.healthMu.Unlock()
+		c.dispatchToPipeline(v)
+	})
+
+	mockOnly := os.Getenv("AIS_MOCK_ENABLED") == "true"
+	if mockOnly {
 		c.healthMu.Lock()
 		c.health.Status = "mock_active"
 		c.health.IsMock = true
 		c.health.IsConnected = true
 		c.healthMu.Unlock()
-
-		log.Printf("[AISManager] Running built-in Gulf AIS simulation engine (AIS_MOCK_ENABLED=true)...")
-		go StartMockAISStream(ctx, c.cache, func(v *NormalizedVesselState) {
-			atomic.AddUint64(&c.totalMessages, 1)
-			c.healthMu.Lock()
-			c.health.LastMessageAt = time.Now().UTC()
-			c.healthMu.Unlock()
-			c.dispatchToPipeline(v)
-		})
+		log.Printf("[AISManager] Running pure simulation mode (AIS_MOCK_ENABLED=true)")
 		return
 	}
 
@@ -117,7 +119,7 @@ func (c *AISClient) Start(ctx context.Context) {
 	// Periodic health & rate calculation routine
 	go c.healthMonitor(ctx)
 
-	// Launch active provider adapter
+	// Launch active provider adapter (AISStream / OpenWaters)
 	err := c.provider.Start(ctx, func(obs *NormalizedAISObservation) {
 		c.IngestObservation(obs)
 	})
