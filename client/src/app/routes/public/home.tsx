@@ -62,33 +62,29 @@ export function HomePage() {
   const addToast = useUIStore((s) => s.addToast);
   const [_searchParams, setSearchParams] = useSearchParams();
 
-  // Tab navigation with URL query synchronization (?tab=docs, ?tab=about, etc.)
-  const [activeTab, setActiveTab] = useState<'map' | 'intelligence' | 'feed' | 'docs' | 'about'>(
-    () => {
-      if (typeof window === 'undefined') return 'map';
-      const tabParam = new URLSearchParams(window.location.search).get('tab');
-      if (tabParam && ['map', 'intelligence', 'feed', 'docs', 'about'].includes(tabParam)) {
-        return tabParam as any;
-      }
-      return (localStorage.getItem('hw-active-tab') as any) || 'map';
-    }
-  );
+  // Tab navigation with URL query as single source of truth (?tab=docs, ?tab=about, etc.)
+  const rawTab = _searchParams.get('tab');
+  const activeTab: 'map' | 'intelligence' | 'feed' | 'docs' | 'about' =
+    rawTab && ['map', 'intelligence', 'feed', 'docs', 'about'].includes(rawTab)
+      ? (rawTab as any)
+      : 'map';
 
-  // Sync activeTab with URL search params whenever ?tab changes
+  // Restore saved tab on cold landing only if no explicit query parameter is set
   useEffect(() => {
-    const tabParam = _searchParams.get('tab');
-    if (
-      tabParam &&
-      ['map', 'intelligence', 'feed', 'docs', 'about'].includes(tabParam) &&
-      tabParam !== activeTab
-    ) {
-      setActiveTab(tabParam as any);
+    if (!rawTab) {
+      const saved = localStorage.getItem('hw-active-tab');
+      if (saved && saved !== 'map' && ['intelligence', 'feed', 'docs', 'about'].includes(saved)) {
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('tab', saved);
+          return next;
+        }, { replace: true });
+      }
     }
-  }, [_searchParams, activeTab]);
+  }, []);
 
   const handleTabChange = useCallback(
     (tab: 'map' | 'intelligence' | 'feed' | 'docs' | 'about') => {
-      setActiveTab(tab);
       try {
         localStorage.setItem('hw-active-tab', tab);
       } catch {}

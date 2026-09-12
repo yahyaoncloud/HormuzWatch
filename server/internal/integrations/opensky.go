@@ -85,11 +85,11 @@ func StartOpenSky(ctx context.Context, p *intelligence.Pipeline) {
 	}
 
 	// Lenient rate limit intervals to strictly prevent 429 Too Many Requests:
-	// Anonymous quota: 400 requests/day (~3.6 min/req). We use 4.5m to guarantee headroom.
-	// Authenticated quota: 4000 requests/day. We use 2.5m.
-	pollInterval := 270 * time.Second
+	// Anonymous quota: 400 requests/day (~3.6 min/req). We use 6.0m (360s) to guarantee ample headroom.
+	// Authenticated quota: 4000 requests/day. We use 5.0m (300s).
+	pollInterval := 360 * time.Second
 	if !isAnonymous {
-		pollInterval = 150 * time.Second
+		pollInterval = 300 * time.Second
 	}
 	currentInterval := pollInterval
 
@@ -111,7 +111,7 @@ func StartOpenSky(ctx context.Context, p *intelligence.Pipeline) {
 				flights := registry.snapshot()
 				for _, f := range flights {
 					dtHours := now.Sub(f.LastUpdated).Hours()
-					if dtHours <= 0 || dtHours > 0.35 {
+					if dtHours <= 0 || dtHours > 1.0 {
 						continue
 					}
 
@@ -189,7 +189,7 @@ func StartOpenSky(ctx context.Context, p *intelligence.Pipeline) {
 			// Handle HTTP 429 Too Many Requests with leniency & backoff
 			if resp.StatusCode == http.StatusTooManyRequests {
 				resp.Body.Close()
-				backoffDuration := 10 * time.Minute
+				backoffDuration := 15 * time.Minute
 				if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {
 					if sec, err := strconv.Atoi(retryAfter); err == nil && sec > 0 {
 						backoffDuration = time.Duration(sec)*time.Second + time.Duration(rand.Intn(30))*time.Second

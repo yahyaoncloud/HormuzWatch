@@ -1775,6 +1775,73 @@ export default function LeafletMapInner({
         </div>
       </div>
 
+      {/* Empty Map State Overlay — Loading objects please wait */}
+      {displayTracks.length === 0 && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 1000,
+            pointerEvents: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '16px 26px',
+            background: 'rgba(10, 16, 28, 0.9)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(56, 189, 248, 0.3)',
+            borderRadius: '10px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(56, 189, 248, 0.15)',
+            color: '#f8fafc',
+            fontFamily: 'var(--font-mono, monospace)',
+            textAlign: 'center',
+            minWidth: '280px',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+            }}
+          >
+            <div
+              style={{
+                width: '18px',
+                height: '18px',
+                border: '2px solid rgba(56, 189, 248, 0.25)',
+                borderTopColor: '#38bdf8',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+              }}
+            />
+            <span
+              style={{
+                fontSize: '12px',
+                fontWeight: 700,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: '#e2e8f0',
+              }}
+            >
+              Loading objects, please wait...
+            </span>
+          </div>
+          <div
+            style={{
+              fontSize: '11px',
+              color: '#94a3b8',
+              letterSpacing: '0.02em',
+            }}
+          >
+            Streaming real-time Gulf maritime & aviation telemetry
+          </div>
+        </div>
+      )}
+
       <MapContainer
         center={CENTER}
         zoom={ZOOM}

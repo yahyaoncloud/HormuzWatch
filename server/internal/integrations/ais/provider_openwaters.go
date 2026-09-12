@@ -217,6 +217,10 @@ func (p *OpenWatersProvider) streamLoop(ctx context.Context) {
 			errMsg := fmt.Sprintf("Dial error: %v", err)
 			if resp != nil {
 				errMsg = fmt.Sprintf("Dial HTTP %d: %v", resp.StatusCode, err)
+				if resp.StatusCode == http.StatusTooManyRequests {
+					// Leniency backoff on 429: wait at least 5 minutes before redialing
+					backoff = 5 * time.Minute
+				}
 				resp.Body.Close()
 			}
 			p.setHealthStatus("reconnecting", false, errMsg)
@@ -236,7 +240,7 @@ func (p *OpenWatersProvider) streamLoop(ctx context.Context) {
 		p.conn = conn
 		p.connMu.Unlock()
 
-		backoff = 5 * time.Second
+		backoff = 15 * time.Second
 		p.setHealthStatus("connected", true, "")
 		log.Printf("[OpenWaters] Connected to native stream. Processing messages...")
 
@@ -251,6 +255,18 @@ func (p *OpenWatersProvider) streamLoop(ctx context.Context) {
 		p.connMu.Unlock()
 
 		p.setHealthStatus("disconnected", false, "Stream closed by remote")
+
+		// Prevent tight reconnect loop — back off cleanly before reconnecting
+		disconnectWait := 15 * time.Second
+		if p.token == "" {
+			// Unauthenticated endpoint requires lenient backoff to prevent HTTP 429
+			disconnectWait = 60 * time.Second
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(disconnectWait):
+		}
 	}
 }
 
