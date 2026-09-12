@@ -14,9 +14,9 @@ services:
     image: hormuzwatch-server:${VERSION:-2.0.0}
     container_name: hormuzwatch-server
     ports:
-      - "10020:10020"
+      - "${SERVER_PORT:-10020}:${PORT:-10020}"
     environment:
-      - PORT=10020
+      - PORT=${PORT:-10020}
       - GIN_MODE=${GIN_MODE:-release}
       # Database (Supabase PostgreSQL)
       - DATABASE_URL=${DATABASE_URL}
@@ -155,7 +155,7 @@ services:
     image: hormuzwatch-client:${VERSION:-2.0.0}
     container_name: hormuzwatch-client
     ports:
-      - "3000:3000"
+      - "${CLIENT_PORT:-3000}:3000"
     depends_on:
       server:
         condition: service_started

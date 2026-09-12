@@ -6,6 +6,7 @@ services:
       - "10020:10020"
     environment:
       - PORT=10020
+      - SERVER_PORT=10020
       - ML_SERVICE_ADDR=ml:8091
       - ML_SERVICE_URL=http://ml:8090
 
@@ -22,3 +23,5 @@ services:
     container_name: hormuzwatch-client-blue
     ports:
       - "3000:3000"
+    environment:
+      - CLIENT_PORT=3000
