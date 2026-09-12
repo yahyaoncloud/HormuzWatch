@@ -1,7 +1,9 @@
 package intelligence
 
 import (
+	"database/sql"
 	"encoding/json"
+	"fmt"
 	"math"
 	"strings"
 	"sync"
@@ -80,6 +82,74 @@ func NewTrackStateManager() *TrackStateManager {
 	return &TrackStateManager{
 		tracks: make(map[string]*TrackState),
 	}
+}
+
+// HydrateFromDB populates in-memory tracks with active maritime and aviation targets from PostgreSQL.
+func (m *TrackStateManager) HydrateFromDB(database *sql.DB) (int, error) {
+	if database == nil {
+		return 0, fmt.Errorf("database is nil")
+	}
+
+	query := `
+		SELECT t.track_id, t.asset_name, t.lat, t.lon, t.speed, COALESCE(t.heading, 0),
+		       COALESCE(a.score, 0), COALESCE(a.severity, 'low'), COALESCE(a.reasons, '[]'),
+		       COALESCE(t.object_type, 'vessel'), t.last_updated
+		FROM tracks t
+		LEFT JOIN anomalies a ON t.track_id = a.track_id
+		WHERE t.lat >= 21.0 AND t.lat <= 32.5 AND t.lon >= 46.5 AND t.lon <= 62.5
+		ORDER BY t.last_updated DESC
+		LIMIT 3000
+	`
+	rows, err := database.Query(query)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	count := 0
+	for rows.Next() {
+		var trackID, assetName, severity, reasonsJSON, objectType string
+		var lat, lon, speed, heading float64
+		var score int
+		var lastUpdated time.Time
+
+		if err := rows.Scan(&trackID, &assetName, &lat, &lon, &speed, &heading, &score, &severity, &reasonsJSON, &objectType, &lastUpdated); err != nil {
+			continue
+		}
+
+		var reasons []string
+		_ = json.Unmarshal([]byte(reasonsJSON), &reasons)
+
+		st := &TrackState{
+			TrackID:      trackID,
+			AssetName:    assetName,
+			Lat:          lat,
+			Lon:          lon,
+			Speed:        speed,
+			Heading:      heading,
+			AnomalyScore: score,
+			Severity:     severity,
+			Reasons:      reasons,
+			LastUpdated:  lastUpdated,
+			History: []Observation{
+				{
+					Lat:       lat,
+					Lon:       lon,
+					Speed:     speed,
+					Heading:   heading,
+					Timestamp: lastUpdated,
+				},
+			},
+		}
+
+		m.tracks[trackID] = st
+		count++
+	}
+
+	return count, nil
 }
 
 // ComputedDeltas is the output of the state manager — raw material for scoring.
@@ -342,18 +412,19 @@ func (m *TrackStateManager) GetStats() RealtimeStats {
 			}
 		}
 
+		if t.AnomalyScore >= 70 || t.Severity == "high" || t.Severity == "critical" {
+			s.HighAnomalyCount++
+		}
+		if t.AnomalyScore > 30 || (t.Severity != "" && t.Severity != "low" && t.Severity != "nominal") {
+			s.TotalAnomalies++
+		}
+
 		if t.EWMACount > 1 {
 			dev := math.Abs(t.EWMAVariance)
 			if t.EWMASpeed > 10 {
 				dev *= 2
 			}
 			totalEWMA += dev
-			if dev > 2.0 {
-				s.HighAnomalyCount++
-			}
-			if dev > 1.0 {
-				s.TotalAnomalies++
-			}
 		}
 	}
 

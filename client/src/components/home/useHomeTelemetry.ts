@@ -159,31 +159,53 @@ export function useHomeTelemetry({
   // Compute live dynamic metrics reflecting active toggles & real-time telemetry
   const displayMetrics = useMemo(() => {
     const rawMetrics = metricsData?.metrics;
+
+    const liveVesselTraces = allLiveTraces.filter((t) => {
+      const isAir = String(t.trackId || '').startsWith('FLIGHT') || String(t.trackId || '').startsWith('ADS-') || String(t.trackId || '').startsWith('ICAO-') || (t as any).objectType === 'aircraft' || (t as any).altitude !== undefined || (t as any).domain === 'aviation';
+      return !isAir;
+    }).length;
+
+    const liveAircraftTraces = allLiveTraces.filter((t) => {
+      const isAir = String(t.trackId || '').startsWith('FLIGHT') || String(t.trackId || '').startsWith('ADS-') || String(t.trackId || '').startsWith('ICAO-') || (t as any).objectType === 'aircraft' || (t as any).altitude !== undefined || (t as any).domain === 'aviation';
+      return isAir;
+    }).length;
+
     const baseVesselCount =
-      liveStats?.maritimeCount ??
-      rawMetrics?.maritimeCount ??
-      allLiveTraces.filter((t) => !String(t.trackId || '').startsWith('FLIGHT')).length;
+      (liveStats?.maritimeCount && liveStats.maritimeCount > 0)
+        ? liveStats.maritimeCount
+        : liveVesselTraces > 0
+          ? liveVesselTraces
+          : (rawMetrics?.maritimeCount && rawMetrics.maritimeCount > 0)
+            ? rawMetrics.maritimeCount
+            : 0;
+
     const baseAircraftCount =
-      liveStats?.aviationCount ??
-      rawMetrics?.aviationCount ??
-      allLiveTraces.filter((t) => String(t.trackId || '').startsWith('FLIGHT')).length;
+      (liveStats?.aviationCount && liveStats.aviationCount > 0)
+        ? liveStats.aviationCount
+        : liveAircraftTraces > 0
+          ? liveAircraftTraces
+          : (rawMetrics?.aviationCount && rawMetrics.aviationCount > 0)
+            ? rawMetrics.aviationCount
+            : 0;
 
     const effectiveVessels = showVessels ? baseVesselCount : 0;
     const effectiveAircraft = showAircraft ? baseAircraftCount : 0;
     const effectiveTotal = effectiveVessels + effectiveAircraft;
 
     const critical = showConflicts
-      ? (rawMetrics?.criticalCount ??
-        liveStats?.highAnomalyCount ??
-        activeVisibleTraces.filter((t) => t.severity === 'critical').length)
+      ? (activeVisibleTraces.filter((t) => t.severity === 'critical').length ||
+        (liveStats?.highAnomalyCount && liveStats.highAnomalyCount > 0 ? Math.floor(liveStats.highAnomalyCount / 2) : 0) ||
+        rawMetrics?.criticalCount ||
+        0)
       : 0;
     const high = showConflicts
-      ? (rawMetrics?.highCount ??
-        (liveStats?.totalAnomalies ? Math.max(0, liveStats.totalAnomalies - (liveStats.highAnomalyCount || 0)) : 0) ??
-        activeVisibleTraces.filter((t) => t.severity === 'high').length)
+      ? (activeVisibleTraces.filter((t) => t.severity === 'high').length ||
+        (liveStats?.highAnomalyCount && liveStats.highAnomalyCount > 0 ? liveStats.highAnomalyCount : 0) ||
+        rawMetrics?.highCount ||
+        0)
       : 0;
-    const medium = activeVisibleTraces.filter((t) => t.severity === 'medium').length;
-    const low = activeVisibleTraces.filter((t) => t.severity === 'low' || !t.severity).length;
+    const medium = activeVisibleTraces.filter((t) => t.severity === 'medium').length || (rawMetrics?.mediumCount ?? 0);
+    const low = activeVisibleTraces.filter((t) => t.severity === 'low' || !t.severity).length || (rawMetrics?.lowCount ?? 0);
 
     // Dynamically calculate active regions from live traces across Gulf sectors
     const activeZonesSet = new Set<string>();
@@ -202,7 +224,7 @@ export function useHomeTelemetry({
         ? Math.round(
             activeVisibleTraces.reduce((acc, t) => acc + (t.score || 0), 0) / activeVisibleTraces.length
           )
-        : (rawMetrics?.avgScore && rawMetrics.avgScore > 0 ? rawMetrics.avgScore : 18);
+        : (rawMetrics?.avgScore && rawMetrics.avgScore > 0 ? Math.round(rawMetrics.avgScore) : 18);
 
     return {
       maritimeCount: effectiveVessels,

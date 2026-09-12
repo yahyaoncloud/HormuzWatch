@@ -77,6 +77,13 @@ func New(ver, buildTime, gitCommit string) (*App, error) {
 
 	// Initialize Intelligence Pipeline state and ML client
 	tsm := intelligence.NewTrackStateManager()
+	if db.DB != nil {
+		if count, err := tsm.HydrateFromDB(db.DB); err == nil {
+			log.Printf("[tsm] Successfully hydrated %d tracks from PostgreSQL into in-memory state", count)
+		} else {
+			log.Printf("[tsm] Warning: Track state manager hydration error: %v", err)
+		}
+	}
 	mlClient := intelligence.NewMLClient()
 	mlClient.Connect()
 
