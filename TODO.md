@@ -145,6 +145,7 @@ flowchart TD
 ## 5. Track E: Resolved Critical Bugs & Technical Debt (P0/P1)
 
 - [x] **P0 — ML Inference REST Service 500 Crash:** Fixed `service/ml-service/app.py` by converting Pydantic `VesselFeatures` to numpy array with canonical feature names passed to `score()` and `global_drift_monitor`.
+- [x] **P0 — Vessel Telemetry API and Map Empty-State Remediation:** Resolved 0-vessel return from `/public/vessels` and missing `/api/vessels` route aliases. Expanded `DefaultMockFleet` to 32 authentic Gulf vessels, ensured continuous background fleet baseline in `client.go`, resolved OpenWaters snapshot HTTP 400 with bounded bbox, added AISStream 429 backoff protection, and seeded active maritime tracks to PostgreSQL. Live verified >30 vessels on Podman (:10020) and K3s (:30020, :30000).
 - [x] **P0 — CT Pipeline Deploy Script CLI Args:** Fixed `mlops/pipeline/deploy_candidate.py` to support `--validate-only`, `--execute`, and `--domain [domain]`.
 - [x] **P0 — Jenkins Java 17 EOL Upgrade:** Upgraded Jenkins container from `jenkins/jenkins:lts-jdk17` to `jenkins/jenkins:lts-jdk21` (Java 21 LTS).
 - [x] **P1 — Statistical Drift Monitor Config Mismatch:** Aligned `ks_test_alpha` and `ks_alpha` across `mlops/pipeline/drift_monitor.py` and `config.py`.
