@@ -110,11 +110,11 @@ services:
     image: hormuzwatch-ml:${VERSION:-2.0.0}
     container_name: hormuzwatch-ml
     ports:
-      - "8090:8090"
-      - "8091:8091"
+      - "${ML_PORT:-8090}:${ML_PORT:-8090}"
+      - "${GRPC_PORT:-8091}:${GRPC_PORT:-8091}"
     environment:
-      - ML_PORT=8090
-      - GRPC_PORT=8091
+      - ML_PORT=${ML_PORT:-8090}
+      - GRPC_PORT=${GRPC_PORT:-8091}
       - MODELS_DIR=/app/models
       - APP_VERSION=${VERSION:-2.0.0}
     volumes:

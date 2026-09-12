@@ -18,6 +18,8 @@ services:
     environment:
       - ML_PORT=8092
       - GRPC_PORT=8093
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8092/health || exit 1"]
 
   client:
     container_name: hormuzwatch-client-green

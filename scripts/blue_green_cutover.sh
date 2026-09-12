@@ -126,13 +126,8 @@ switch_nginx() {
         # Backup configuration
         sudo cp "${NGINX_CONF}" "${NGINX_CONF}.bak"
 
-        if [[ "${target_slot}" == "green" ]]; then
-            sudo sed -i 's/127\.0\.0\.1:3000/127.0.0.1:3002/g' "${NGINX_CONF}"
-            sudo sed -i 's/127\.0\.0\.1:10020/127.0.0.1:10022/g' "${NGINX_CONF}"
-        else
-            sudo sed -i 's/127\.0\.0\.1:3002/127.0.0.1:3000/g' "${NGINX_CONF}"
-            sudo sed -i 's/127\.0\.0\.1:10022/127.0.0.1:10020/g' "${NGINX_CONF}"
-        fi
+        sudo sed -i -E "s/server [0-9.]+:(3000|3002)/server 127.0.0.1:${client_port}/g" "${NGINX_CONF}"
+        sudo sed -i -E "s/server [0-9.]+:(10020|10022)/server 127.0.0.1:${server_port}/g" "${NGINX_CONF}"
 
         if sudo nginx -t; then
             sudo nginx -s reload
@@ -184,6 +179,15 @@ cmd_deploy() {
 
     # 2. Deploy target slot containers
     log "Launching target slot '${target}' containers..."
+    if [[ "${target}" == "green" ]]; then
+        export SERVER_PORT=10022 PORT=10022
+        export ML_PORT=8092 GRPC_PORT=8093
+        export CLIENT_PORT=3002
+    else
+        export SERVER_PORT=10020 PORT=10020
+        export ML_PORT=8090 GRPC_PORT=8091
+        export CLIENT_PORT=3000
+    fi
     docker compose -p hormuzwatch -f docker-compose.yml -f "docker-compose.${target}.yml" up -d --build --no-recreate server ml client
 
     # 3. Health Probe & Warmup Gate
@@ -217,6 +221,15 @@ cmd_rollback() {
     warn "Initiating emergency rollback from '${active^^}' to '${fallback^^}'..."
 
     # Start fallback slot
+    if [[ "${fallback}" == "green" ]]; then
+        export SERVER_PORT=10022 PORT=10022
+        export ML_PORT=8092 GRPC_PORT=8093
+        export CLIENT_PORT=3002
+    else
+        export SERVER_PORT=10020 PORT=10020
+        export ML_PORT=8090 GRPC_PORT=8091
+        export CLIENT_PORT=3000
+    fi
     docker compose -p hormuzwatch -f docker-compose.yml -f "docker-compose.${fallback}.yml" up -d --no-recreate server ml client
     if probe_health "${fallback}"; then
         switch_nginx "${fallback}"
