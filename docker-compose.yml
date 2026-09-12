@@ -136,10 +136,10 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8090/health"]
-      interval: 30s
-      timeout: 10s
-      start_period: 30s
+      test: ["CMD-SHELL", "curl -sf http://localhost:${ML_PORT:-8090}/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 15s
       retries: 3
 
   # ── React Frontend (Production / Nginx) ────────────────────

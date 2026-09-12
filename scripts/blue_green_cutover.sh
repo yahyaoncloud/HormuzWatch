@@ -184,7 +184,7 @@ cmd_deploy() {
 
     # 2. Deploy target slot containers
     log "Launching target slot '${target}' containers..."
-    docker compose -p hormuzwatch -f docker-compose.yml -f "docker-compose.${target}.yml" up -d --build --remove-orphans server ml client
+    docker compose -p hormuzwatch -f docker-compose.yml -f "docker-compose.${target}.yml" up -d --build --no-recreate server ml client
 
     # 3. Health Probe & Warmup Gate
     if ! probe_health "${target}"; then
@@ -217,7 +217,7 @@ cmd_rollback() {
     warn "Initiating emergency rollback from '${active^^}' to '${fallback^^}'..."
 
     # Start fallback slot
-    docker compose -p hormuzwatch -f docker-compose.yml -f "docker-compose.${fallback}.yml" up -d server ml client
+    docker compose -p hormuzwatch -f docker-compose.yml -f "docker-compose.${fallback}.yml" up -d --no-recreate server ml client
     if probe_health "${fallback}"; then
         switch_nginx "${fallback}"
         docker compose -p hormuzwatch -f docker-compose.yml -f "docker-compose.${active}.yml" stop server ml client || true

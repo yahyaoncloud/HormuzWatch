@@ -29,6 +29,7 @@ RUN mkdir -m 0755 -p /etc/apt/keyrings \
     && apt-get install -y --no-install-recommends \
     docker-ce-cli \
     docker-compose-plugin \
+    docker-buildx-plugin \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js 20 LTS and npm
