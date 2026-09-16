@@ -37,6 +37,7 @@ func main() {
 	payloadType := flag.String("payload", "telemetry", "Payload type for POST: 'telemetry' or 'empty'")
 	warmup := flag.Duration("warmup", 2*time.Second, "Warmup duration to pre-fill TCP connections")
 	floodMode := flag.Bool("flood", false, "Unthrottled flood mode: bombard the target at maximum possible speed without rate limiting")
+	maxRequests := flag.Uint64("max-requests", 0, "Stop after sending this total number of requests (e.g. 1000000). 0 = use duration")
 	flag.Parse()
 
 	if *floodMode {
@@ -44,12 +45,20 @@ func main() {
 	}
 
 	fmt.Println("================================================================================")
-	fmt.Println(" 🌊 HormuzWatch — High-Throughput Distributed Load Generator (20k RPS) ")
+	fmt.Println(" 🌊 HormuzWatch — High-Throughput Distributed Load Generator ")
 	fmt.Println("================================================================================")
 	fmt.Printf(" Target:       %s\n", *targetURL)
-	fmt.Printf(" Target Rate:  %d req/sec\n", *targetRPS)
+	if *floodMode {
+		fmt.Printf(" Target Rate:  UNCONSTRAINED FLOOD (Maximum hardware/network limit)\n")
+	} else {
+		fmt.Printf(" Target Rate:  %d req/sec\n", *targetRPS)
+	}
 	fmt.Printf(" Workers:      %d concurrent goroutines\n", *workers)
-	fmt.Printf(" Duration:     %v (Warmup: %v)\n", *duration, *warmup)
+	if *maxRequests > 0 {
+		fmt.Printf(" Target Goal:  %d Total Requests (Continuous until completion)\n", *maxRequests)
+	} else {
+		fmt.Printf(" Duration:     %v (Warmup: %v)\n", *duration, *warmup)
+	}
 	fmt.Printf(" Method:       %s\n", *method)
 	fmt.Println("================================================================================")
 
@@ -142,6 +151,16 @@ func main() {
 	fmt.Printf("%-10s | %-12s | %-12s | %-12s | %-10s | %-10s\n", "Elapsed", "Current RPS", "Success 2xx", "Errors", "P50 Lat", "P99 Lat")
 	fmt.Println("--------------------------------------------------------------------------------")
 
+	// Context and termination setup
+	var testCtx context.Context
+	var testCancel context.CancelFunc
+	if *maxRequests > 0 {
+		testCtx, testCancel = context.WithTimeout(ctx, 2*time.Hour) // Allow long run up to 1M+ reqs
+	} else {
+		testCtx, testCancel = context.WithTimeout(ctx, *duration)
+	}
+	defer testCancel()
+
 	// Start live progress reporter
 	reporterCtx, reporterCancel := context.WithCancel(ctx)
 	defer reporterCancel()
@@ -180,15 +199,25 @@ func main() {
 				}
 				latenciesMu.Unlock()
 
-				fmt.Printf("%-10s | %-12d | %-12d | %-12d | %-8.2fms | %-8.2fms\n",
-					elapsed, deltaTotal, lastSuccess, lastErrors, p50, p99)
+				if *maxRequests > 0 {
+					progressPct := (float64(currentTotal) / float64(*maxRequests)) * 100.0
+					if progressPct > 100.0 {
+						progressPct = 100.0
+					}
+					fmt.Printf("%-10s | %-12d | %-9d (%.1f%%) | %-10d | %-8.2fms | %-8.2fms\n",
+						elapsed, deltaTotal, currentSuccess, progressPct, lastErrors, p50, p99)
+
+					if currentTotal >= *maxRequests {
+						testCancel()
+						return
+					}
+				} else {
+					fmt.Printf("%-10s | %-12d | %-12d | %-12d | %-8.2fms | %-8.2fms\n",
+						elapsed, deltaTotal, lastSuccess, lastErrors, p50, p99)
+				}
 			}
 		}
 	}()
-
-	// Worker routines
-	testCtx, testCancel := context.WithTimeout(ctx, *duration)
-	defer testCancel()
 
 	intervalNs := int64(time.Second) * int64(*workers) / int64(*targetRPS)
 	if intervalNs <= 0 {
@@ -218,6 +247,11 @@ func main() {
 
 			if *floodMode {
 				for {
+					if *maxRequests > 0 && metrics.TotalRequests.Load() >= *maxRequests {
+						testCancel()
+						return
+					}
+
 					select {
 					case <-testCtx.Done():
 						return
@@ -275,6 +309,11 @@ func main() {
 			defer ticker.Stop()
 
 			for {
+				if *maxRequests > 0 && metrics.TotalRequests.Load() >= *maxRequests {
+					testCancel()
+					return
+				}
+
 				select {
 				case <-testCtx.Done():
 					return
