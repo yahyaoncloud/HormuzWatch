@@ -35,172 +35,38 @@ flowchart TD
 
 ---
 
-## Current Sprint: Multi-Node Kubernetes (K3s) Cluster Orchestration
-- [x] **K8S-01 (Control Plane Setup):** Deployed K3s Server v1.36.4 on `tunkstun` (`192.168.1.46`), configured kubectl, flannel VXLAN, core DNS, local-path provisioner, and metrics-server. Tainted control plane (`CriticalAddonsOnly=true:NoSchedule`) to isolate observability.
-- [x] **K8S-02 (Production Worker Join):** Joined `LATE5530` (`192.168.1.40`) as production worker node with labels `environment=production,tier=edge-prod,roles=production,worker`. Configured firewalld for VXLAN (UDP 8472), kubelet (TCP 10250), and API server (TCP 6443).
-- [x] **K8S-03 (Production Workloads Migration):** Imported production images into K3s containerd on `LATE5530`. Deployed `hormuzwatch-prod` namespace: PostgreSQL 16 StatefulSet with dynamic local-path PVC, ML service with 6 preloaded models, Go server with `/health` and circuit closed, and client SPA on NodePort 30000. All pods 1/1 Running with 0 restarts.
-- [x] **K8S-04 (Dev Worker Automation):** Prepared `k8s/scripts/join_tp24_worker.sh` and `k8s/dev/00-dev-workloads.yaml` with `nodeSelector: environment: dev` and systemd sleep masking.
-- [x] **K8S-05 (Runbook & Verification):** Authored `docs/k8s/KUBERNETES_CLUSTER_SETUP_RUNBOOK.md` and `k8s/scripts/verify_cluster.sh`.
+## Completed Sprints Archive (Milestones Summary)
+- [x] **K8S Cluster Orchestration (K8S-01 – K8S-05):** K3s control plane on `tunkstun`, production worker on `LATE5530`, production namespace deployed with 0 restarts, runbooks authored.
+- [x] **3-Node Topology Migration (TASK-01 – TASK-06):** Edge container stack running under rootless Podman 5.8, dev workloads verified on `tp24`, Prometheus scrape targets active.
+- [x] **CI/CD Pipeline Remediation (AUDIT-01 – AUDIT-08):** GHCR container registry integration, zero-downtime blue/green cutover engine, Trivy CVE gates, Gitleaks allowlist, non-root DinD build sidecar.
+- [x] **MLOps & Continuous Training (Track B):** ZenML pipeline integration, DVC dataset tracking, drift remediation loop (PSI/KS), slice-based evaluation, cryptographic model manifests.
+- [x] **Server Reliability & Bug Fixes (Track C/E/F):** 90s time-shifted playback buffer, kinematic dead-reckoning extrapolation, OpenSky leniency with 429 jitter backoff, WebSocket channel panic resolution, bulk telemetry micro-batching.
+- [x] **Client Build & Bundle Optimization (CLIENT-01 – CLIENT-07):** MapLibre GL dynamic isolation, Biome compliance (0 errors), chunk optimization (99.8% entry reduction), Vitest unit test suite (10/10 passing).
+- [x] **Dual Chokepoint & Map Hardening Sprint (CHOKE/NEWS/BOUNDS/PERF/CACHE):**
+  - Added `AREA-BAB-EL-MANDEB` watch zone & sector coordinates to [`LeafletMapInner.tsx`](file:///home/yahya/SHARED/Projects/HormuzWatch/client/src/components/maps/LeafletMapInner.tsx) and [`region.tsx`](file:///home/yahya/SHARED/Projects/HormuzWatch/client/src/app/routes/public/intelligence/region.tsx).
+  - Configured `CHOKEPOINT_VIEWPORTS` presets (`hormuz`, `bab-el-mandeb`, `persian-gulf`, `gulf-of-oman`, `all`) in [`map.store.ts`](file:///home/yahya/SHARED/Projects/HormuzWatch/client/src/stores/slices/map.store.ts).
+  - Restricted OpenRouter OSINT prompts and filtered events strictly to Strait of Hormuz and Bab al-Mandab in [`conflict_feed.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/api/conflict_feed.go).
+  - Expanded gazetteer with Bab al-Mandab ports in [`geocode.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/intelligence/news/geocode.go) and added `ChokepointTerms` in [`keywords.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/intelligence/news/keywords.go).
+  - Expanded theater bounds to `[11.0, 41.5]` – `[31.8, 62.5]` and added TileLayer `bounds` clipping and `preferCanvas: true` to prevent off-theater tile downloads.
+  - Implemented bounded `ObjectLRUCache<T>` and predictive pre-fetching helpers in [`cache.ts`](file:///home/yahya/SHARED/Projects/HormuzWatch/client/src/lib/cache.ts).
 
 ---
 
-## Completed Sprint: 3-Node Architecture & End-to-End Migration
-- [x] **TASK-01 (Topology Architecture):** Formalized and documented node roles (`tp24` build/heavy ops, `LATE5530` prod workloads, `tunkstun` observability).
-- [x] **TASK-02 (tp24 Process Sanitization):** Kill stale processes, prune orphan containers, free memory/ports on `tp24`, resolved Nextcloud port 80 conflict (`sudo snap set nextcloud ports.http=8080`).
-- [x] **TASK-03 (tp24 Dev Workload Deployment):** Deployed and verified HormuzWatch dev stack on `tp24` on Docker 29.7.2 (`docker-compose.dev.yml`). Nginx ingress reverse proxy active on port 80 (`/`, `/api`, `/ml`, `/nextcloud`).
-- [x] **TASK-04 (LATE5530 Production Workload Audit):** Production container stack deployed and verified healthy under rootless Podman 5.8 (Postgres healthy, ML gRPC/HTTP healthy, Go Server healthy with circuit CLOSED, Client on :3000, Dataset-Worker streaming). Resolved cgroup v2 CPU controller delegation via `/etc/systemd/system/user@.service.d/delegate.conf`.
-- [x] **TASK-05 (tunkstun Observability Hub):** Configured Prometheus scrape targets for multi-node metrics (`LATE5530:10020` prod, `tp24:10020` dev, host metrics).
-- [x] **TASK-06 (End-to-End DevOps Verification):** Executed automated test gates: Go unit tests passed in 0.004s; ML model quality gate tests (`test_model_refinements.py`) passed 17/17 in 2.53s; multi-model resilience with fallback configured for LLM intelligence reports.
+## Active Sprint: Real-Time Stream Fusion & Operational Intelligence Dashboard Enhancements
+
+### Workstream 1: Dual-Chokepoint AIS/ADS-B Live Stream Routing
+- [ ] **STREAM-01 (Bab al-Mandab & Hormuz Telemetry Partitioning):**
+  - Implement dynamic stream partition tagging on incoming AIS & ADS-B packets in [`server/internal/intelligence/pipeline.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/intelligence/pipeline.go) (`chokepoint: "hormuz" | "bab_al_mandab" | "gulf_basin"`).
+  - Expose stream subscription filtering in [`server/internal/websocket/hub/hub.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/websocket/hub/hub.go) to allow client WebSockets to request partitioned sub-streams.
+- [ ] **STREAM-02 (Client HUD Dual-Chokepoint Toggle & Metric Ribbon):**
+  - Add quick-switch chokepoint buttons (`[HORMUZ TSS]` / `[BAB AL-MANDAB]`) directly into the map HUD header.
+  - Display live transit density and anomaly rates per chokepoint in [`IntelligenceStatusBar.tsx`](file:///home/yahya/SHARED/Projects/HormuzWatch/client/src/components/intelligence/IntelligenceStatusBar.tsx).
 
 ---
 
-## 1. Track A: DevOps CI/CD Pipeline Remediation (Phased Implementation)
-
-### Phase 1: Critical Hotfixes & Quality Enforcement (Immediate / In-Progress)
-- [x] **AUDIT-03 (Fix Rollback Target):** Patch [`Jenkinsfile`](file:///home/yahya/SHARED/Projects/HormuzWatch/Jenkinsfile) to remotely query target host `E5530` (`git rev-parse HEAD`) *prior* to rollout. Ensures failures roll back to the previously stable running commit instead of re-checking out the broken commit.
-- [x] **AUDIT-02 (Strict Go Test Gate):** Remove `|| true` from `go test -v ./...` in the backend verification stage. Unit test failures now strictly abort the build.
-- [x] **AUDIT-01 (Remote Container Rebuild):** Add `--build --remove-orphans` to `Zero-Downtime Rollout` and post-failure rollback on `E5530` so git updates actually rebuild images rather than executing stale container caches.
-- [x] **AUDIT-02 (Enforce Blocking Security Gates):**
-  - Configured Trivy to fail on Critical container CVEs (`--exit-code 1 --severity CRITICAL`).
-  - Added repository-wide `.gitleaks.toml` allowlist, sanitized test fixtures, and enforced blocking Gitleaks scan without `|| true`.
-  - Configured Python Bandit with venv exclusions to fail on high-confidence security flaws (`-ll -ii`), resolving all B104, B108, and B310 issues across `mlops` and `service/ml-service`.
-- [x] **AUDIT-05 (Edge Environment Sanitization):**
-  - Updated [`Jenkinsfile`](file:///home/yahya/SHARED/Projects/HormuzWatch/Jenkinsfile) `COMPOSE_FILE` to use hardened production compose configuration (`docker-compose.yml`) instead of dev compose.
-  - Enabled release-mode security defaults (`GIN_MODE=release`, `AUTH_DISABLED=false`) preventing stack trace disclosure and enforcing API authorization.
-  - Aligned production database service and network definitions.
-
-### Phase 2: Architectural Realignment & Artifact Delivery (Medium Term)
-- [x] **AUDIT-01 (OCI Container Registry Integration - GHCR):**
-  - Eliminate the "Ghost Build" disconnect between `tunkstun` and `E5530`.
-  - Authenticated Jenkins pipeline with GitHub Container Registry conventions (`ghcr.io/yahyaoncloud/hormuzwatch-*`).
-  - Implemented immutable git commit tagging (`:${GIT_COMMIT}` and `:latest`), container scanning with Trivy, and push stage in [`Jenkinsfile`](file:///home/yahya/SHARED/Projects/HormuzWatch/Jenkinsfile).
-- [x] **AUDIT-06 (True Zero-Downtime Blue/Green Rollout):**
-  - Replaced in-place container restarts with automated Blue/Green deployment slots.
-  - Provisioned dual service groups: Blue (`:10020`, `:8090`, `:3000`) in [`docker-compose.blue.yml`](file:///home/yahya/SHARED/Projects/HormuzWatch/docker-compose.blue.yml) and Green (`:10022`, `:8092`, `:3002`) in [`docker-compose.green.yml`](file:///home/yahya/SHARED/Projects/HormuzWatch/docker-compose.green.yml).
-  - Built rolling cutover engine [`scripts/blue_green_cutover.sh`](file:///home/yahya/SHARED/Projects/HormuzWatch/scripts/blue_green_cutover.sh): Starts target slot -> Probes health until ML models warm up -> Atomically switches Nginx upstream proxy on `E5530` -> Gracefully drains and terminates previous slot.
-  - Eliminates the 10–25s `502 Bad Gateway` window during model weight loading.
-- [x] **AUDIT-08 (Automated Database Schema Migrations):**
-  - Built standalone CLI migration engine in [`server/cmd/migrate/main.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/cmd/migrate/main.go) with embedded `000001_initial_schema.up.sql` and `000001_initial_schema.down.sql`.
-  - Added programmatic `Rollback` and `Status` APIs in [`server/migrations/migrations.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/migrations/migrations.go) with consistency tests in [`server/migrations/migrations_test.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/migrations/migrations_test.go).
-  - Integrated automated schema verification into pipeline pre-flight and automated down-migration step inside post-failure rollback block.
-
-### Phase 3: Infrastructure Hardening & Resilience (Long Term)
-- [x] **AUDIT-04 (Eliminate Host Docker Socket Mounting):**
-  - Removed direct `/var/run/docker.sock` host daemon binding in [`service/jenkins/docker-compose.yml`](file:///home/yahya/SHARED/Projects/HormuzWatch/service/jenkins/docker-compose.yml).
-  - Migrated build execution to an isolated Docker-in-Docker sidecar (`docker:27-dind` via `tcp://dind:2375`) on an isolated CI network.
-  - Enforced non-root build container isolation.
-- [x] **AUDIT-07 (Decouple Ingress & Eliminate Circular Mesh SPOF):**
-  - Configured direct webhook ingress routing on CI controller `tunkstun` (`:8085`), eliminating dependency on edge host `E5530` uptime.
-  - Implemented multi-homed automated SSH fallback in [`Jenkinsfile`](file:///home/yahya/SHARED/Projects/HormuzWatch/Jenkinsfile), dynamically switching between Tailscale (`100.66.64.31`) and LAN (`192.168.1.40`) upon transport degradation.
-- [x] **Jenkins Controller/Agent Decoupling:**
-  - Modernized Jenkins orchestration to decouple controller and ephemeral build agent tasks.
-
----
-
-## 2. Track B: MLOps, Continuous Training (CT) & Model Management
-
-- [x] **Dedicated MLOps Directory Structure:** Consolidated all MLOps assets into [`mlops/`](file:///home/yahya/SHARED/Projects/HormuzWatch/mlops/) with root backward-compatibility symlinks (`data`, `models`, `notebooks`, `pipeline`).
-- [x] **DVC Dataset Versioning:** Initialized DVC repository tracking (`.dvc/`, `.dvcignore`, `dvc.yaml`) linked to MinIO S3 object storage at `s3://hormuzwatch-datasets` (`http://localhost:9000`).
-- [x] **Interactive Jupyter Experimentation Suite:** Created 6 specialized notebooks in [`mlops/notebooks/`](file:///home/yahya/SHARED/Projects/HormuzWatch/mlops/notebooks/):
-  1. `01_maritime_vessel_anomaly.ipynb` (Dual-Path IF + LOF with Isotonic Calibration)
-  2. `02_aviation_anomaly.ipynb` (Kinematic radar anomaly detection)
-  3. `03_chokepoint_blockade_transit.ipynb` (Strait of Hormuz congestion & transit bottleneck analysis)
-  4. `04_geopolitical_news_and_conflict.ipynb` (GDELT 2.0 & RSS OSINT conflict forecasting)
-  5. `05_geospatial_heatmap_fusion.ipynb` (Kernel Density Estimation & risk heatmap surface)
-  6. `06_statistical_drift_and_ct_loop.ipynb` (Population Stability Index & Kolmogorov-Smirnov drift loop)
-- [x] **ZenML Pipeline Orchestration:** Implemented modular DAGs in `mlops/pipeline/zenml/` (`setup_zenml_stack.sh`, `run.py`, data loading, training, evaluation, drift detection, deployment).
-- [x] **Fine-Grained Slice-Based Evaluation:** Built [`mlops/models/evaluations/slice_evaluator.py`](file:///home/yahya/SHARED/Projects/HormuzWatch/mlops/models/evaluations/slice_evaluator.py) assessing vessel types, geofences, and diurnal navigation slices to prevent masked aggregate degradation.
-- [x] **Cryptographic Model & Dataset Manifests:** Added SHA-256 verification via `scripts/model_registry.py verify` and `scripts/dataset_registry.py list`.
-- [x] **Automated Event-Driven Drift Remediation:** Implemented asymptotic KS p-value and rolling-window PSI monitoring ($PSI \ge 0.20$, $p < 0.01$) in [`service/ml-service/lib/drift.py`](file:///home/yahya/SHARED/Projects/HormuzWatch/service/ml-service/lib/drift.py) with cooldown-throttled background retraining dispatch and `POST /drift/remediate/{domain}` API.
-- [x] **Deep Learning Autoencoder Anomaly Scoring:** Implemented [`mlops/pipeline/train_autoencoder.py`](file:///home/yahya/SHARED/Projects/HormuzWatch/mlops/pipeline/train_autoencoder.py) and trained semi-supervised corridor reconstruction autoencoder [`service/ml-service/models/vessel_autoencoder.joblib`](file:///home/yahya/SHARED/Projects/HormuzWatch/service/ml-service/models/vessel_autoencoder.joblib), cryptographically verified in manifest.
-- [x] **Multi-Chokepoint Expansion:** Replicated geofence models and transit tracking for Bab el-Mandeb (`AREA-RS-SOUTH`), Suez Approach (`AREA-RS-NORTH`), and Malacca Strait (`AREA-MALACCA`) in [`server/internal/anomaly/geofence.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/anomaly/geofence.go) and ArcGIS ingest.
-
----
-
-## 3. Track C: Server Reliability & Telemetry Architecture
-
-- [x] **HTTP 429 Prevention & Upstream Leniency:**
-  - Implemented quota-compliant polling schedules (4.5 min anonymous, 2.5 min auth) in [`server/internal/integrations/opensky.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/integrations/opensky.go).
-  - Added HTTP 429 `Retry-After` header parsing with exponential backoff and jitter.
-- [x] **Kinematic Dead-Reckoning Extrapolation:** Added 15-second dead-reckoning projection to interpolate missing ADS-B radar observations without dropping tracks.
-- [x] **In-Memory Time-Shifted Playback Buffer:**
-  - Built [`PlaybackBuffer`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/intelligence/playback.go) with configurable pre-gather delay (default 90 seconds via `PLAYBACK_DELAY_SECONDS`).
-  - Pre-gathers live maritime and aviation observations in an in-memory priority queue, releasing mature events into the WebSocket hub to ensure smooth, jitter-free client map rendering.
-
----
-
-## 4. Track D: Client Global State & Stream Fixation
-
-- [x] **Global Server Status Store:** Built [`client/src/stores/slices/serverStatus.store.ts`](file:///home/yahya/SHARED/Projects/HormuzWatch/client/src/stores/slices/serverStatus.store.ts) tracking connection state (`online`, `streaming`, `buffered_playback`, `reconnecting`, `offline`), signal quality, heartbeat timestamps, and pipeline stages (`ingestion`, `mlEnsemble`, `playbackBuffer`, `storage`).
-- [x] **Eliminated Remote Signal Flickering:**
-  - Diagnosed root cause: `DataFreshnessIndicator` evaluated raw timestamps with tiny 5s/30s/120s thresholds, misinterpreting the 90s playback buffer as "STALE" and flipping to "OFFLINE".
-  - Upgraded [`DataFreshnessIndicator.tsx`](file:///home/yahya/SHARED/Projects/HormuzWatch/client/src/components/common/DataFreshnessIndicator.tsx) to calculate effective age relative to the playback buffer ($Age_{\text{effective}} = \max(0, Age - 90s)$).
-  - Added dedicated `buffered` state displaying `STREAMING (90s BUF)` in cyan with steady pulse.
-- [x] **Tactical Status Bar & System Health Upgrades:**
-  - Updated [`IntelligenceStatusBar.tsx`](file:///home/yahya/SHARED/Projects/HormuzWatch/client/src/components/intelligence/IntelligenceStatusBar.tsx) to render steady `● SERVER: ONLINE`, stream status, and pipeline stage badges (`[INGEST: LIVE] [ML: 6/6 READY] [BUFFER: 90s]`).
-  - Updated [`IntelligenceSystemStatus.tsx`](file:///home/yahya/SHARED/Projects/HormuzWatch/client/src/components/intelligence/IntelligenceSystemStatus.tsx) with the `PLAYBACK BUFFER STAGE (90s TIME-SHIFT)` tile and fixated WebSocket streaming status.
-
----
-
-## 5. Track E: Resolved Critical Bugs & Technical Debt (P0/P1)
-
-- [x] **P0 — ML Inference REST Service 500 Crash:** Fixed `service/ml-service/app.py` by converting Pydantic `VesselFeatures` to numpy array with canonical feature names passed to `score()` and `global_drift_monitor`.
-- [x] **P0 — Vessel Telemetry API and Map Empty-State Remediation:** Resolved 0-vessel return from `/public/vessels` and missing `/api/vessels` route aliases. Expanded `DefaultMockFleet` to 32 authentic Gulf vessels, ensured continuous background fleet baseline in `client.go`, resolved OpenWaters snapshot HTTP 400 with bounded bbox, added AISStream 429 backoff protection, and seeded active maritime tracks to PostgreSQL. Live verified >30 vessels on Podman (:10020) and K3s (:30020, :30000).
-- [x] **P0 — CT Pipeline Deploy Script CLI Args:** Fixed `mlops/pipeline/deploy_candidate.py` to support `--validate-only`, `--execute`, and `--domain [domain]`.
-- [x] **P0 — Jenkins Java 17 EOL Upgrade:** Upgraded Jenkins container from `jenkins/jenkins:lts-jdk17` to `jenkins/jenkins:lts-jdk21` (Java 21 LTS).
-- [x] **P1 — Statistical Drift Monitor Config Mismatch:** Aligned `ks_test_alpha` and `ks_alpha` across `mlops/pipeline/drift_monitor.py` and `config.py`.
-- [x] **P1 — Feature Extractor DB Config Fallback:** Added `db_url` and `min_samples_for_retrain` to `MLOpsConfig`.
-- [x] **P1 — Model Registry Logger String Formatting:** Replaced Go format specifier `%v` with `%s` in `service/ml-service/core/registry.py`.
-- [x] **P1 — Compose Core Volume Mount:** Added `- ./service/ml-service/core:/app/core:ro` to `docker-compose.dev.yml`.
-
----
-
-## 6. Track F: Codebase Security, Concurrency & Technical Debt (Audit Findings)
-
-Reference: [`docs/study/14_codebase_architectural_and_security_audit_report.md`](file:///home/yahya/SHARED/Projects/HormuzWatch/docs/study/14_codebase_architectural_and_security_audit_report.md)
-
-### Critical & High Priority Security (P0/P1)
-- [x] **CODE-01 (Eliminate Insecure Fallback Secrets):** Hardened [`server/internal/auth/jwt.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/auth/jwt.go) to strictly require `JWT_SECRET` in release mode, rejecting silent fallback to insecure strings.
-- [x] **CODE-02 (Strict Cryptographic Model Gating):** Patched [`service/ml-service/app.py`](file:///home/yahya/SHARED/Projects/HormuzWatch/service/ml-service/app.py) to reject `joblib.load()` and raise a fatal `ValueError` if SHA-256 hash fails against `registry_manifest.json` or `manifest.json`.
-- [x] **CODE-03 (Server-Side Admin Role Enforcement):** Removed hardcoded personal admin email whitelists (`ykinwork1@gmail.com`) from [`client/src/environments/environment.ts`](file:///home/yahya/SHARED/Projects/HormuzWatch/client/src/environments/environment.ts) and [`client/src/app/routes/admin/watchlist.tsx`](file:///home/yahya/SHARED/Projects/HormuzWatch/client/src/app/routes/admin/watchlist.tsx), transitioning to environment variables and server-issued role verification.
-- [x] **CODE-05 (Fix WebSocket Hub Race Condition & Channel Panic):** In [`server/internal/websocket/hub/hub.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/websocket/hub/hub.go), eliminated asynchronous goroutine channel closures. Evicts slow clients synchronously within the single-threaded `Run()` select loop under mutex lock.
-- [x] **CODE-06 (Sanitize FastAPI CORS Configuration):** In [`service/ml-service/app.py`](file:///home/yahya/SHARED/Projects/HormuzWatch/service/ml-service/app.py), disallowed `allow_credentials=True` when `allow_origins=["*"]`.
-
-### Performance, Persistence & Reliability (P1/P2)
-- [x] **CODE-04 (Extract Database DDL to Migrations):** Removed synchronous `CREATE TABLE` and `ALTER TABLE` blocks from [`server/internal/db/db.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/db/db.go). Implemented transactional, versioned migration runner in [`server/migrations/migrations.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/migrations/migrations.go) with embedded `000001_initial_schema.up.sql` tracking via `schema_migrations`.
-- [x] **CODE-07 (Bounded LRU Cache & Rate Limiting):** In [`server/internal/api/middleware.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/api/middleware.go), capped `cacheMap` (2,000 items) and `visitors` (10,000 items) with background eviction to prevent memory exhaustion DoS.
-- [x] **CODE-08 (Telemetry Bulk Micro-Batching):** Implemented `PersistTelemetryBatch` in [`server/internal/db/telemetry.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/db/telemetry.go) and asynchronous non-blocking `persistenceBatcher` in [`server/internal/intelligence/pipeline.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/intelligence/pipeline.go) (500ms / 100-record flushes).
-- [x] **CODE-09 (Global React Error Boundary):** Implemented tactical cyber `<ErrorBoundary>` component in [`client/src/components/common/ErrorBoundary.tsx`](file:///home/yahya/SHARED/Projects/HormuzWatch/client/src/components/common/ErrorBoundary.tsx) and wrapped root application in [`client/src/main.tsx`](file:///home/yahya/SHARED/Projects/HormuzWatch/client/src/main.tsx).
-
----
-
-## Client: Performance, Build Speed & Runtime Optimization
-
-### Constraints & Invariants
-- **Auth Fallback Invariant**: Preserve three-stage fallback (`supabase.auth` -> Go `/auth/login` session cookie -> Zustand persisted store).
-- **Real-Time Stream Invariant**: Preserve 2 Hz telemetry buffer flush, 1–1.5s HUD log rate-limit, and non-persistence of active WebSocket track state.
-- **Dual Map Invariant**: Keep Leaflet lazy-loaded for operational HUD and MapLibre GL isolated to vector/editorial routes.
-- **Simplicity & Standard Patterns**: Zero unnecessary dependencies, minimal abstractions, readable configuration.
-
-### Assumptions
-- System runtime uses `bun` (v1.4.2) or `node` where available. The build script should run reliably in standard CI/local environments.
-- SPA mode (`ssr: false`) is active under React Router 8 / Vite 7.
-- Vitest is the designated test runner for unit tests (`package.json`).
-
-### Acceptance Criteria
-- [x] Root `TODO.md` maintained as a living checklist across all workstreams.
-- [x] Baseline metrics recorded for build time, bundle sizes, largest chunks, TypeScript, and Biome.
-- [x] Production build succeeds and `tsc --noEmit` reports 0 errors.
-- [x] MapLibre GL is completely isolated from initial route bundles via dynamic imports.
-- [x] Biome check passes cleanly on `src/` with `.react-router` ignored (0 errors across 157 files).
-- [x] Core unit tests added with Vitest covering state stores and auth utilities (10/10 passing).
-- [x] Measurable improvement in bundle sizes and build times without any functional regressions (`entry.client` dropped 99.8%, `auth` dropped 98.5%).
-
-### Tasks Checklist
-- [x] **CLIENT-01 (Baseline Measurement):** Run and record baseline cold build time (10.35s), largest chunks (`vendor-maplibre`: 1052.9 kB, `auth`: 216 kB, `entry.client`: 184 kB), `tsc` (0 errors), and Biome diagnostics (360+ errors before fixes).
-- [x] **CLIENT-02 (Tooling & Biome Config):** Excluded `.react-router/**` in `biome.json`, fixed `build.mjs` execution, fixed rules of hooks in `MapContainer.tsx`, resolved all Biome lint/format errors across `src/` (down to 0 errors).
-- [x] **CLIENT-03 (MapLibre Code-Splitting):** Verified MapLibre GL is isolated to editorial/learn routes and not preloaded on root SPA index; removed shadowed `Map` types.
-- [x] **CLIENT-04 (Vite Chunking & Build Optimization):** Optimized `manualChunks` in `vite.config.ts` into `vendor-react` (React, React-DOM, React Router), `vendor-supabase`, `vendor-leaflet`, `vendor-uplot`, `vendor-tanstack`, and calibrated `chunkSizeWarningLimit: 1200` to eliminate Rollup warnings. Reduced `entry.client` from 184.55 kB to 0.21 kB and `auth` from 216.09 kB to 3.23 kB.
-- [x] **CLIENT-05 (Runtime Performance & Zustand Auditing):** Audited Zustand selectors across `FeedPage.tsx` and `IntelligenceDashboard.tsx`; optimized full-telemetry subscriptions to `telemetry?.timestamp` to eliminate unnecessary re-render churn during high-frequency WebSocket streams; verified uPlot ResizeObserver chart reuse in `ModelChart.tsx`.
-- [x] **CLIENT-06 (Unit Testing & Quality Gate):** Authored 3 unit test suites using Vitest for `src/lib/auth.test.ts`, `src/stores/slices/health.store.test.ts`, and `src/stores/slices/serverStatus.store.test.ts`. 10/10 tests passing in 359ms.
-- [x] **CLIENT-07 (Post-Optimization Verification & Reporting):** Verified production build succeeds in 8.76s (SPA mode, 0 errors, 0 warnings), `tsc --noEmit` passes with 0 errors, `vitest run` passes 10/10, Biome passes with 0 errors. Compiled before/after comparison table.
+### Workstream 2: Predictive Collision & Corridor Deviation Alarms
+- [ ] **ALERT-01 (Bab al-Mandab Inbound/Outbound Traffic Separation Monitoring):**
+  - Implement lane compliance evaluation for the Bab al-Mandab TSS in [`server/internal/anomaly/vessel.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/anomaly/vessel.go) (detecting wrong-way transits and rogue vessels outside designated corridors).
+  - Trigger high-severity anomaly alerts when a vessel deviates from standard transit courses near Perim Island.
+- [ ] **ALERT-02 (Asymmetric Threat Proximity Detection):**
+  - Evaluate dynamic distance thresholds between commercial tankers and known military exclusion zones or suspicious loitering tracks in [`server/internal/anomaly/geofence.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/anomaly/geofence.go).

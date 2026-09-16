@@ -51,10 +51,23 @@ var PortGazetteer = map[string]GeoPoint{
 	"aqaba":                {29.5319, 35.0056},
 	// Israel
 	"eilat":                {29.5578, 34.9514},
-	// Africa
+	// Africa / Red Sea / Bab al-Mandab
 	"mombasa":              {-4.0500, 39.6667},
 	"port sudan":           {19.6167, 37.2167},
 	"djibouti":             {11.5950, 43.1481},
+	"port of djibouti":     {11.5950, 43.1481},
+	"bab al-mandab":        {12.5833, 43.3333},
+	"bab el-mandeb":        {12.5833, 43.3333},
+	"perim island":         {12.6500, 43.4167},
+	"mayyun":               {12.6500, 43.4167},
+	"mocha":                {13.3167, 43.2500},
+	"al mukha":             {13.3167, 43.2500},
+	"assab":                {13.0000, 42.7333},
+	"aden":                 {12.7989, 45.0186},
+	"port of aden":         {12.7989, 45.0186},
+	"hodeidah":             {14.7978, 42.9545},
+	"al hudaydah":          {14.7978, 42.9545},
+	"hanish islands":       {13.7500, 42.7500},
 }
 
 // AirportGazetteer maps airport names (lowercase) to coordinates.

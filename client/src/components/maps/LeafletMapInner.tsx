@@ -83,17 +83,17 @@ function getTileLayerConfig(mode: BasemapMode, isDarkMode: boolean, useFallback 
 }
 
 export const DEFAULT_GULF_BOUNDS: L.LatLngBoundsExpression = [
-  [21.5, 47.0], // SW: UAE / Oman / Southern Gulf
-  [31.5, 61.5], // NE: Northern Gulf / Shatt al-Arab / Gulf of Oman
+  [11.0, 41.5], // SW: Bab al-Mandab / Gulf of Aden / Southern Red Sea
+  [31.8, 62.5], // NE: Northern Persian Gulf / Shatt al-Arab / Gulf of Oman
 ];
 
 export const LOCKED_BOUNDS: L.LatLngBoundsExpression = [
-  [21.5, 47.0],
-  [31.5, 61.5],
+  [11.0, 41.5],
+  [31.8, 62.5],
 ];
 
-const LOCKED_MIN_ZOOM = 6.0;
-const LOCKED_MAX_ZOOM = 14.0;
+const LOCKED_MIN_ZOOM = 5.5;
+const LOCKED_MAX_ZOOM = 15.0;
 
 function parseCoord(val: any): number | null {
   if (val === undefined || val === null) return null;
@@ -150,6 +150,8 @@ function classifyTrackObject(track: any): 'vessel' | 'aircraft' {
 }
 
 function getRegionNameByCoords(lat: number, lon: number): string {
+  // Bab al-Mandab Strait
+  if (lat >= 11.5 && lat <= 14.5 && lon >= 42.0 && lon <= 45.0) return 'Bab al-Mandab Strait';
   // Strait of Hormuz TSS
   if (lat >= 25.8 && lat <= 27.3 && lon >= 55.5 && lon <= 57.1) return 'Strait of Hormuz';
   // Fujairah Anchorage
@@ -165,7 +167,7 @@ function getRegionNameByCoords(lat: number, lon: number): string {
 }
 
 export function isInsideGulf(lat: number, lon: number): boolean {
-  return lat >= 21.0 && lat <= 32.5 && lon >= 46.5 && lon <= 62.5;
+  return lat >= 11.0 && lat <= 32.5 && lon >= 41.5 && lon <= 62.5;
 }
 
 import { createTacticalLeafletIcon } from '@/icons';
@@ -472,6 +474,18 @@ export const WATCH_ZONES = [
     color: '#00E676',
     label: 'FUJAIRAH ANCHORAGE',
   },
+  {
+    id: 'AREA-BAB-EL-MANDEB',
+    name: 'Bab al-Mandab Strait (TSS)',
+    coords: [
+      [13.5, 42.8],
+      [13.5, 43.6],
+      [12.3, 43.6],
+      [12.3, 42.8],
+    ] as [number, number][],
+    color: '#DC2626',
+    label: 'BAB AL-MANDAB TSS',
+  },
 ];
 
 export interface LeafletMapProps {
@@ -515,7 +529,7 @@ export default function LeafletMapInner({
   locked = false,
   minZoom: minZoomProp,
   maxZoom: maxZoomProp,
-  gulfBounds: _gulfBoundsProp,
+  gulfBounds: gulfBoundsProp,
   onHighlightReady,
   timeline = 'all',
   severityFilter = 'all',
@@ -1848,9 +1862,10 @@ export default function LeafletMapInner({
         style={{ height: '100%', width: '100%' }}
         minZoom={minZoom}
         maxZoom={maxZoom}
-        maxBounds={DEFAULT_GULF_BOUNDS}
+        maxBounds={gulfBoundsProp || DEFAULT_GULF_BOUNDS}
         maxBoundsViscosity={boundsViscosity}
         zoomControl={false}
+        preferCanvas={true}
         ref={setMap as any}
       >
         <TileLayer
@@ -1859,6 +1874,7 @@ export default function LeafletMapInner({
           url={tileConfig.url}
           subdomains={tileConfig.subdomains}
           maxZoom={maxZoom}
+          bounds={DEFAULT_GULF_BOUNDS}
           className={tileConfig.className}
           eventHandlers={{
             tileerror: handleTileError,

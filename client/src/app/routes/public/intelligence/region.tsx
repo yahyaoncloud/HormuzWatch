@@ -36,10 +36,13 @@ const REGION_TODOS: TodoItem[] = [
 ];
 
 function getRegionNameByCoords(lat: number, lon: number): string {
+  if (lat >= 11.5 && lat <= 14.5 && lon >= 42.0 && lon <= 45.0) {
+    return 'Bab al-Mandab';
+  }
   if (lat >= 29.9 && lat <= 31.3 && lon >= 32.2 && lon <= 32.6) {
     return 'Suez Canal';
   }
-  if (lat >= 12.0 && lat <= 29.9 && lon >= 32.2 && lon <= 44.0) {
+  if (lat >= 14.5 && lat <= 29.9 && lon >= 32.2 && lon <= 44.0) {
     return 'Red Sea';
   }
   if (lat >= 25.5 && lat <= 27.5 && lon >= 55.5 && lon <= 57.2) {
@@ -77,7 +80,8 @@ export async function clientLoader({ params }: LoaderFunctionArgs) {
   const regionalTraces = traces.filter((t) => {
     const regionName = getRegionNameByCoords(t.lat, t.lon);
     if (regionParam === 'hormuz') return regionName === 'Strait of Hormuz';
-    if (regionParam === 'red-sea') return regionName === 'Red Sea';
+    if (regionParam === 'bab-el-mandeb') return regionName === 'Bab al-Mandab';
+    if (regionParam === 'red-sea') return regionName === 'Red Sea' || regionName === 'Bab al-Mandab';
     if (regionParam === 'suez') return regionName === 'Suez Canal';
     if (regionParam === 'persian-gulf') return regionName === 'Persian Gulf';
     return false;
@@ -116,6 +120,35 @@ export async function clientLoader({ params }: LoaderFunctionArgs) {
           title: 'Historical Incidents',
           desc: '1980s Tanker War, 2019 attacks, 2021 seizures. Pattern of escalation during regional tension.',
           icon: '📜',
+        },
+      ],
+    },
+    'bab-el-mandeb': {
+      name: 'Bab al-Mandab Strait',
+      subtitle: 'Southern gate of the Red Sea & critical asymmetric conflict zone',
+      description:
+        'The Bab al-Mandab Strait is a 20-mile-wide chokepoint between Djibouti and Yemen connecting the Red Sea to the Gulf of Aden. It is divided into two channels by Perim Island, presenting extreme asymmetric and maritime navigation challenges.',
+      facts: [
+        { label: 'Estimated Daily Transits', value: '50-60 vessels' },
+        { label: 'Risk Index', value: `${riskScore}/100` },
+        { label: 'Active Regional Anomalies', value: String(anomaliesCount) },
+        { label: 'Global Trade Flow', value: '12%' },
+      ],
+      contexts: [
+        {
+          title: 'Asymmetric Threats',
+          desc: 'Frequent drone, anti-ship ballistic missile, and USV attacks targeting commercial merchant vessels.',
+          icon: '🚀',
+        },
+        {
+          title: 'Trade Divergence',
+          desc: 'Over 60% of container shipping re-routed around Cape of Good Hope, altering global supply chains.',
+          icon: '🗺️',
+        },
+        {
+          title: 'Coalition Escort',
+          desc: 'Multinational task forces providing continuous air defense and convoy protection.',
+          icon: '🛡️',
         },
       ],
     },

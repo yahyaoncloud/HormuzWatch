@@ -109,6 +109,15 @@ var CyberTerms = []string{
 	"data leak", "compromise", "firewall", "encryption",
 }
 
+// ChokepointTerms are keywords specifically tied to the Strait of Hormuz and Bab al-Mandab.
+var ChokepointTerms = []string{
+	"hormuz", "strait of hormuz", "bandar abbas", "fujairah", "musandam",
+	"bab al-mandab", "bab el-mandeb", "perim", "houthi", "red sea", "aden",
+	"gulf of oman", "persian gulf", "chokepoint", "tss", "traffic separation",
+	"tanker war", "boarding", "seizure", "anti-ship missile", "usv", "unmanned surface",
+	"ukmto", "marad", "imb", "eu navfor", "prosperity guardian",
+}
+
 // CountTerms is a convenience function that counts how many of the given
 // terms appear (at least once) in the text.
 func CountTerms(text string, terms []string) int {

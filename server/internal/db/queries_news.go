@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 )
 
@@ -55,14 +56,20 @@ func InsertArticle(id, sourceID, title, url, content, summary string, publishedA
 
 // ArticleExists checks if an article URL already exists.
 func ArticleExists(url string) (bool, error) {
+	if DB == nil {
+		return false, nil
+	}
 	var count int
-	err := QueryRow("SELECT COUNT(*) FROM articles WHERE url = ?", url).Scan(&count)
+	err := DB.QueryRow(Rebind("SELECT COUNT(*) FROM articles WHERE url = ?"), url).Scan(&count)
 	return count > 0, err
 }
 
 // GetArticleByID retrieves a single article.
 func GetArticleByID(id string) (*sql.Row, error) {
-	return QueryRow("SELECT id, source_id, title, url, content, summary, published_at, fetched_at, language, category, risk_score, ml_score, source_reliability, country, lat, lon, metadata FROM articles WHERE id = ?", id), nil
+	if DB == nil {
+		return nil, errors.New("database connection not available")
+	}
+	return DB.QueryRow(Rebind("SELECT id, source_id, title, url, content, summary, published_at, fetched_at, language, category, risk_score, ml_score, source_reliability, country, lat, lon, metadata FROM articles WHERE id = ?"), id), nil
 }
 
 // GetLatestArticles returns the most recent articles with optional filtering.
@@ -161,8 +168,11 @@ func InsertContentHash(hash, articleID, hashType string) error {
 
 // HashExists checks if a content hash already exists.
 func HashExists(hash string) (bool, error) {
+	if DB == nil {
+		return false, nil
+	}
 	var count int
-	err := QueryRow("SELECT COUNT(*) FROM content_hashes WHERE hash = ?", hash).Scan(&count)
+	err := DB.QueryRow(Rebind("SELECT COUNT(*) FROM content_hashes WHERE hash = ?"), hash).Scan(&count)
 	return count > 0, err
 }
 
@@ -170,9 +180,12 @@ func HashExists(hash string) (bool, error) {
 
 // StartScrapeJob creates a new scrape job and returns its ID.
 func StartScrapeJob(sourceID string) (int64, error) {
+	if DB == nil {
+		return 0, errors.New("database connection not available")
+	}
 	var id int64
-	err := QueryRow(
-		"INSERT INTO scrape_jobs (source_id, status) VALUES (?, 'running') RETURNING id",
+	err := DB.QueryRow(
+		Rebind("INSERT INTO scrape_jobs (source_id, status) VALUES (?, 'running') RETURNING id"),
 		sourceID,
 	).Scan(&id)
 	return id, err

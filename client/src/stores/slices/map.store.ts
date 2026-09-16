@@ -2,6 +2,24 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
+export type ChokepointFocus =
+  | 'all'
+  | 'hormuz'
+  | 'bab-el-mandeb'
+  | 'persian-gulf'
+  | 'gulf-of-oman';
+
+export const CHOKEPOINT_VIEWPORTS: Record<
+  ChokepointFocus,
+  { center: [number, number]; zoom: number; label: string }
+> = {
+  all: { center: [23.5, 52.0], zoom: 6, label: 'Operational Theater (All)' },
+  hormuz: { center: [26.2, 56.1], zoom: 8.5, label: 'Strait of Hormuz' },
+  'bab-el-mandeb': { center: [12.8, 43.3], zoom: 9, label: 'Bab al-Mandab Strait' },
+  'persian-gulf': { center: [26.8, 51.5], zoom: 7, label: 'Persian Gulf Basin' },
+  'gulf-of-oman': { center: [24.5, 58.5], zoom: 7.5, label: 'Gulf of Oman' },
+};
+
 export interface MapLayersState {
   vessels: boolean;
   aircraft: boolean;
@@ -24,6 +42,10 @@ export interface MapSliceState {
   setSeverityFilter: (val: string) => void;
   regionFilter: string;
   setRegionFilter: (val: string) => void;
+
+  // Chokepoint Selection
+  chokepointFocus: ChokepointFocus;
+  setChokepointFocus: (focus: ChokepointFocus) => void;
 
   // Viewport & Pan
   recenterTrigger: number;
@@ -68,6 +90,13 @@ export const useMapStateStore = create<MapSliceState>()(
           state.regionFilter = val;
         }),
 
+      chokepointFocus: 'all',
+      setChokepointFocus: (focus) =>
+        set((state) => {
+          state.chokepointFocus = focus;
+          state.recenterTrigger += 1;
+        }),
+
       recenterTrigger: 0,
       triggerRecenter: () =>
         set((state) => {
@@ -81,6 +110,7 @@ export const useMapStateStore = create<MapSliceState>()(
         timeline: state.timeline,
         severityFilter: state.severityFilter,
         regionFilter: state.regionFilter,
+        chokepointFocus: state.chokepointFocus,
       }),
     }
   )

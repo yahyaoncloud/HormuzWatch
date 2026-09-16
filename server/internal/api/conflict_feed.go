@@ -65,40 +65,31 @@ func callOpenRouterForConflicts() (*ConflictFeedResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	systemPrompt := `You are an OSINT intelligence analyst specializing in the Persian Gulf, Strait of Hormuz, Gulf of Oman, and Red Sea regions.
+	systemPrompt := `You are an OSINT intelligence analyst specializing exclusively in two critical global maritime chokepoints: The Strait of Hormuz and the Bab al-Mandab Strait.
 
-Generate a JSON array of 20+ recent (last 7 days) conflict, security, and maritime incidents across these regions. Use real, verifiable event patterns. Include diverse source types (OSINT, maritime broadcasts, military press releases, diplomatic cables, local media).
+Generate a JSON array of 20+ recent (last 7 days) conflict, security, and maritime incidents focused strictly on these two chokepoints and their immediate approaches. Use real, verifiable event patterns. Include diverse source types (UKMTO, MARAD, IMB, EU NAVFOR, IRGC, commercial shipping alerts).
 
 STRICT RULES:
 - Output ONLY a valid JSON array. No markdown, no code fences, no explanation.
 - Each object MUST have these exact keys: id, title, description, lat, lon, conflictType, severity, region, affectedAssets, casualties, source, sourceType, timestamp, verified
-- lat/lon MUST be real coordinates within these bounding boxes:
-  Persian Gulf: 24-30N, 48-57E
-  Strait of Hormuz: 25-27N, 55-58E
-  Gulf of Oman: 22-26N, 57-62E
-  Red Sea / Bab-el-Mandeb: 12-22N, 38-46E
-  Arabian Sea: 10-24N, 57-70E
+- lat/lon MUST be real coordinates within ONLY these two bounding boxes:
+  1. Strait of Hormuz (TSS & Gulf of Oman approach): 24.5-27.5N, 55.0-58.5E
+  2. Bab al-Mandab Strait (Perim Island & Southern Red Sea gate): 11.5-14.5N, 42.0-45.0E
 - Severity: "critical", "high", "medium", or "low"
 - Conflict types: "naval", "air", "ground", "cyber", "infrastructure", "piracy", "diplomatic", "hybrid"
 - Timestamp format: ISO 8601 within the last 7 days
 - Sources should reference real organizations (UKMTO, IMB, EU NAVFOR, CMF, IRGC Navy, Reuters, AP, etc.)
-- Be specific — name vessel types (VLCC, frigate, speedboat, dhow, UAV), military units, and locations.
+- Be specific — name vessel types (VLCC, container, bulk carrier, frigate, speedboat, UAV, USV, ASBM), military units, and locations.
 - verified: boolean
-- Generate at least 22 items covering all conflict types and regions.`
+- Generate at least 20 items divided between Strait of Hormuz and Bab al-Mandab.`
 
-	userPrompt := `Generate 22+ current conflict and security incidents across the Persian Gulf, Strait of Hormuz, Gulf of Oman, Red Sea, and Arabian Sea. Include a mix of:
-- Houthi attacks on commercial shipping (Red Sea/Bab-el-Mandeb)
-- IRGC naval encounters/boardings (Strait of Hormuz)
-- UAV/drone incursions (Gulf of Oman, Persian Gulf)
-- Piracy incidents (Arabian Sea, Gulf of Aden)
-- Cyber attacks on port infrastructure
-- Diplomatic escalations between regional powers
-- Military exercises and force postures
-- Oil tanker seizures or harassment
-- Subsea cable sabotage attempts
-- Smuggling interdictions
-- Coalition naval patrol activities
-- AIS spoofing/jamming events
+	userPrompt := `Generate 20+ current conflict and security incidents strictly concentrated in the Strait of Hormuz and Bab al-Mandab Strait. Include a realistic mix of:
+- Houthi anti-ship missile / drone / USV engagements against commercial vessels in Bab al-Mandab
+- IRGC naval harassment, fast-boat interceptions, and boarding operations in the Strait of Hormuz
+- GPS spoofing, AIS manipulation, and electronic warfare around the chokepoints
+- Coalition naval escorts (Operation Prosperity Guardian, Operation Aspides) in Bab al-Mandab
+- Mines, suspicious skiffs, and asymmetric threats near Perim Island and Strait of Hormuz TSS
+- Port cyber incidents and infrastructure alerts affecting Fujairah, Bandar Abbas, Djibouti, and Aden
 
 Return ONLY the JSON array with no additional text.`
 
@@ -153,13 +144,31 @@ Return ONLY the JSON array with no additional text.`
 		return nil, fmt.Errorf("failed to parse conflicts JSON: %w", err)
 	}
 
+	conflicts = filterToStrategicChokepoints(conflicts)
+
 	return &ConflictFeedResponse{
 		Conflicts:   conflicts,
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 		Source:      "openrouter",
 		Count:       len(conflicts),
-		Message:     fmt.Sprintf("Live OSINT feed — %d conflict events analyzed via gpt-4o", len(conflicts)),
+		Message:     fmt.Sprintf("Live OSINT feed — %d conflict events focused on Strait of Hormuz & Bab al-Mandab", len(conflicts)),
 	}, nil
+}
+
+// filterToStrategicChokepoints removes any conflict event located outside the Strait of Hormuz and Bab al-Mandab corridors.
+func filterToStrategicChokepoints(conflicts []ConflictEvent) []ConflictEvent {
+	filtered := make([]ConflictEvent, 0, len(conflicts))
+	for _, c := range conflicts {
+		// Strait of Hormuz & approaches: Lat 24-28, Lon 54-59
+		inHormuz := c.Lat >= 24.0 && c.Lat <= 28.0 && c.Lon >= 54.0 && c.Lon <= 59.0
+		// Bab al-Mandab & Southern Red Sea corridor: Lat 11-15, Lon 41.5-46.0
+		inBabMandab := c.Lat >= 11.0 && c.Lat <= 15.0 && c.Lon >= 41.5 && c.Lon <= 46.0
+
+		if inHormuz || inBabMandab {
+			filtered = append(filtered, c)
+		}
+	}
+	return filtered
 }
 
 // mapConflictType maps the conflict feed event types to the database event_type enum values.

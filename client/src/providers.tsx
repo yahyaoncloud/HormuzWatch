@@ -731,17 +731,73 @@ export function useTime() {
 }
 
 // ============================================================
+// Offline Failover Provider (Auto-refresh to static when server goes down)
+// ============================================================
+
+export function OfflineFailoverProvider({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let consecutiveFailures = 0;
+    const MAX_FAILURES = 2; // Trigger failover after 2 consecutive confirmed failures
+
+    const checkServerStatus = async () => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+        const res = await fetch('/?_probe=' + Date.now(), {
+          method: 'GET',
+          cache: 'no-store',
+          signal: controller.signal,
+          headers: { Accept: 'text/html' },
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+          consecutiveFailures++;
+        } else {
+          const html = await res.text();
+          // If Nginx intercepted and served the static status/maintenance page
+          if (html.includes('SYSTEM STATUS & MAINTENANCE') || html.includes('downtime-box')) {
+            consecutiveFailures++;
+          } else {
+            consecutiveFailures = 0; // Live container healthy
+          }
+        }
+      } catch {
+        consecutiveFailures++;
+      }
+
+      if (consecutiveFailures >= MAX_FAILURES) {
+        // Server went offline -> immediately switch back to static status page
+        window.location.replace('/status');
+      }
+    };
+
+    const interval = setInterval(checkServerStatus, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return <>{children}</>;
+}
+
+// ============================================================
 // Composed Providers
 // ============================================================
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <SupabaseAuthProvider>
-      <TimeProvider>
-        <MapProvider>
-          <WebSocketProvider>{children}</WebSocketProvider>
-        </MapProvider>
-      </TimeProvider>
-    </SupabaseAuthProvider>
+    <OfflineFailoverProvider>
+      <SupabaseAuthProvider>
+        <TimeProvider>
+          <MapProvider>
+            <WebSocketProvider>{children}</WebSocketProvider>
+          </MapProvider>
+        </TimeProvider>
+      </SupabaseAuthProvider>
+    </OfflineFailoverProvider>
   );
 }
+
