@@ -20,7 +20,8 @@ services:
       - DOCKER_TLS_CERTDIR=
     volumes:
       - jenkins_data:/var/jenkins_home
-      - /home/yahya/SHARED/Projects/HormuzWatch:/home/yahya/SHARED/Projects/HormuzWatch
+      - ../..:/workspace
+      - ${PWD}/../..:/home/yahya/SHARED/Projects/HormuzWatch
     networks:
       - hormuzwatch-ci-network
     depends_on:
@@ -36,7 +37,8 @@ services:
       - DOCKER_TLS_CERTDIR=
     volumes:
       - dind_data:/var/lib/docker
-      - /home/yahya/SHARED/Projects/HormuzWatch:/home/yahya/SHARED/Projects/HormuzWatch
+      - ../..:/workspace
+      - ${PWD}/../..:/home/yahya/SHARED/Projects/HormuzWatch
     networks:
       - hormuzwatch-ci-network
 

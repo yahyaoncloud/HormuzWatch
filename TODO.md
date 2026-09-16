@@ -70,3 +70,56 @@ flowchart TD
   - Trigger high-severity anomaly alerts when a vessel deviates from standard transit courses near Perim Island.
 - [ ] **ALERT-02 (Asymmetric Threat Proximity Detection):**
   - Evaluate dynamic distance thresholds between commercial tankers and known military exclusion zones or suspicious loitering tracks in [`server/internal/anomaly/geofence.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/anomaly/geofence.go).
+
+---
+
+## Workstream 3: SRE Stress Testing, Hardware Profiling & High-Throughput Hardening
+
+### Current Infrastructure & SRE Issues Identified
+
+| # | Issue Identified | Impact | Root Cause |
+|---|------------------|--------|------------|
+| **ISSUE-01** | Client Socket Exhaustion during 20k RPS | Network errors (`connection refused`, `socket limit`) during multi-thousand RPS runs | Client host default `ulimit -n` is set to `1024`, capping concurrent open file descriptors. |
+| **ISSUE-02** | Wi-Fi Latency & Jitter on `LATE5530` | Throughput bottlenecked over LAN (`wlp2s0`) under heavy concurrent socket bursts | `LATE5530` is connected via Wi-Fi with variable ~2-5ms base latency, ballooning under 1,000+ socket concurrency. |
+| **ISSUE-03** | Server-Side Rate Limiter Throttling | Returns `HTTP 429 Too Many Requests` during stress runs against backend API (`:30020`) | Gin `RateLimiterMiddleware` enforces per-IP token quotas, blocking high-throughput load tests. |
+| **ISSUE-04** | Direct Host Port 80 vs NodePort Routing | Ingress requests directly hitting `http://192.168.1.40:80/` can time out if host Nginx is bound strictly to Cloudflare tunnel | Kubernetes NodePorts (`:30000` client, `:30020` server) are open, but host-level Nginx reverse proxy needs keepalive upstream pooling. |
+| **ISSUE-05** | `tp24` Direct Routing to `LATE5530` | Intermittent "No route to host" from `tp24` (`192.168.1.35`) directly to `192.168.1.40` | ARP table stale/subnet isolation on `enp8s0` vs `wlp2s0`. Must route through `tunkstun` or Tailscale overlay (`100.66.64.31`). |
+
+---
+
+### Actionable Remediation Backlog
+
+- [ ] **SRE-01 (Rate Limiter Internal Subnet Whitelist):**
+  - Modify [`server/internal/api/middleware.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/server/internal/api/middleware.go) to bypass or elevate rate limits for cluster/RFC1918 internal subnets (`192.168.1.0/24`, `10.42.0.0/16`, `127.0.0.1/8`) to allow unrestricted internal telemetry streaming and benchmark tests.
+- [ ] **SRE-02 (Client Socket & Connection Pool Tuning):**
+  - Standardize high-concurrency launcher wrapper in [`scripts/mock_load_generator.go`](file:///home/yahya/SHARED/Projects/HormuzWatch/scripts/mock_load_generator.go) with automatic `ulimit -n 65535` checks and pre-allocated TCP keepalive connections.
+- [ ] **SRE-03 (Nginx Upstream Keepalive & Micro-Caching):**
+  - Update `/etc/nginx/conf.d/upstreams.conf` on `LATE5530` to include `keepalive 256;` in upstream blocks and `proxy_http_version 1.1; proxy_set_header Connection "";` to eliminate TCP handshake overhead on proxied requests.
+- [ ] **SRE-04 (Hardware & Network Link Optimization):**
+  - Connect `LATE5530` to Gigabit wired Ethernet or bind direct Tailscale subnet route to remove 802.11 Wi-Fi latency jitter during peak vessel telemetry streams.
+- [ ] **SRE-05 (Automated SRE Benchmark Pipeline in Jenkins):**
+  - Add a dedicated Jenkins pipeline stage on `tp24` (`service/jenkins/`) to trigger automated load generation tests from `tunkstun` and assert P99 latency < 250ms and 0 HTTP 5xx errors.
+
+---
+
+### Machine Benchmark & Overwhelming Stress Test Findings (`LATE5530`)
+
+```mermaid
+xychart-beta
+    title "LATE5530 Server Latency Percentiles Under Flood Load (1.75k RPS)"
+    x-axis ["P50 (Median)", "P90", "P95", "P99", "P99.9 (Tail)"]
+    y-axis "Latency (ms)" 0 --> 2500
+    bar [102.33, 188.31, 200.36, 270.17, 2433.90]
+```
+
+* **Hardware Specs**: Dell Latitude E5530 — 2 Cores / 4 Threads (Intel Core i5-3340M @ 2.70 GHz), 7.4 GB DDR3 RAM, Rocky Linux 9.
+* **Peak Measured Flood Throughput**: **1,747.84 Requests/sec** sustained on 300 concurrent workers with unthrottled loop.
+* **Success Rate**: **96.77%** HTTP 200 OK (16,937 successful responses in 10 seconds).
+* **Latency Profile**:
+  * P50 (Median): **102.33 ms**
+  * P90: **188.31 ms**
+  * P95: **200.36 ms**
+  * P99: **270.17 ms**
+  * Max / P99.9 Tail: **2,433.90 ms**
+* **Memory & Pod Stability**: Memory remained stable at **1.64 GB / 7.55 GB used** with **0 pod restarts or OOM kills** across all K8s containers (`hormuzwatch-client`, `hormuzwatch-server`, `hormuzwatch-ml`, `hormuzwatch-postgres`).
+* **Load Average**: Rose to **5.79** under flood bombardment, returning to normal baseline within 60 seconds post-test.

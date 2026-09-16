@@ -36,7 +36,12 @@ func main() {
 	method := flag.String("method", "GET", "HTTP method (GET or POST)")
 	payloadType := flag.String("payload", "telemetry", "Payload type for POST: 'telemetry' or 'empty'")
 	warmup := flag.Duration("warmup", 2*time.Second, "Warmup duration to pre-fill TCP connections")
+	floodMode := flag.Bool("flood", false, "Unthrottled flood mode: bombard the target at maximum possible speed without rate limiting")
 	flag.Parse()
+
+	if *floodMode {
+		fmt.Printf(" Mode:         FLOOD / UNTHROTTLED (Bombarding target at max capacity)\n")
+	}
 
 	fmt.Println("================================================================================")
 	fmt.Println(" 🌊 HormuzWatch — High-Throughput Distributed Load Generator (20k RPS) ")
@@ -208,6 +213,61 @@ func main() {
 					))
 				} else {
 					payload = []byte(`{"test":true}`)
+				}
+			}
+
+			if *floodMode {
+				for {
+					select {
+					case <-testCtx.Done():
+						return
+					default:
+						var body io.Reader
+						if len(payload) > 0 {
+							body = bytes.NewReader(payload)
+						}
+
+						req, err := http.NewRequestWithContext(testCtx, *method, *targetURL, body)
+						if err != nil {
+							metrics.OtherErrors.Add(1)
+							metrics.TotalRequests.Add(1)
+							continue
+						}
+
+						if *method == "POST" {
+							req.Header.Set("Content-Type", "application/json")
+						}
+						req.Header.Set("User-Agent", "HormuzWatch-LoadGen/2.0")
+
+						t0 := time.Now()
+						resp, err := client.Do(req)
+						elapsedUs := time.Since(t0).Microseconds()
+
+						metrics.TotalRequests.Add(1)
+
+						if err != nil {
+							metrics.OtherErrors.Add(1)
+							continue
+						}
+
+						n, _ := io.Copy(io.Discard, resp.Body)
+						resp.Body.Close()
+						metrics.TotalBytes.Add(uint64(n))
+
+						if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+							metrics.Success2xx.Add(1)
+						} else if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+							metrics.ClientErrors4xx.Add(1)
+						} else if resp.StatusCode >= 500 {
+							metrics.ServerErrors5xx.Add(1)
+						}
+
+						if sampleCounter.Add(1)%sampleRate == 0 {
+							latenciesMu.Lock()
+							latencies = append(latencies, elapsedUs)
+							latenciesMu.Unlock()
+						}
+					}
 				}
 			}
 
