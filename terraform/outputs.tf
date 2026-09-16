@@ -1,19 +1,29 @@
-output "vm_public_ip" {
-  description = "The public IP address of the Virtual Machine"
-  value       = azurerm_public_ip.main.ip_address
+output "resource_group_name" {
+  description = "The name of the main resource group"
+  value       = azurerm_resource_group.main.name
 }
 
-output "vm_ssh_command" {
-  description = "Command to SSH into the Virtual Machine"
-  value       = "ssh ${var.admin_username}@${azurerm_public_ip.main.ip_address}"
+output "acr_login_server" {
+  description = "Azure Container Registry login server"
+  value       = module.app.acr_login_server
 }
 
-output "client_url" {
-  description = "The URL to access the React Client"
-  value       = "http://${azurerm_public_ip.main.ip_address}:3000"
+output "backend_api_fqdn" {
+  description = "Fully Qualified Domain Name of the backend API Container App"
+  value       = module.app.backend_fqdn
 }
 
-output "server_url" {
-  description = "The URL to access the Go Server Health Check"
-  value       = "http://${azurerm_public_ip.main.ip_address}:8081/health"
+output "ml_service_fqdn" {
+  description = "Fully Qualified Domain Name of the ML service Container App"
+  value       = module.app.ml_service_fqdn
+}
+
+output "static_web_app_url" {
+  description = "Default hostname for the free-tier Static Web App frontend"
+  value       = module.app.static_web_app_default_host_name
+}
+
+output "log_analytics_workspace_id" {
+  description = "Log Analytics Workspace ID"
+  value       = module.monitoring.log_analytics_workspace_id
 }

@@ -1,130 +1,85 @@
 locals {
-  prefix = "${var.project_name}-${var.environment}"
+  project_clean = var.project != "hormuzwatch" ? var.project : var.project_name
+  prefix        = "${local.project_clean}-${var.environment}"
+  tags = {
+    Environment = var.environment
+    Project     = local.project_clean
+    ManagedBy   = "Terraform"
+  }
 }
 
-# Resource Group
+data "azurerm_client_config" "current" {}
+
+# Central Resource Group
 resource "azurerm_resource_group" "main" {
   name     = "rg-${local.prefix}"
   location = var.location
-  tags = {
-    Environment = var.environment
-    Project     = var.project_name
-  }
+  tags     = local.tags
 }
 
-# Virtual Network
-resource "azurerm_virtual_network" "main" {
-  name                = "vnet-${local.prefix}"
-  address_space       = ["10.0.0.0/16"]
-  location            = azurerm_resource_group.main.location
+# 1. Networking Module (VNet, Subnets, NSGs, Private DNS Zones)
+module "networking" {
+  source              = "./modules/networking"
+  name_prefix         = local.prefix
+  location            = var.location
   resource_group_name = azurerm_resource_group.main.name
+  allowed_public_cidr = var.allowed_public_cidr
+  tags                = local.tags
 }
 
-# Subnet
-resource "azurerm_subnet" "main" {
-  name                 = "snet-${local.prefix}"
-  resource_group_name  = azurerm_resource_group.main.name
-  virtual_network_name = azurerm_virtual_network.main.name
-  address_prefixes     = ["10.0.1.0/24"]
-}
-
-# Public IP
-resource "azurerm_public_ip" "main" {
-  name                = "pip-${local.prefix}"
-  location            = azurerm_resource_group.main.location
+# 2. Monitoring Module (Log Analytics Workspace, Application Insights, Action Group)
+module "monitoring" {
+  source              = "./modules/monitoring"
+  name_prefix         = local.prefix
+  location            = var.location
   resource_group_name = azurerm_resource_group.main.name
-  allocation_method   = "Static"
-  sku                 = "Standard"
+  alert_email         = var.alert_email
+  tags                = local.tags
 }
 
-# Network Security Group
-resource "azurerm_network_security_group" "main" {
-  name                = "nsg-${local.prefix}"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-
-  security_rule {
-    name                       = "SSH"
-    priority                   = 1001
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = var.admin_allowed_cidr
-    destination_address_prefix = "*"
-  }
-
-  security_rule {
-    name                       = "HTTP-Frontend"
-    priority                   = 1002
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "3000"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-
-  security_rule {
-    name                       = "HTTP-Backend"
-    priority                   = 1003
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "8081"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
+# 3. Security Module (Key Vault, Private Endpoint, RBAC Role Assignment)
+module "security" {
+  source                  = "./modules/security"
+  name_prefix             = local.prefix
+  location                = var.location
+  resource_group_name     = azurerm_resource_group.main.name
+  tenant_id               = data.azurerm_client_config.current.tenant_id
+  current_principal_id    = data.azurerm_client_config.current.object_id
+  private_endpoint_subnet = module.networking.private_endpoint_subnet_id
+  private_dns_zone_ids    = module.networking.private_dns_zone_ids
+  tags                    = local.tags
 }
 
-# Network Interface
-resource "azurerm_network_interface" "main" {
-  name                = "nic-${local.prefix}"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-
-  ip_configuration {
-    name                          = "internal"
-    subnet_id                     = azurerm_subnet.main.id
-    private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.main.id
-  }
+# 4. Storage Module (LRS Storage Account, Private Endpoint, Blob Containers)
+module "storage" {
+  source                     = "./modules/storage"
+  name_prefix                = local.prefix
+  location                   = var.location
+  resource_group_name        = azurerm_resource_group.main.name
+  private_endpoint_subnet    = module.networking.private_endpoint_subnet_id
+  blob_private_dns_zone_id   = module.networking.private_dns_zone_ids.blob
+  log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
+  tags                       = local.tags
 }
 
-# Connect NSG to NIC
-resource "azurerm_network_interface_security_group_association" "main" {
-  network_interface_id      = azurerm_network_interface.main.id
-  network_security_group_id = azurerm_network_security_group.main.id
+# 5. Event Hubs Module (Telemetry Ingest & Analytics Event Hubs, Private Endpoint)
+module "event_hubs" {
+  source                         = "./modules/event_hubs"
+  name_prefix                    = local.prefix
+  location                       = var.location
+  resource_group_name            = azurerm_resource_group.main.name
+  private_endpoint_subnet        = module.networking.private_endpoint_subnet_id
+  eventhub_private_dns_zone_id   = module.networking.private_dns_zone_ids.eventhub
+  log_analytics_workspace_id     = module.monitoring.log_analytics_workspace_id
+  tags                           = local.tags
 }
 
-# Virtual Machine
-resource "azurerm_linux_virtual_machine" "main" {
-  name                  = "vm-${local.prefix}"
-  resource_group_name   = azurerm_resource_group.main.name
-  location              = azurerm_resource_group.main.location
-  size                  = var.vm_size
-  admin_username        = var.admin_username
-  network_interface_ids = [azurerm_network_interface.main.id]
-
-  admin_ssh_key {
-    username   = var.admin_username
-    public_key = var.ssh_public_key
-  }
-
-  os_disk {
-    caching              = "ReadWrite"
-    storage_account_type = "StandardSSD_LRS"
-    disk_size_gb         = 64
-  }
-
-  source_image_reference {
-    publisher = "Canonical"
-    offer     = "0001-com-ubuntu-server-jammy"
-    sku       = "22_04-lts"
-    version   = "latest"
-  }
-
+# 6. Application Module (Serverless Container Apps, Free-Tier Static Web App, ACR)
+module "app" {
+  source                     = "./modules/app"
+  name_prefix                = local.prefix
+  location                   = var.location
+  resource_group_name        = azurerm_resource_group.main.name
+  log_analytics_workspace_id = module.monitoring.log_analytics_workspace_id
+  tags                       = local.tags
 }
