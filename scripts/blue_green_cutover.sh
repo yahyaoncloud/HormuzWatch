@@ -126,17 +126,17 @@ switch_nginx() {
         # Backup configuration
         sudo cp "${NGINX_CONF}" "${NGINX_CONF}.bak"
 
-        sudo sed -i -E "s/server [0-9.]+:(3000|3002)/server 127.0.0.1:${client_port}/g" "${NGINX_CONF}"
-        sudo sed -i -E "s/server [0-9.]+:(10020|10022)/server 127.0.0.1:${server_port}/g" "${NGINX_CONF}"
+        sudo sed -i -E "/upstream hormuzwatch_frontend \{/,/\}/ s/server [0-9.]+:[0-9]+/server 127.0.0.1:${client_port}/g" "${NGINX_CONF}"
+        sudo sed -i -E "/upstream hormuzwatch_backend \{/,/\}/ s/server [0-9.]+:[0-9]+/server 127.0.0.1:${server_port}/g" "${NGINX_CONF}"
 
         if sudo nginx -t; then
-            sudo nginx -s reload
+            sudo systemctl reload nginx 2>/dev/null || sudo nginx -s reload
             log "Nginx reloaded successfully. Zero-downtime cutover complete!"
             echo "${target_slot}" > "${SLOT_STATE_FILE}"
         else
             err "Nginx configuration test failed! Restoring backup..."
             sudo mv "${NGINX_CONF}.bak" "${NGINX_CONF}"
-            sudo nginx -s reload
+            sudo systemctl reload nginx 2>/dev/null || sudo nginx -s reload
             return 1
         fi
     else
@@ -188,7 +188,7 @@ cmd_deploy() {
         export ML_PORT=8090 GRPC_PORT=8091
         export CLIENT_PORT=3000
     fi
-    docker compose -p hormuzwatch -f docker-compose.yml -f "docker-compose.${target}.yml" up -d --build --no-recreate server ml client
+    docker compose -p hormuzwatch -f docker-compose.yml -f "docker-compose.${target}.yml" up -d --build --force-recreate server ml client
 
     # 3. Health Probe & Warmup Gate
     if ! probe_health "${target}"; then
