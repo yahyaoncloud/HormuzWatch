@@ -1375,16 +1375,33 @@ export default function LeafletMapInner({
         medium: '#f59e0b',
         low: '#10b981',
       };
-      const conflictSVG = (color: string) => `
-        <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-          <!-- Outward Beacon Pulse Waves -->
-          <div style="position: absolute; width: 42px; height: 42px; border-radius: 9999px; background: ${color}40; border: 1.5px solid ${color}99; animation: ping 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-          <div style="position: absolute; width: 28px; height: 28px; border-radius: 9999px; background: ${color}55; animation: ping 2.2s cubic-bezier(0, 0, 0.2, 1) 0.6s infinite;"></div>
-          <!-- Center Solid Red Dot -->
-          <div style="position: relative; z-index: 10; width: 12px; height: 12px; border-radius: 9999px; background: #ef4444; border: 2px solid #ffffff; box-shadow: 0 0 8px 2px rgba(239, 68, 68, 0.85);"></div>
+
+      // Clean single solid dot for conflict points (no outward beacon ping waves or multiple stacked dots)
+      const conflictDotSVG = (color: string) => `
+        <div style="width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+          <div style="width: 10px; height: 10px; border-radius: 9999px; background: ${color}; border: 1.5px solid #ffffff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);"></div>
         </div>`;
 
-      const filteredConflicts = allConflicts.filter((c: ConflictEvent) => {
+      // Deduplicate conflicts by ID or tight location key (within ~0.005 deg ~= 500m) to prevent multiple duplicate dots
+      const seenConflicts = new Map<string, ConflictEvent>();
+      for (const c of allConflicts) {
+        if (typeof c.lat !== 'number' || typeof c.lon !== 'number') continue;
+        const key = c.id || `${c.lat.toFixed(3)}_${c.lon.toFixed(3)}`;
+        if (!seenConflicts.has(key)) {
+          seenConflicts.set(key, c);
+        } else {
+          // If we already have an event at this spot, prioritize higher severity or newer timestamp
+          const existing = seenConflicts.get(key)!;
+          const severityWeight: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
+          if ((severityWeight[c.severity] || 0) > (severityWeight[existing.severity] || 0)) {
+            seenConflicts.set(key, c);
+          }
+        }
+      }
+
+      const uniqueConflicts = Array.from(seenConflicts.values());
+
+      const filteredConflicts = uniqueConflicts.filter((c: ConflictEvent) => {
         if (severityFilter && severityFilter !== 'all' && c.severity !== severityFilter) {
           return false;
         }
@@ -1411,10 +1428,10 @@ export default function LeafletMapInner({
       filteredConflicts.forEach((c: ConflictEvent) => {
         const color = severityColor[c.severity] || '#71717a';
         const icon = L.divIcon({
-          html: conflictSVG(color),
+          html: conflictDotSVG(color),
           className: '',
-          iconSize: [40, 40],
-          iconAnchor: [20, 20],
+          iconSize: [14, 14],
+          iconAnchor: [7, 7],
         });
         const marker = L.marker([c.lat, c.lon], { icon });
 

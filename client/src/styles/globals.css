@@ -519,20 +519,20 @@
 }
 
 .prose-hw a, .prose-body a {
-  color: #0284c7;
+  color: #6366f1;
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
   transition: color 150ms ease;
 }
 .dark .prose-hw a, .dark .prose-body a {
-  color: #38bdf8;
+  color: #818cf8;
 }
 .prose-hw a:hover, .prose-body a:hover {
-  color: #0369a1;
+  color: #4f46e5;
 }
 .dark .prose-hw a:hover, .dark .prose-body a:hover {
-  color: #7dd3fc;
+  color: #a5b4fc;
 }
 
 .prose-hw ul, .prose-body ul {
@@ -560,8 +560,8 @@
 }
 
 .prose-hw blockquote, .prose-body blockquote {
-  border-left: 3px solid #0284c7;
-  background: rgba(2, 132, 199, 0.05);
+  border-left: 3px solid #6366f1;
+  background: rgba(99, 102, 241, 0.06);
   padding: 0.875rem 1.25rem;
   margin: 1.25rem 0;
   border-radius: 0 6px 6px 0;
@@ -569,23 +569,23 @@
   color: var(--color-fg-muted);
 }
 .dark .prose-hw blockquote, .dark .prose-body blockquote {
-  border-left-color: #38bdf8;
-  background: rgba(56, 189, 248, 0.06);
+  border-left-color: #818cf8;
+  background: rgba(129, 140, 248, 0.08);
 }
 
 .prose-code, .prose-hw code, .prose-body code {
   font-family: var(--font-data, "JetBrains Mono", monospace);
   font-size: 0.8125rem;
   background: var(--color-bg-elevated);
-  color: #0284c7;
+  color: #4f46e5;
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
   border: 1px solid var(--color-border);
 }
 .dark .prose-code, .dark .prose-hw code, .dark .prose-body code {
-  color: #38bdf8;
+  color: #818cf8;
   background: rgba(15, 23, 42, 0.8);
-  border-color: rgba(56, 189, 248, 0.25);
+  border-color: rgba(129, 140, 248, 0.25);
 }
 
 .prose-pre, .prose-hw pre, .prose-body pre {
@@ -600,7 +600,7 @@
 }
 .dark .prose-pre, .dark .prose-hw pre, .dark .prose-body pre {
   background: #0b1120;
-  border-color: rgba(56, 189, 248, 0.2);
+  border-color: rgba(129, 140, 248, 0.2);
 }
 
 .prose-hw table, .prose-body table {
@@ -645,8 +645,8 @@
 }
 
 .prose-callout.info {
-  border-color: rgba(56, 189, 248, 0.35);
-  background: rgba(56, 189, 248, 0.06);
+  border-color: rgba(129, 140, 248, 0.35);
+  background: rgba(129, 140, 248, 0.08);
   color: var(--color-fg);
 }
 
@@ -690,10 +690,10 @@
   font-family: var(--font-data, "JetBrains Mono", monospace);
   font-size: 1.125rem;
   font-weight: 700;
-  color: #0284c7;
+  color: #4f46e5;
 }
 .dark .prose-metric-value {
-  color: #38bdf8;
+  color: #818cf8;
 }
 
 .prose-metric-label {

@@ -44,12 +44,12 @@ export function Navbar({ transparent = false, children }: NavbarProps) {
             <img
               src="/logo.png"
               alt="HormuzWatch Logo"
-              className="w-full h-full object-contain rounded-full drop-shadow-[0_0_8px_rgba(56,189,248,0.35)]"
+              className="w-full h-full object-contain rounded-full"
             />
           </div>
           {/* Capital Widefont Text Logo */}
           <span className="font-wide text-xs sm:text-[13px] font-extrabold uppercase text-[var(--color-fg)] select-none">
-            HORMUZ<span className="text-[var(--color-primary-600)] dark:text-[#38bdf8]">WATCH</span>
+            HORMUZ<span className="text-[var(--color-primary-600)] dark:text-indigo-400">WATCH</span>
           </span>
         </Link>
 

@@ -1,9 +1,21 @@
-import { Activity, BarChart3, Cpu, Globe, Info } from 'lucide-react';
+import { Activity, BarChart3, ChevronRight, Cpu, Globe, Info, ShieldCheck, Sparkles } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
+import { type TOCItem } from '@/components/layout/FloatingTOC';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { Section } from '@/components/layout/Section';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Prose, ProseHorizontalBarChart } from '@/components/ui/prose';
+
+const DOCS_TOC: TOCItem[] = [
+  { id: 'introduction', title: 'Platform Introduction', level: 1 },
+  { id: 'architecture', title: 'System Architecture', level: 2 },
+  { id: 'features', title: 'Feature Engineering & S¹ Manifold', level: 2 },
+  { id: 'calibration', title: 'Probability Calibration & ECE', level: 2 },
+  { id: 'governance', title: 'MLOps Continuous Training (CT)', level: 2 },
+  { id: 'faq', title: 'Frequently Asked Questions', level: 2 },
+];
 
 const ML_CHARTS = {
   distribution: [
@@ -38,8 +50,84 @@ export default function LearnIndex({
   onOpenIntelligence,
   onOpenMap,
 }: LearnIndexProps) {
+  const [activeTocId, setActiveTocId] = useState<string>('introduction');
+
+  // Smooth scroll handler for TOC links
+  const handleNavigate = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setActiveTocId(id);
+      try {
+        window.history.replaceState(null, '', `#${id}`);
+      } catch {}
+    }
+  };
+
+  // Scroll listener to update active TOC section dynamically
+  useEffect(() => {
+    const container = document.getElementById('docs-scroll-view') || window;
+    const handleScroll = () => {
+      const scrollPos =
+        container === window
+          ? window.scrollY + 160
+          : (container as HTMLElement).scrollTop + 160;
+
+      for (let i = DOCS_TOC.length - 1; i >= 0; i--) {
+        const item = DOCS_TOC[i];
+        const el = document.getElementById(item.id);
+        if (el) {
+          const top = el.offsetTop;
+          if (scrollPos >= top) {
+            setActiveTocId(item.id);
+            break;
+          }
+        }
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
   return (
-    <>
+    <PageContainer
+      showTOC={true}
+      tocItems={DOCS_TOC}
+      activeTocId={activeTocId}
+      onTocNavigate={handleNavigate}
+      className="pb-16"
+    >
+      {/* ── Top Header Badge & Quick Topic Pills ───────────────────── */}
+      <div className="mb-8">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 mb-4">
+          <ShieldCheck className="w-3.5 h-3.5" />
+          <span>HORMUZWATCH · TECHNICAL SPECIFICATION & SPEC 2026.3</span>
+        </div>
+
+        {/* Quick Topic Chips */}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          {DOCS_TOC.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => handleNavigate(t.id)}
+              className={`px-2.5 py-1 text-xs rounded-md font-ui transition-all border cursor-pointer ${
+                activeTocId === t.id
+                  ? 'bg-indigo-600 text-white border-indigo-500 shadow-xs'
+                  : 'bg-[var(--color-bg-card)] text-[var(--color-fg-muted)] border-[var(--color-border)] hover:border-indigo-500/40 hover:text-[var(--color-fg)]'
+              }`}
+            >
+              {t.title}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* ── Introduction ──────────────────────────────────────────── */}
       <Section
         id="introduction"
@@ -72,25 +160,25 @@ export default function LearnIndex({
           </blockquote>
         </Prose>
 
-        {/* Action Buttons Routing to Tabs */}
+        {/* Cross Tab Actions */}
         <div className="mt-6 flex flex-wrap gap-3">
           {onOpenAbout ? (
             <Button
               onClick={onOpenAbout}
               variant="default"
-              className="bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer shadow-sm"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer shadow-sm text-xs font-medium"
             >
-              <Info className="w-4 h-4 mr-2" />
+              <Info className="w-3.5 h-3.5 mr-1.5" />
               Read Mission & About Tab
             </Button>
           ) : (
             <Button
               asChild
               variant="default"
-              className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm text-xs font-medium"
             >
               <Link to="/?tab=about">
-                <Info className="w-4 h-4 mr-2" />
+                <Info className="w-3.5 h-3.5 mr-1.5" />
                 Read Mission & About Tab
               </Link>
             </Button>
@@ -100,15 +188,19 @@ export default function LearnIndex({
             <Button
               onClick={onOpenIntelligence}
               variant="outline"
-              className="cursor-pointer border-slate-700 hover:border-indigo-400"
+              className="cursor-pointer border-indigo-500/30 hover:border-indigo-400 hover:bg-indigo-500/10 text-xs font-medium"
             >
-              <BarChart3 className="w-4 h-4 mr-2 text-indigo-400" />
+              <BarChart3 className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
               Open Intelligence Tab
             </Button>
           ) : (
-            <Button asChild variant="outline" className="border-slate-700 hover:border-indigo-400">
+            <Button
+              asChild
+              variant="outline"
+              className="border-indigo-500/30 hover:border-indigo-400 hover:bg-indigo-500/10 text-xs font-medium"
+            >
               <Link to="/?tab=intelligence">
-                <BarChart3 className="w-4 h-4 mr-2 text-indigo-400" />
+                <BarChart3 className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
                 Open Intelligence Tab
               </Link>
             </Button>
@@ -118,15 +210,19 @@ export default function LearnIndex({
             <Button
               onClick={onOpenMap}
               variant="outline"
-              className="cursor-pointer border-slate-700 hover:border-indigo-400"
+              className="cursor-pointer border-indigo-500/30 hover:border-indigo-400 hover:bg-indigo-500/10 text-xs font-medium"
             >
-              <Globe className="w-4 h-4 mr-2 text-indigo-400" />
+              <Globe className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
               Live Tactical Map
             </Button>
           ) : (
-            <Button asChild variant="outline" className="border-slate-700 hover:border-indigo-400">
+            <Button
+              asChild
+              variant="outline"
+              className="border-indigo-500/30 hover:border-indigo-400 hover:bg-indigo-500/10 text-xs font-medium"
+            >
               <Link to="/?tab=map">
-                <Globe className="w-4 h-4 mr-2 text-indigo-400" />
+                <Globe className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
                 Live Tactical Map
               </Link>
             </Button>
@@ -147,19 +243,21 @@ export default function LearnIndex({
           </p>
         </Prose>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-          <Card className="border border-indigo-500/20 bg-[var(--color-bg-card)]">
-            <CardHeader>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          <Card className="border border-indigo-500/25 bg-[var(--color-bg-card)] hover:border-indigo-500/40 transition-colors shadow-xs">
+            <CardHeader className="pb-2">
               <div className="flex items-center gap-2 text-indigo-400 mb-1">
                 <Cpu className="w-4 h-4" />
                 <span className="font-mono text-xs font-bold uppercase tracking-wider">
-                  Engine 01
+                  Core 01
                 </span>
               </div>
               <CardTitle className="text-base text-[var(--color-fg)]">Go Telemetry Core</CardTitle>
-              <CardDescription>Port 10020 · In-Memory TSM</CardDescription>
+              <CardDescription className="font-mono text-xs text-indigo-400/80">
+                Port 10020 · In-Memory TSM
+              </CardDescription>
             </CardHeader>
-            <CardContent className="font-ui text-sm text-[var(--color-fg-muted)] leading-relaxed">
+            <CardContent className="font-ui text-xs text-[var(--color-fg-muted)] leading-relaxed">
               <p>
                 Concurrent ingestors pulling AISStream, OpenSky ADS-B, GDELT, and FIRMS. Maintains
                 online circular statistics and rolling Welford moments. Dispatches gRPC scoring
@@ -168,20 +266,22 @@ export default function LearnIndex({
             </CardContent>
           </Card>
 
-          <Card className="border border-indigo-500/20 bg-[var(--color-bg-card)]">
-            <CardHeader>
+          <Card className="border border-indigo-500/25 bg-[var(--color-bg-card)] hover:border-indigo-500/40 transition-colors shadow-xs">
+            <CardHeader className="pb-2">
               <div className="flex items-center gap-2 text-indigo-400 mb-1">
                 <Activity className="w-4 h-4" />
                 <span className="font-mono text-xs font-bold uppercase tracking-wider">
-                  Engine 02
+                  Core 02
                 </span>
               </div>
               <CardTitle className="text-base text-[var(--color-fg)]">
                 Python ML Microservice
               </CardTitle>
-              <CardDescription>Ports 8090/8091 · gRPC & REST</CardDescription>
+              <CardDescription className="font-mono text-xs text-indigo-400/80">
+                Ports 8090/8091 · gRPC & REST
+              </CardDescription>
             </CardHeader>
-            <CardContent className="font-ui text-sm text-[var(--color-fg-muted)] leading-relaxed">
+            <CardContent className="font-ui text-xs text-[var(--color-fg-muted)] leading-relaxed">
               <p>
                 Dual Isolation Forest (200 estimators) + Local Outlier Factor (k=20). Features
                 non-parametric Isotonic Regression calibration, TreeSHAP explainability, and
@@ -190,20 +290,22 @@ export default function LearnIndex({
             </CardContent>
           </Card>
 
-          <Card className="border border-indigo-500/20 bg-[var(--color-bg-card)]">
-            <CardHeader>
+          <Card className="border border-indigo-500/25 bg-[var(--color-bg-card)] hover:border-indigo-500/40 transition-colors shadow-xs">
+            <CardHeader className="pb-2">
               <div className="flex items-center gap-2 text-indigo-400 mb-1">
                 <Globe className="w-4 h-4" />
                 <span className="font-mono text-xs font-bold uppercase tracking-wider">
-                  Engine 03
+                  Core 03
                 </span>
               </div>
               <CardTitle className="text-base text-[var(--color-fg)]">
                 React 19 Tactical Client
               </CardTitle>
-              <CardDescription>Port 3000 · Tab-Based Routing</CardDescription>
+              <CardDescription className="font-mono text-xs text-indigo-400/80">
+                Port 3000 · Tab-Based Routing
+              </CardDescription>
             </CardHeader>
-            <CardContent className="font-ui text-sm text-[var(--color-fg-muted)] leading-relaxed">
+            <CardContent className="font-ui text-xs text-[var(--color-fg-muted)] leading-relaxed">
               <p>
                 Hardware-accelerated MapLibre/Leaflet geospatial visualization, tabbed operational
                 pages (Map, Intelligence, Feed, Docs, About), light-indigo dark HUD theme, and
@@ -227,7 +329,7 @@ export default function LearnIndex({
             calculates $|1 - 359| = 358^\circ$. HormuzWatch projects angular attributes onto the
             1-sphere manifold ($S^1$):
           </p>
-          <pre className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono text-indigo-300">
+          <pre className="p-3 bg-slate-900 border border-indigo-500/30 rounded-lg text-xs font-mono text-indigo-300">
             {`Δθ = ((θ_current - θ_previous + 180°) mod 360°) - 180°`}
           </pre>
           <p>
@@ -238,9 +340,9 @@ export default function LearnIndex({
         </Prose>
 
         {/* Feature Importance Bar Chart */}
-        <div className="mt-6">
-          <h3 className="font-display text-sm font-semibold text-[var(--color-fg)] mb-3 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-indigo-400" />
+        <div className="mt-6 p-4 rounded-xl border border-indigo-500/20 bg-[var(--color-bg-card)]">
+          <h3 className="font-display text-xs font-semibold text-[var(--color-fg)] mb-3 flex items-center gap-2 uppercase tracking-wider text-indigo-400">
+            <BarChart3 className="w-4 h-4" />
             Ensemble Feature Attribution (Mean |SHAP| Weight)
           </h3>
           <ProseHorizontalBarChart data={ML_CHARTS.featureImportance} />
@@ -260,14 +362,14 @@ export default function LearnIndex({
             probability. In mission-critical maritime domain awareness, operators require calibrated
             posterior probabilities:
           </p>
-          <code className="block my-2 p-2 bg-slate-900/80 border border-slate-800 rounded font-mono text-xs text-indigo-300">
+          <code className="block my-2 p-2 bg-slate-900/80 border border-indigo-500/30 rounded font-mono text-xs text-indigo-300">
             P(Y = 1 | s_hat) ≈ s_hat
           </code>
           <p>
             HormuzWatch implements <strong>non-parametric Isotonic Regression</strong>, fitting a
             monotonic step function:
           </p>
-          <code className="block my-2 p-2 bg-slate-900/80 border border-slate-800 rounded font-mono text-xs text-indigo-300">
+          <code className="block my-2 p-2 bg-slate-900/80 border border-indigo-500/30 rounded font-mono text-xs text-indigo-300">
             min_m Σ (y_i - m(s_i))² subject to m(s_i) ≤ m(s_j) for s_i ≤ s_j
           </code>
           <p>
@@ -277,11 +379,12 @@ export default function LearnIndex({
           <ul>
             <li>
               <strong>Expected Calibration Error (ECE) Reduction</strong>:{' '}
-              <strong>69.2% decrease</strong> (from 14.86% down to <strong>4.57%</strong>).
+              <strong className="text-indigo-400">69.2% decrease</strong> (from 14.86% down to{' '}
+              <strong>4.57%</strong>).
             </li>
             <li>
               <strong>Brier Score Verification</strong>: Reduced from 0.1603 to{' '}
-              <strong>0.0912</strong>.
+              <strong className="text-indigo-400">0.0912</strong>.
             </li>
             <li>
               <strong>Zero Data Leakage Invariant</strong>: Validated using <code>GroupKFold</code>{' '}
@@ -337,24 +440,12 @@ export default function LearnIndex({
         subtitle="Engineering implementation details"
       >
         <Prose>
-          <details className="border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 mb-2 rounded-lg cursor-pointer">
+          <details className="border border-indigo-500/25 bg-[var(--color-bg-card)] p-4 mb-3 rounded-xl cursor-pointer hover:border-indigo-500/40 transition-colors">
             <summary className="font-display text-base font-semibold text-[var(--color-fg)] list-none flex items-center justify-between">
               How does tab routing work without page reloads?
-              <svg
-                className="w-4 h-4 text-indigo-400 transition-transform shrink-0 ml-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
+              <ChevronRight className="w-4 h-4 text-indigo-400 transition-transform shrink-0 ml-2" />
             </summary>
-            <p className="text-sm text-[var(--color-fg-muted)] mt-3 pt-3 border-t border-[var(--color-border)]">
+            <p className="text-sm text-[var(--color-fg-muted)] mt-3 pt-3 border-t border-[var(--color-border)] leading-relaxed">
               All major views (Map, Intelligence, Feed, Docs, About) are unified inside the main
               single-page application tab manager. The URL reflects the active tab via{' '}
               <code>?tab=&lt;name&gt;</code>, allowing full browser history traversal, bookmarking,
@@ -363,24 +454,12 @@ export default function LearnIndex({
             </p>
           </details>
 
-          <details className="border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 mb-2 rounded-lg cursor-pointer">
+          <details className="border border-indigo-500/25 bg-[var(--color-bg-card)] p-4 mb-3 rounded-xl cursor-pointer hover:border-indigo-500/40 transition-colors">
             <summary className="font-display text-base font-semibold text-[var(--color-fg)] list-none flex items-center justify-between">
               How is data leakage prevented during continuous retraining?
-              <svg
-                className="w-4 h-4 text-indigo-400 transition-transform shrink-0 ml-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
+              <ChevronRight className="w-4 h-4 text-indigo-400 transition-transform shrink-0 ml-2" />
             </summary>
-            <p className="text-sm text-[var(--color-fg-muted)] mt-3 pt-3 border-t border-[var(--color-border)]">
+            <p className="text-sm text-[var(--color-fg-muted)] mt-3 pt-3 border-t border-[var(--color-border)] leading-relaxed">
               In maritime telemetry, a single ship emits hundreds of consecutive pings. A random row
               split leaks the identical ship into both train and test partitions. HormuzWatch
               enforces strict Grouped K-Fold splitting by MMSI, ensuring test folds evaluate
@@ -388,24 +467,12 @@ export default function LearnIndex({
             </p>
           </details>
 
-          <details className="border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 mb-2 rounded-lg cursor-pointer">
+          <details className="border border-indigo-500/25 bg-[var(--color-bg-card)] p-4 mb-3 rounded-xl cursor-pointer hover:border-indigo-500/40 transition-colors">
             <summary className="font-display text-base font-semibold text-[var(--color-fg)] list-none flex items-center justify-between">
               Why was Isotonic Regression chosen over Platt scaling?
-              <svg
-                className="w-4 h-4 text-indigo-400 transition-transform shrink-0 ml-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
+              <ChevronRight className="w-4 h-4 text-indigo-400 transition-transform shrink-0 ml-2" />
             </summary>
-            <p className="text-sm text-[var(--color-fg-muted)] mt-3 pt-3 border-t border-[var(--color-border)]">
+            <p className="text-sm text-[var(--color-fg-muted)] mt-3 pt-3 border-t border-[var(--color-border)] leading-relaxed">
               Platt scaling assumes an underlying sigmoid (logistic) probability distribution.
               Maritime telemetry outliers exhibit complex multimodal distributions that violate
               parametric sigmoid curves. Isotonic regression fits a flexible, non-parametric
@@ -416,12 +483,13 @@ export default function LearnIndex({
       </Section>
 
       {/* ── Footer Navigation Strip ─────────────────────────────────── */}
-      <div className="mt-12 p-6 rounded-2xl border border-indigo-500/25 bg-[#0b111e]/80 backdrop-blur-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="mt-12 p-6 rounded-2xl border border-indigo-500/25 bg-[var(--color-bg-card)] backdrop-blur-xl flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
-          <h4 className="font-display text-base font-semibold text-white">
+          <h4 className="font-display text-base font-semibold text-[var(--color-fg)] flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-indigo-400" />
             Continue Exploring HormuzWatch
           </h4>
-          <p className="font-ui text-xs text-slate-400 mt-0.5">
+          <p className="font-ui text-xs text-[var(--color-fg-muted)] mt-0.5">
             Switch between operational tabs without disrupting background telemetry streams.
           </p>
         </div>
@@ -452,7 +520,7 @@ export default function LearnIndex({
             <Button
               onClick={onOpenIntelligence}
               variant="outline"
-              className="border-slate-700 hover:border-indigo-400 text-xs cursor-pointer"
+              className="border-indigo-500/30 hover:border-indigo-400 text-xs cursor-pointer"
             >
               <BarChart3 className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
               Intelligence Tab
@@ -461,7 +529,7 @@ export default function LearnIndex({
             <Button
               asChild
               variant="outline"
-              className="border-slate-700 hover:border-indigo-400 text-xs"
+              className="border-indigo-500/30 hover:border-indigo-400 text-xs"
             >
               <Link to="/?tab=intelligence">
                 <BarChart3 className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
@@ -474,7 +542,7 @@ export default function LearnIndex({
             <Button
               onClick={onOpenMap}
               variant="outline"
-              className="border-slate-700 hover:border-indigo-400 text-xs cursor-pointer"
+              className="border-indigo-500/30 hover:border-indigo-400 text-xs cursor-pointer"
             >
               <Globe className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
               Tactical Map
@@ -483,7 +551,7 @@ export default function LearnIndex({
             <Button
               asChild
               variant="outline"
-              className="border-slate-700 hover:border-indigo-400 text-xs"
+              className="border-indigo-500/30 hover:border-indigo-400 text-xs"
             >
               <Link to="/?tab=map">
                 <Globe className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
@@ -493,6 +561,6 @@ export default function LearnIndex({
           )}
         </div>
       </div>
-    </>
+    </PageContainer>
   );
 }

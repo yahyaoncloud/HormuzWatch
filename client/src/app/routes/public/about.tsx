@@ -102,29 +102,37 @@ export default function AboutPage({ onOpenDocs, onOpenIntelligence, onOpenMap }:
           </blockquote>
         </Prose>
 
-        <div className="prose-callout info mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <strong>Watch Zone Coverage:</strong> Real-time analytics powered by an in-memory
-            Time-Series State Manager (TSM) and high-concurrency WebSocket broadcasting.
+        <div className="prose-callout info mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-indigo-500/30 bg-indigo-950/20 backdrop-blur-sm">
+          <div className="flex-1 min-w-0 font-ui text-sm text-[var(--color-fg)]">
+            <strong className="text-indigo-400">Watch Zone Coverage:</strong> Real-time analytics
+            powered by an in-memory Time-Series State Manager (TSM) and high-concurrency WebSocket
+            broadcasting across the Strait of Hormuz and Bab-el-Mandeb.
           </div>
-          {onOpenIntelligence ? (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={onOpenIntelligence}
-              className="cursor-pointer shrink-0"
-            >
-              <BarChart3 className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
-              View Intelligence Tab
-            </Button>
-          ) : (
-            <Button asChild size="sm" variant="outline" className="shrink-0">
-              <Link to="/?tab=intelligence">
+          <div className="shrink-0">
+            {onOpenIntelligence ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onOpenIntelligence}
+                className="cursor-pointer border-indigo-500/40 hover:bg-indigo-500/20 hover:border-indigo-400 text-xs text-[var(--color-fg)] whitespace-nowrap"
+              >
                 <BarChart3 className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
                 View Intelligence Tab
-              </Link>
-            </Button>
-          )}
+              </Button>
+            ) : (
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="border-indigo-500/40 hover:bg-indigo-500/20 hover:border-indigo-400 text-xs text-[var(--color-fg)] whitespace-nowrap"
+              >
+                <Link to="/?tab=intelligence">
+                  <BarChart3 className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
+                  View Intelligence Tab
+                </Link>
+              </Button>
+            )}
+          </div>
         </div>
       </Section>
 
@@ -205,30 +213,37 @@ export default function AboutPage({ onOpenDocs, onOpenIntelligence, onOpenMap }:
           </p>
         </Prose>
 
-        <div className="prose-callout info mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <strong>Technical Whitepaper & Benchmarks:</strong> Complete mathematical formulations,
-            benchmark datasets, and architecture diagrams are published in our 22-page technical
-            whitepaper.
+        <div className="prose-callout info mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-indigo-500/30 bg-indigo-950/20 backdrop-blur-sm">
+          <div className="flex-1 min-w-0 font-ui text-sm text-[var(--color-fg)]">
+            <strong className="text-indigo-400">Technical Whitepaper & Benchmarks:</strong> Complete
+            mathematical formulations, benchmark datasets, and architecture diagrams are published
+            in our technical documentation.
           </div>
-          {onOpenDocs ? (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={onOpenDocs}
-              className="cursor-pointer shrink-0"
-            >
-              <BookOpen className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
-              Open Docs Tab
-            </Button>
-          ) : (
-            <Button asChild size="sm" variant="outline" className="shrink-0">
-              <Link to="/?tab=docs">
+          <div className="shrink-0">
+            {onOpenDocs ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onOpenDocs}
+                className="cursor-pointer border-indigo-500/40 hover:bg-indigo-500/20 hover:border-indigo-400 text-xs text-[var(--color-fg)] whitespace-nowrap"
+              >
                 <BookOpen className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
                 Open Docs Tab
-              </Link>
-            </Button>
-          )}
+              </Button>
+            ) : (
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="border-indigo-500/40 hover:bg-indigo-500/20 hover:border-indigo-400 text-xs text-[var(--color-fg)] whitespace-nowrap"
+              >
+                <Link to="/?tab=docs">
+                  <BookOpen className="w-3.5 h-3.5 mr-1.5 text-indigo-400" />
+                  Open Docs Tab
+                </Link>
+              </Button>
+            )}
+          </div>
         </div>
       </Section>
 
@@ -240,9 +255,15 @@ export default function AboutPage({ onOpenDocs, onOpenIntelligence, onOpenMap }:
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {principles.map((p) => (
-            <Card key={p.title} className="border border-indigo-500/20 bg-[var(--color-bg-card)]">
+            <Card
+              key={p.title}
+              className="border border-indigo-500/25 bg-[var(--color-bg-card)] hover:border-indigo-500/40 transition-colors shadow-xs"
+            >
               <CardHeader className="pb-2">
-                <CardTitle className="text-indigo-400 text-base font-semibold">{p.title}</CardTitle>
+                <CardTitle className="text-indigo-400 text-base font-semibold flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-indigo-400 shrink-0" />
+                  {p.title}
+                </CardTitle>
               </CardHeader>
               <CardContent className="font-ui text-sm text-[var(--color-fg-muted)] leading-relaxed">
                 <p>{p.body}</p>
@@ -269,9 +290,9 @@ export default function AboutPage({ onOpenDocs, onOpenIntelligence, onOpenMap }:
           {milestones.map((m) => (
             <div
               key={m.title}
-              className="flex flex-col gap-2 border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 sm:flex-row sm:items-baseline sm:gap-6 rounded-xl"
+              className="flex flex-col gap-2 border border-indigo-500/20 bg-[var(--color-bg-card)] p-4 sm:flex-row sm:items-baseline sm:gap-6 rounded-xl relative hover:border-indigo-500/40 transition-colors"
             >
-              <span className="font-mono text-xs font-bold text-indigo-400 sm:w-24 sm:shrink-0">
+              <span className="font-mono text-xs font-bold text-indigo-400 sm:w-24 sm:shrink-0 px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-center">
                 {m.period}
               </span>
               <div>
@@ -295,7 +316,7 @@ export default function AboutPage({ onOpenDocs, onOpenIntelligence, onOpenMap }:
             and auditable sources so intelligence assessments can be independently verified.
           </p>
 
-          <div className="prose-metric-row">
+          <div className="prose-metric-row border-indigo-500/20">
             <div className="prose-metric">
               <div className="prose-metric-value text-indigo-400">~5,000</div>
               <div className="prose-metric-label">AIS msgs/min</div>
@@ -332,12 +353,12 @@ export default function AboutPage({ onOpenDocs, onOpenIntelligence, onOpenMap }:
       {/* ── Contributing & Tab Navigation Buttons ─────────────────── */}
       <Section
         id="contribute"
-        title="Platform Navigation & Contributions"
-        subtitle="Explore the platform tabs or participate in development"
+        title="Platform Navigation"
+        subtitle="Explore the operational views and documentation tabs"
       >
         <Prose>
           <p>
-            HormuzWatch welcomes contributions across engineering disciplines — Go telemetry
+            HormuzWatch welcomes collaboration across engineering disciplines — Go telemetry
             ingestors, Python ML pipelines, React UI development, and technical documentation.
           </p>
         </Prose>
@@ -348,7 +369,7 @@ export default function AboutPage({ onOpenDocs, onOpenIntelligence, onOpenMap }:
             <Button
               onClick={onOpenDocs}
               variant="default"
-              className="bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer shadow-sm"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer shadow-sm text-xs font-medium"
             >
               <BookOpen className="w-4 h-4 mr-2" />
               Open Documentation Tab
@@ -357,7 +378,7 @@ export default function AboutPage({ onOpenDocs, onOpenIntelligence, onOpenMap }:
             <Button
               asChild
               variant="default"
-              className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm text-xs font-medium"
             >
               <Link to="/?tab=docs">
                 <BookOpen className="w-4 h-4 mr-2" />
@@ -370,13 +391,17 @@ export default function AboutPage({ onOpenDocs, onOpenIntelligence, onOpenMap }:
             <Button
               onClick={onOpenIntelligence}
               variant="outline"
-              className="cursor-pointer border-slate-700 hover:border-indigo-400"
+              className="cursor-pointer border-indigo-500/30 hover:border-indigo-400 hover:bg-indigo-500/10 text-xs font-medium"
             >
               <BarChart3 className="w-4 h-4 mr-2 text-indigo-400" />
               Open Intelligence Tab
             </Button>
           ) : (
-            <Button asChild variant="outline" className="border-slate-700 hover:border-indigo-400">
+            <Button
+              asChild
+              variant="outline"
+              className="border-indigo-500/30 hover:border-indigo-400 hover:bg-indigo-500/10 text-xs font-medium"
+            >
               <Link to="/?tab=intelligence">
                 <BarChart3 className="w-4 h-4 mr-2 text-indigo-400" />
                 Open Intelligence Tab
@@ -388,23 +413,23 @@ export default function AboutPage({ onOpenDocs, onOpenIntelligence, onOpenMap }:
             <Button
               onClick={onOpenMap}
               variant="outline"
-              className="cursor-pointer border-slate-700 hover:border-indigo-400"
+              className="cursor-pointer border-indigo-500/30 hover:border-indigo-400 hover:bg-indigo-500/10 text-xs font-medium"
             >
               <Globe className="w-4 h-4 mr-2 text-indigo-400" />
               Open Live Tactical Map
             </Button>
           ) : (
-            <Button asChild variant="outline" className="border-slate-700 hover:border-indigo-400">
+            <Button
+              asChild
+              variant="outline"
+              className="border-indigo-500/30 hover:border-indigo-400 hover:bg-indigo-500/10 text-xs font-medium"
+            >
               <Link to="/?tab=map">
                 <Globe className="w-4 h-4 mr-2 text-indigo-400" />
                 Open Live Tactical Map
               </Link>
             </Button>
           )}
-
-          <Button asChild variant="link" className="text-indigo-400 hover:text-indigo-300">
-            <a href="mailto:hello@hormuzwatch.com">Contact Engineering Team</a>
-          </Button>
         </div>
       </Section>
     </PageContainer>

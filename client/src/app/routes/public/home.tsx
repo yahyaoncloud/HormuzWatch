@@ -436,7 +436,7 @@ export function HomePage() {
 
       {/* View: Documentation */}
       {activeTab === 'docs' && (
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 max-w-5xl mx-auto w-full">
+        <div className="flex-1 min-h-0 overflow-y-auto w-full" id="docs-scroll-view">
           <LearnIndex
             onOpenAbout={() => handleTabChange('about')}
             onOpenIntelligence={() => handleTabChange('intelligence')}
@@ -447,7 +447,7 @@ export function HomePage() {
 
       {/* View: About */}
       {activeTab === 'about' && (
-        <div className="flex-1 min-h-0 overflow-y-auto p-4">
+        <div className="flex-1 min-h-0 overflow-y-auto w-full" id="about-scroll-view">
           <AboutPage
             onOpenDocs={() => handleTabChange('docs')}
             onOpenIntelligence={() => handleTabChange('intelligence')}
