@@ -89,19 +89,19 @@ export default function LoginRoute() {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="space-y-1.5">
             <label className="flex items-center justify-between font-ui text-xs font-medium text-slate-300">
-              <span>Admin Email</span>
-              <span className="font-mono text-[10px] text-slate-500">MFA Required</span>
+              <span>Admin Username / Email</span>
+              <span className="font-mono text-[10px] text-slate-500">MFA / Direct</span>
             </label>
             <div className="relative flex items-center">
               <Mail className="absolute left-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
               <input
-                type="email"
+                type="text"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-11 w-full rounded-xl border border-slate-800 bg-[#070b14]/90 pl-10 pr-3.5 font-ui text-sm text-slate-100 placeholder:text-slate-600 outline-none transition-all focus:border-indigo-400 focus:bg-[#090f1d] focus:ring-2 focus:ring-indigo-400/25"
-                placeholder="admin@example.com"
-                autoComplete="email"
+                placeholder="admin or admin@hormuzwatch.com"
+                autoComplete="username"
               />
             </div>
           </div>
