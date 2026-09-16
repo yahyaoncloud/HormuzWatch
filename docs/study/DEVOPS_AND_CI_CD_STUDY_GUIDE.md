@@ -18,6 +18,12 @@
 | **[Module 08](08_container_security_image_scanning_and_secret_detection.md)** | Container Security & Image Scanning | Gitleaks secret detection, Aqua Trivy CVE scanning |
 | **[Module 09](09_zero_downtime_deployment_strategies_and_automated_rollbacks.md)** | Deployment Strategies & Rollbacks | Rolling updates, automated SRE health probes, rollback |
 | **[Module 10](10_jenkins_pipeline_engineering_and_webhooks.md)** | Jenkins & GitHub Webhooks | Webhook payload routing, Cloudflare Tunnel ingress, HMAC |
+| **[Module 11](11_complete_devops_pipeline_end_to_end_report.md)** | End-to-End DevOps Pipeline Report | Comprehensive architecture audit & verification metrics |
+| **[Module 12](12_graceful_shutdown_and_cold_start_runbook.md)** | Cold-Start & Graceful Shutdown | Production node reboot sequence & systemd automation |
+| **[Module 13](13_critical_issue_analysis_and_devops_audit_report.md)** | Critical SRE Audit Report | Bottleneck analysis, lock contention, and remediation |
+| **[Module 14](14_codebase_architectural_and_security_audit_report.md)** | Codebase Architectural Audit | Multi-tier security boundaries and network isolation |
+| **[Module 15](15_ml_model_portfolio_audit_and_remediation_report.md)** | ML Model Portfolio Audit | Dual ensemble benchmark, drift tracking, and SHAP |
+| **[Module 16](16_production_ready_ci_cd_pipeline_and_deployment_architecture.md)** | Production CI/CD & Deployment Architecture | Blue/Green cutover, Jenkins orchestration, SRE gates |
 
 ---
 

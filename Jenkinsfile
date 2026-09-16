@@ -288,7 +288,7 @@ pipeline {
             steps {
                 echo "==> Executing True Zero-Downtime Blue/Green Rollout on production edge E5530 (${env.ACTIVE_DEPLOY_HOST})..."
                 sh """
-                    ssh -o BatchMode=yes -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} "cd ${env.DEPLOY_DIR} && git pull origin ${params.BRANCH_NAME} && chmod +x ${env.SLOT_CUTOVER_SCRIPT} && bash ./${env.SLOT_CUTOVER_SCRIPT} deploy ${params.DEPLOY_SLOT}"
+                    ssh -o BatchMode=yes -o StrictHostKeyChecking=no ${env.DEPLOY_USER}@${env.ACTIVE_DEPLOY_HOST} "cd ${env.DEPLOY_DIR} && git fetch origin ${params.BRANCH_NAME} && git reset --hard origin/${params.BRANCH_NAME} && chmod +x ${env.SLOT_CUTOVER_SCRIPT} && bash ./${env.SLOT_CUTOVER_SCRIPT} deploy ${params.DEPLOY_SLOT}"
                 """
             }
         }
