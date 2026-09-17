@@ -26,6 +26,7 @@
 | **[Module 16](16_production_ready_ci_cd_pipeline_and_deployment_architecture.md)** | Production CI/CD & Deployment Architecture | Blue/Green cutover, Jenkins orchestration, SRE gates |
 | **[Module 17](17_gitops_with_argocd_and_k3s_kubernetes_architecture.md)** | GitOps with ArgoCD & K3s Kubernetes | Declarative reconciliation, self-healing, App-of-Apps |
 | **[Module 18](18_decoupled_multi_repo_ci_cd_jenkins_zenml_and_gitops_plan.md)** | Decoupled Multi-Repo CI/CD & ZenML Plan | Microservice CI pipelines, ZenML orchestrator, GitOps promotion |
+| **[Module 19](19_late5530_production_edge_worker_deployment_strategy.md)** | LATE5530 Edge Worker Deployment Strategy | Hardened edge topology, resource QoS slicing, cold start runbook |
 
 ---
 

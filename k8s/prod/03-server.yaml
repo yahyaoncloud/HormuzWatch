@@ -86,8 +86,8 @@ spec:
                   key: ML_SERVICE_URL
             - name: DATABASE_URL
               valueFrom:
-                configMapKeyRef:
-                  name: hormuzwatch-config
+                secretKeyRef:
+                  name: hormuzwatch-secrets
                   key: DATABASE_URL
             - name: JWT_SECRET
               valueFrom:

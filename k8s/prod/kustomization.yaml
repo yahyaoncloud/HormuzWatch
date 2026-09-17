@@ -11,7 +11,3 @@ resources:
   - 04-client.yaml
   - 05-ingress.yaml
   - 06-hpa.yaml
-
-commonLabels:
-  app.kubernetes.io/part-of: hormuzwatch
-  environment: production
