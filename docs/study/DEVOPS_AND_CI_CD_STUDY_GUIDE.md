@@ -24,6 +24,7 @@
 | **[Module 14](14_codebase_architectural_and_security_audit_report.md)** | Codebase Architectural Audit | Multi-tier security boundaries and network isolation |
 | **[Module 15](15_ml_model_portfolio_audit_and_remediation_report.md)** | ML Model Portfolio Audit | Dual ensemble benchmark, drift tracking, and SHAP |
 | **[Module 16](16_production_ready_ci_cd_pipeline_and_deployment_architecture.md)** | Production CI/CD & Deployment Architecture | Blue/Green cutover, Jenkins orchestration, SRE gates |
+| **[Module 17](17_gitops_with_argocd_and_k3s_kubernetes_architecture.md)** | GitOps with ArgoCD & K3s Kubernetes | Declarative reconciliation, self-healing, App-of-Apps |
 
 ---
 
