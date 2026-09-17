@@ -1,7 +1,7 @@
-import { AlertCircle, Bell, CheckCircle2, Info, Lock, X } from 'lucide-react';
+import { AlertCircle, Bell, CheckCircle2, Info, Terminal, X } from 'lucide-react';
 import { Link, Outlet, useLocation } from 'react-router';
 import { Navbar } from '@/components/ui/navbar';
-import { useNotificationStore, useUIStore } from '@/stores';
+import { useAdminStore, useNotificationStore, useUIStore } from '@/stores';
 import { cn } from '@/utils/cn';
 import { SiteFooter } from './SiteFooter';
 
@@ -60,6 +60,7 @@ function ToastContainer() {
 export function RootLayout() {
   const location = useLocation();
   const isHomePage = location.pathname === '/';
+  const isAuthenticated = useAdminStore((s) => s.isAuthenticated);
   const notifs = useNotificationStore((s) => s.notifs);
   const unread = notifs.filter((n) => !n.read).length;
   const showPanel = useNotificationStore((s) => s.showPanel);
@@ -78,10 +79,11 @@ export function RootLayout() {
       <Navbar>
         <div className="flex items-center gap-0 border border-[var(--color-border)] divide-x divide-[var(--color-border)] rounded-none">
           <Link
-            to="/login"
-            className="hidden md:inline-flex items-center gap-1.5 bg-[var(--color-bg-elevated)] px-3 py-1 font-ui text-xs font-medium text-[var(--color-fg)] hover:bg-[var(--color-bg-hover)] transition-all rounded-none h-7.5"
+            to={isAuthenticated ? '/admin' : '/login'}
+            className="inline-flex items-center gap-1.5 bg-[var(--color-bg-elevated)] px-2.5 sm:px-3 py-1 font-ui text-xs font-medium text-[var(--color-fg)] hover:bg-[var(--color-bg-hover)] transition-all rounded-none h-7.5"
+            title="Open Tactical Console"
           >
-            <Lock className="w-3.5 h-3.5 text-[var(--color-primary-600)] dark:text-[var(--color-primary-400)] shrink-0" />
+            <Terminal className="w-3.5 h-3.5 text-[var(--color-primary-600)] dark:text-[#38bdf8] shrink-0" />
             <span>Console</span>
           </Link>
           {/* Notification Bell */}

@@ -66,7 +66,7 @@ export function DocumentationBlock({
   return (
     <section
       id={id}
-      className={cn('py-10 md:py-14 scroll-mt-20', className)}
+      className={cn('py-10 md:py-14 scroll-mt-20 w-full', className)}
       aria-labelledby={headingId}
     >
       {/* Header */}

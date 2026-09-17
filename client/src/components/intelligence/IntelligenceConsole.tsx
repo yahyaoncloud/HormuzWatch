@@ -79,7 +79,7 @@ export function IntelligenceConsole({
   ];
 
   return (
-    <aside className="hidden lg:block w-full h-full flex-shrink-0">
+    <aside className="w-full h-full flex-shrink-0">
       <div className="border-r border-[var(--color-border)] bg-[var(--color-bg-elevated)]/60 flex flex-col h-full">
         {/* Header */}
         <div className="shrink-0 px-3 py-2 border-b border-[var(--color-border)] bg-[var(--color-bg-card)] flex items-center justify-between">

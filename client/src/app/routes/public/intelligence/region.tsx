@@ -7,7 +7,6 @@ import {
 } from '@/components/data/MetricGrid';
 import { Section } from '@/components/layout/Section';
 import { RegionalEditorialMap, type RegionKey } from '@/components/maps';
-import { DesktopOnlyOverlay } from '@/components/ui/DesktopOnlyOverlay';
 import { PageTodoList, type TodoItem } from '@/components/ui/PageTodoList';
 import { getPublicMetrics, getTopTraces } from '@/lib/api';
 
@@ -359,7 +358,6 @@ export default function HormuzIntelligence() {
 
   return (
     <>
-      <DesktopOnlyOverlay title="Regional Intelligence Command" subtitle="Desktop View Required" />
       <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-16 space-y-12">
         <Section
           id="overview"

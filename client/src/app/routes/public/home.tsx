@@ -13,7 +13,6 @@ import { MetricDetailSheet } from '@/components/intelligence/MetricDetailSheet';
 import { ReportProgressModal } from '@/components/intelligence/ReportProgressModal';
 import { SettingsSheet } from '@/components/intelligence/SettingsSheet';
 import { ThreatDetailModal, type ThreatItem } from '@/components/intelligence/ThreatsPanel';
-import { DesktopOnlyOverlay } from '@/components/ui/DesktopOnlyOverlay';
 import { DisclaimerModal } from '@/components/ui/DisclaimerModal';
 import { env } from '@/environments/environment';
 import {
@@ -318,9 +317,6 @@ export function HomePage() {
 
   return (
     <div className="relative h-full w-full overflow-hidden flex flex-col bg-[var(--color-bg)]">
-      {/* Mobile view desktop overlay blocker */}
-      <DesktopOnlyOverlay title="Live Operations & Command" subtitle="Desktop View Required" />
-
       {/* Disclaimer Modal */}
       <DisclaimerModal
         open={showDisclaimer}
