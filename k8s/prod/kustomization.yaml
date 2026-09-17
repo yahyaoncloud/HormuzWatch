@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: hormuzwatch-prod
+
+resources:
+  - 00-configmap-secrets.yaml
+  - 01-postgres.yaml
+  - 02-ml-service.yaml
+  - 03-server.yaml
+  - 04-client.yaml
+  - 05-ingress.yaml
+  - 06-hpa.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: hormuzwatch
+  environment: production
